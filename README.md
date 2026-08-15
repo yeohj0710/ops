@@ -1,0 +1,80 @@
+# ops — 회사 업무 관제탑
+
+업무 하나를 **매뉴얼 한 폴더**로 적어두면, 새 세션에서 한 문장만 말하고 끝낸다.
+Claude Code 와 Codex 가 같은 매뉴얼을 보고 같은 큐에서 일감을 뽑는다.
+
+```
+카톡 봐줘
+```
+
+이러면 세션이 `manuals/kakao-triage/MANUAL.md` 를 찾아 읽고, 그대로 컴퓨터를 제어해 끝낸다.
+
+---
+
+## 처음 세팅 (기계마다 한 번)
+
+```bash
+git clone https://github.com/yeohj0710/ops.git C:/dev/ops
+node C:/dev/ops/setup.mjs
+node C:/dev/ops/ops.mjs doctor
+```
+
+`setup.mjs` 가 하는 일: 이 기계 등록, 폴더 만들기, 커밋 전 검사 훅 설치,
+Claude·Codex 전역 설정에 이 저장소를 가리키는 블록 넣기.
+
+매뉴얼에는 절대경로를 안 박는다. `<OPS>` `<DEV>` 로 쓰고 각 기계가 자기 값으로 읽는다.
+
+## 쓰는 법
+
+| 하고 싶은 것 | 명령 |
+| --- | --- |
+| 매뉴얼 찾기 | `node ops.mjs manuals "카톡"` |
+| 일감 넣기 | `node ops.mjs add --manual kakao-triage --title "오늘 카톡 확인"` |
+| 일감 뽑기 | `node ops.mjs next --runner claude` |
+| 끝내기 | `node ops.mjs done <taskId> --note "…"` |
+| 막혔을 때 | `node ops.mjs block <taskId> --note "…"` |
+| 현황 | `node ops.mjs status` |
+
+Codex 를 무한 루프로 돌리려면 `START.md` 의 블록을 새 세션에 붙여넣는다.
+
+## 구조
+
+```
+AGENTS.md              Claude·Codex 공용 상시 지침 — 여기부터 읽는다
+START.md               Codex 루프 시작 프롬프트
+ops.mjs                일감 배급기
+manuals/<업무id>/       업무 하나 = 폴더 하나
+  MANUAL.md            절차서
+  checks.mjs           완료 검사 (있으면 done 이 자동으로 돌린다)
+runners/claude.md      Claude 가 어떤 도구로 화면을 만지는지
+runners/codex.md       Codex 가 어떤 도구로 화면을 만지는지
+tasks/queue|doing|done 일감 한 건 = 파일 한 개
+work/<taskId>/         그 태스크의 중간 산출물
+```
+
+## 새 업무 늘리기
+
+코드는 안 고친다. 폴더 하나만 더 만든다.
+
+```bash
+cp -r manuals/_template manuals/새-업무-id
+```
+
+처음 하는 업무면 `manuals/_new-manual/MANUAL.md` 를 펴고 **기록 모드**로 진행한다.
+하면서 적은 기록이 그대로 매뉴얼 초안이 된다.
+
+## 설계에서 지킨 것
+
+- **태스크 하나 = 파일 하나.** 원장 한 파일에 몰면 두 에이전트가 무조건 충돌한다.
+  파일이 갈라져 있으면 여러 세션이 동시에 돌아도 git 이 안 부딪힌다.
+- **점유는 git 이 판정한다.** `queue/ → doing/` 으로 옮기고 push 한다. 밀리면 다른 걸 집는다.
+  락 서버가 없다.
+- **화면은 기계당 하나.** L3·L4 태스크는 배급기가 한 번에 하나만 내준다.
+- **매뉴얼에 도구 이름을 안 쓴다.** 도구는 `runners/*.md` 에만 있다. 도구가 바뀌면 거기만 고친다.
+- **매뉴얼에 좌표를 안 쓴다.** 화면 배율이 바뀌면 다른 데를 누른다.
+
+## 공개 저장소다
+
+커밋하는 건 전부 남이 볼 수 있고 지워도 기록에 남는다.
+`scripts/scan-secrets.mjs` 가 커밋 전에 API 키·주민번호·계좌·연락처·신분증 파일을 막는다.
+검사가 틀렸으면 `OPS_SCAN_OK=1 git commit ...` 으로 사람이 통과시킨다.

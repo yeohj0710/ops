@@ -1,0 +1,15 @@
+# 기계마다 다른 것
+machine.json
+
+# 태스크 중간 산출물 — 남길 게 있으면 매뉴얼이 따로 지정한다
+work/
+
+# 자격증명
+.env
+.env.*
+*.pem
+*.key
+
+node_modules/
+.DS_Store
+Thumbs.db
