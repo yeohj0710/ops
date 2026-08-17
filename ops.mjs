@@ -212,26 +212,39 @@ function writeDriveGuide() {
   const text = `# 에이전트 업무 시스템
 
 > 이 파일은 \`node ops.mjs sync\` 가 다시 쓴다. 손으로 고치지 마라.
-> 원본과 실제 동작은 전부 https://github.com/yeohj0710/ops 에 있다.
 
 회사 반복 업무를 매뉴얼로 적어두고, Claude Code 와 Codex 가 그걸 보고 처리한다.
+**이 폴더 하나로 새 컴퓨터를 처음부터 세팅할 수 있다.** 미리 해둘 건 없다.
 
 ---
 
-## 새 컴퓨터에서 처음 쓸 때
+## 새 컴퓨터에서 — 이 한 줄이면 된다
 
-세션에 이 폴더를 보라고 한 뒤, 아래 두 줄을 그대로 돌리게 하면 끝난다.
-git 과 node 만 있으면 된다.
+**이 파일 옆에 있는 \`설치.mjs\` 를 실행한다.** 드라이브 문자는 컴마다 다르니 경로는 실제 위치에 맞춘다.
 
 \`\`\`bash
-git clone https://github.com/yeohj0710/ops.git C:/dev/ops
-node C:/dev/ops/setup.mjs
+node "<이 폴더>/설치.mjs"
 \`\`\`
 
-setup 이 하는 일 — 이 기계 등록, 커밋 전 검사 훅 설치, **ops 스킬을 Claude·Codex 양쪽에 설치**.
-폴더를 \`C:/dev/ops\` 말고 다른 데 둬도 되고, 그러면 뒤 명령의 경로만 맞추면 된다.
+**node 와 git 만 깔려 있으면 나머지는 알아서 한다.** 먼저 무엇이 바뀌는지 보고 싶으면 \`--dry\` 를 붙인다.
+프로젝트 폴더를 \`C:/dev\` 말고 다른 데 두려면 \`--dev D:/work\` 처럼 알려준다.
 
-**이 말은 컴퓨터 한 대당 한 번만 하면 된다.** 그 다음부터는 아래처럼 짧게 시킨다.
+설치.mjs 가 하는 일.
+
+1. \`설정/\` 에 담긴 것을 제자리에 놓는다 — Claude 전역 지침·권한 설정·스킬·기억,
+   Codex 전역 지침·스킬·규칙, 프로젝트 작업 지도. **기존 파일은 지우지 않고 백업해두고 덮는다.**
+2. 관제탑 저장소를 받는다 (https://github.com/yeohj0710/ops)
+3. 이 기계를 등록하고 ops 스킬을 Claude·Codex 양쪽에 설치한다
+
+무엇이 어디로 가는지는 \`목록.md\` 에 있다.
+
+**사람이 직접 해야 하는 것은 두 가지뿐이다** — Claude·Codex 로그인, 그리고 Codex 설정(\`config.toml\`).
+그 둘은 기계마다 값이 달라서 담지 않았다. 자격증명(auth.json·토큰·.env)도 일부러 뺐다.
+
+## 설정을 고친 뒤에는
+
+이 컴에서 지침이나 스킬을 고쳤으면 드라이브로 거둬야 다른 컴이 받는다.
+이 폴더의 \`백업.mjs\` 를 실행하면 된다. \`node ops.mjs sync\` 를 돌려도 같이 거둔다.
 
 ## 세팅한 뒤에는
 
@@ -256,13 +269,41 @@ ${rows}
 
 ## 컴 사이 동기화
 
-\`ops.mjs\` 가 일감을 뽑거나 현황을 볼 때 알아서 \`git pull\` 한다.
-직접 맞추고 싶으면 \`git -C C:/dev/ops pull\`.
+\`ops.mjs\` 가 일감을 뽑거나 현황을 볼 때 6시간 간격으로 알아서 \`git pull\` 한다.
+직접 맞추고 싶으면 관제탑 폴더에서 \`git pull\`, 또는 이 폴더의 \`설치.mjs\` 를 다시 실행한다.
+
+## 이 폴더 구성
+
+| | |
+| --- | --- |
+| \`시작.md\` | 지금 읽는 것 |
+| \`설치.mjs\` | 새 컴에 전부 깐다 (드라이브 → 컴) |
+| \`백업.mjs\` | 이 컴 설정을 거둔다 (컴 → 드라이브) |
+| \`설정/\` | 실제 담긴 지침·스킬·기억 |
+| \`목록.md\` | 무엇이 어디로 가는지 표 |
+| \`manifest.json\` | 두 스크립트가 보는 목록 원본 |
 `;
 
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "시작.md"), text, "utf8");
-  console.log("드라이브 안내문: " + path.join(dir, "시작.md"));
+
+  // 부트스트랩 묶음을 드라이브에 깐다. 저장소 없이 단독으로 돌아야 한다.
+  const bs = path.join(ROOT, "bootstrap");
+  for (const f of ["설치.mjs", "백업.mjs", "lib.mjs", "manifest.json"]) {
+    const src = path.join(bs, f);
+    if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, f));
+  }
+  console.log("드라이브 안내문·설치기: " + dir);
+
+  // 이 컴 설정을 거둔다.
+  try {
+    execFileSync(process.execPath, [path.join(dir, "백업.mjs"), "--dev", me.dev_root || "C:/dev"], {
+      cwd: dir,
+      stdio: "inherit",
+    });
+  } catch {
+    console.log("설정 백업 실패 — node \"" + path.join(dir, "백업.mjs") + "\" 를 직접 돌려라");
+  }
 }
 
 function cmdSync() {
