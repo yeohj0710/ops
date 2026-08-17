@@ -15,9 +15,13 @@ const SITE = "hjo.vercel.app";
 const run = (cmd, args, opts = {}) =>
   execFileSync(cmd, args, { cwd: ROOT, encoding: "utf8", ...opts });
 
+// Windows 에서 npx 는 .cmd 라 shell 없이는 못 부른다.
+const npx = (args, opts = {}) =>
+  execFileSync("npx " + args.join(" "), { cwd: ROOT, encoding: "utf8", shell: true, ...opts });
+
 run(process.execPath, [path.join(ROOT, "site", "build.mjs")], { stdio: "inherit" });
 
-const out = run("npx", ["vercel", "deploy", "site/dist", "--prod", "--yes"], {
+const out = npx(["vercel", "deploy", "site/dist", "--prod", "--yes"], {
   stdio: ["ignore", "pipe", "pipe"],
 });
 const url = (out.match(/https:\/\/hjo-[a-z0-9]+-[a-z0-9-]+\.vercel\.app/) || [])[0];
@@ -27,5 +31,5 @@ if (!url) {
 }
 console.log("올렸다: " + url);
 
-run("npx", ["vercel", "alias", "set", url, SITE], { stdio: "inherit" });
+npx(["vercel", "alias", "set", url, SITE], { stdio: "inherit" });
 console.log("\nhttps://" + SITE);
