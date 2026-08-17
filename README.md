@@ -29,6 +29,7 @@ Claude·Codex 전역 설정에 이 저장소를 가리키는 블록 넣기.
 | 하고 싶은 것 | 명령 |
 | --- | --- |
 | 매뉴얼 찾기 | `node ops.mjs manuals "카톡"` |
+| 새 업무 등록 | `node ops.mjs new proposal-deck --title "제안서 제작"` |
 | 일감 넣기 | `node ops.mjs add --manual kakao-triage --title "오늘 카톡 확인"` |
 | 일감 뽑기 | `node ops.mjs next --runner claude` |
 | 끝내기 | `node ops.mjs done <taskId> --note "…"` |
@@ -54,13 +55,12 @@ work/<taskId>/         그 태스크의 중간 산출물
 
 ## 새 업무 늘리기
 
-코드는 안 고친다. 폴더 하나만 더 만든다.
+코드는 안 고친다. 세션에 한 문장만 말한다.
 
-```bash
-cp -r manuals/_template manuals/새-업무-id
-```
+> 방금 한 거 업무로 등록해줘 / ○○ 업무로 등록해줘
 
-처음 하는 업무면 `manuals/_new-manual/MANUAL.md` 를 펴고 **기록 모드**로 진행한다.
+세션이 `node ops.mjs new <id> --title "…"` 로 뼈대를 만들고 템플릿 칸을 채운 뒤 push 한다.
+처음 하는 업무면 `manuals/_new-manual/MANUAL.md` 를 펴고 **기록 모드**로 진행한다 —
 하면서 적은 기록이 그대로 매뉴얼 초안이 된다.
 
 ## 설계에서 지킨 것

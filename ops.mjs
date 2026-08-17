@@ -7,6 +7,7 @@
 //   add --manual <id> --title "…"  태스크를 큐에 넣는다
 //   done <taskId> [--note "…"]     완료 검사를 돌리고 끝낸다
 //   block <taskId> --note "…"      막혔다고 적고 큐로 돌려보낸다
+//   new <id> --title "…"           새 매뉴얼 뼈대를 만든다
 //   manuals [검색어]               매뉴얼 목록
 //   status                         큐·진행·완료 현황
 //   doctor                         이 기계 설정 점검
@@ -143,6 +144,37 @@ function cmdManuals(argv) {
     console.log(`    ${m.file}`);
     console.log("");
   }
+}
+
+function cmdNew(argv) {
+  const id = argv._[0];
+  if (!id)
+    die('매뉴얼 id 가 필요하다. 영문 소문자·하이픈. 예: node ops.mjs new proposal-deck --title "제안서 제작"');
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) die("id 는 영문 소문자·숫자·하이픈만 쓴다. 예: proposal-deck");
+  const dest = path.join(DIR.manuals, id);
+  if (fs.existsSync(dest)) die(`manuals/${id} 가 이미 있다. 새로 만들지 말고 그걸 고쳐라.`);
+
+  // 비슷한 매뉴얼이 이미 있으면 알려준다 — 매뉴얼이 둘로 갈라지는 게 제일 나쁘다.
+  if (argv.title) {
+    const needle = String(argv.title).toLowerCase();
+    const near = manualList().filter(
+      (m) => !m.hidden && [m.id, m.title, m.trigger].join(" ").toLowerCase().includes(needle)
+    );
+    for (const m of near) console.log(`주의: 비슷한 매뉴얼이 있다 — ${m.id} (${m.title})`);
+  }
+
+  fs.cpSync(path.join(DIR.manuals, "_template"), dest, { recursive: true });
+  if (argv.title) {
+    const f = path.join(dest, "MANUAL.md");
+    fs.writeFileSync(f, fs.readFileSync(f, "utf8").replace(/^# .*$/m, "# " + argv.title), "utf8");
+  }
+  console.log("만들었다: " + path.join(dest, "MANUAL.md"));
+  console.log("");
+  console.log("이제 할 일:");
+  console.log("  1. 머리말 네 줄(부르는 말·런너·제어층·시간)을 채운다");
+  console.log("  2. 절차·알려진 함정·완료 검사를 채운다 — 방금 한 일이 있으면 그대로 옮긴다");
+  console.log("  3. node ops.mjs manuals " + id + " 로 목록에 뜨는지 확인한다");
+  console.log("  4. 커밋하고 push 한다 (git add -A && git commit && git push)");
 }
 
 // ---------- 태스크 ----------
@@ -380,6 +412,7 @@ const argv = parse(rest);
 const table = {
   next: cmdNext,
   add: cmdAdd,
+  new: cmdNew,
   done: cmdDone,
   block: cmdBlock,
   manuals: cmdManuals,
@@ -392,6 +425,7 @@ if (!cmd || !table[cmd]) {
       "ops — 회사 업무 관제탑",
       "",
       "  node ops.mjs next [--runner claude|codex]",
+      "  node ops.mjs new <매뉴얼id> --title \"…\"",
       "  node ops.mjs add --manual <id> --title \"…\" [--runner] [--est 30] [--resource x] [--priority 5]",
       "  node ops.mjs done <taskId> --note \"…\"",
       "  node ops.mjs block <taskId> --note \"…\"",
