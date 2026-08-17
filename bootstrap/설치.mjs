@@ -69,6 +69,21 @@ for (const item of manifest.items) {
 }
 if (!dry && moved) console.log("  기존 설정 " + moved + "건은 " + backupDir + " 에 옮겨뒀다");
 
+// 1-b. 자격증명 (.env) — manifest 에 없다. 드라이브에만 있고 저장소로는 안 간다.
+const envFrom = path.join(HERE, "자격증명", ".env");
+const envTo = path.join(devRoot, "ops", ".env");
+if (fs.existsSync(envFrom)) {
+  if (dry) {
+    console.log(`  놓을 예정  자격증명 .env → ${envTo}`);
+  } else {
+    fs.mkdirSync(path.dirname(envTo), { recursive: true });
+    fs.copyFileSync(envFrom, envTo);
+    console.log(`     1개  자격증명 .env → ${envTo}`);
+  }
+} else {
+  console.log("  건너뜀  자격증명 .env — 드라이브에 없다 (있으면 자동으로 놓는다)");
+}
+
 // 2. 관제탑 저장소
 console.log("");
 console.log("[2/3] 관제탑 저장소");

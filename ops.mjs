@@ -241,7 +241,15 @@ node "<이 폴더>/설치.mjs"
 무엇이 어디로 가는지는 \`목록.md\` 에 있다.
 
 **사람이 직접 해야 하는 것은 두 가지뿐이다** — Claude·Codex 로그인, 그리고 Codex 설정(\`config.toml\`).
-그 둘은 기계마다 값이 달라서 담지 않았다. 자격증명(auth.json·토큰·.env)도 일부러 뺐다.
+그 둘은 기계마다 값이 달라서 담지 않았다.
+
+## 회사 정보를 채워두면 에이전트가 안 묻는다
+
+\`정보/회사.md\` (사업자번호·주소·거래 정보), \`정보/계정.md\` (어디에 어떤 아이디로 로그인돼 있나).
+빈칸을 채워두면 서류·제안서·양식을 채울 때 매번 물어보지 않는다.
+
+\`자격증명/.env\` 에 API 키를 두면 \`설치.mjs\` 가 새 컴의 \`<프로젝트폴더>/ops/.env\` 로 옮긴다.
+**비밀번호는 두지 않는다** — 로그인이 필요한 일은 이미 로그인된 크롬을 쓴다. 자세한 건 \`자격증명/읽어라.md\`.
 
 ## 설정을 고친 뒤에는
 
@@ -282,6 +290,8 @@ ${rows}
 | \`설치.mjs\` | 새 컴에 전부 깐다 (드라이브 → 컴) |
 | \`백업.mjs\` | 이 컴 설정을 거둔다 (컴 → 드라이브) |
 | \`설정/\` | 실제 담긴 지침·스킬·기억 |
+| \`정보/\` | 회사 기본 정보와 계정 지도 — 에이전트가 묻기 전에 여기부터 본다 |
+| \`자격증명/\` | 스크립트가 읽는 \`.env\`. 비밀번호는 두지 않는다 |
 | \`목록.md\` | 무엇이 어디로 가는지 표 |
 | \`manifest.json\` | 두 스크립트가 보는 목록 원본 |
 `;
@@ -294,6 +304,20 @@ ${rows}
   for (const f of ["설치.mjs", "백업.mjs", "lib.mjs", "manifest.json"]) {
     const src = path.join(bs, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, f));
+  }
+
+  // 정보·자격증명 자리. 이미 사람이 채운 파일은 절대 덮지 않는다.
+  const tmpl = path.join(bs, "정보-틀");
+  if (fs.existsSync(tmpl)) {
+    fs.mkdirSync(path.join(dir, "정보"), { recursive: true });
+    fs.mkdirSync(path.join(dir, "자격증명"), { recursive: true });
+    for (const f of fs.readdirSync(tmpl)) {
+      const to =
+        f === "자격증명-읽어라.md"
+          ? path.join(dir, "자격증명", "읽어라.md")
+          : path.join(dir, "정보", f);
+      if (!fs.existsSync(to)) fs.copyFileSync(path.join(tmpl, f), to);
+    }
   }
   console.log("드라이브 안내문·설치기: " + dir);
 
