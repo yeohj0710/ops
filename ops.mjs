@@ -216,7 +216,7 @@ function writeDriveGuide() {
 회사 반복 업무를 매뉴얼로 적어두고, Claude Code 와 Codex 가 그걸 보고 처리한다.
 **이 폴더 하나로 새 컴퓨터를 처음부터 세팅할 수 있다.** 미리 해둘 건 없다.
 
-등록된 업무와 일감 현황은 사이트에서 본다 — **https://hjo.vercel.app**
+등록된 업무와 일감 현황은 사이트에서 본다 — **https://wbxops.vercel.app**
 
 ---
 

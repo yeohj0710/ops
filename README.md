@@ -1,6 +1,6 @@
 # ops — 회사 업무 관제탑
 
-**사이트 → https://hjo.vercel.app**
+**사이트 → https://wbxops.vercel.app**
 
 업무 하나를 **매뉴얼 한 폴더**로 적어두면, 새 세션에서 한 문장만 말하고 끝낸다.
 Claude Code 와 Codex 가 같은 매뉴얼을 보고 같은 큐에서 일감을 뽑는다.
@@ -82,7 +82,7 @@ runners/claude.md      Claude 가 어떤 도구로 화면을 만지는지
 runners/codex.md       Codex 가 어떤 도구로 화면을 만지는지
 skill/SKILL.md         ops 스킬 원본 (sync 가 양쪽 도구에 설치)
 bootstrap/             새 컴 설치기 — 드라이브로 복사된다
-site/                  hjo.vercel.app 굽는 곳
+site/                  wbxops.vercel.app 굽는 곳
 tasks/queue|doing|done 일감 한 건 = 파일 한 개
 work/<taskId>/         그 태스크의 중간 산출물
 ```
