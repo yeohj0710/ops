@@ -365,10 +365,23 @@ ${rows}
   // 읽기용이다 — 고치는 건 저장소에서 한다(겹침 판정을 git 이 해야 하므로).
   const mdir = path.join(dir, "매뉴얼");
   removeTreeSafe(mdir);
+  // 폴더를 통째로 옮긴다. 매뉴얼이 딸린 스크립트를 부르는데 저장소 없는 컴에는 그게 없다.
   for (const m of manualList()) {
-    const to = path.join(mdir, m.id + ".md");
-    fs.mkdirSync(path.dirname(to), { recursive: true });
-    fs.copyFileSync(m.file, to);
+    const from = path.dirname(m.file);
+    const to = path.join(mdir, m.id);
+    fs.mkdirSync(to, { recursive: true });
+    const copyDir = (a, b) => {
+      for (const e of fs.readdirSync(a, { withFileTypes: true })) {
+        if (e.name === "desktop.ini" || e.name === "node_modules") continue;
+        const src = path.join(a, e.name);
+        const dst = path.join(b, e.name);
+        if (e.isDirectory()) {
+          fs.mkdirSync(dst, { recursive: true });
+          copyDir(src, dst);
+        } else fs.copyFileSync(src, dst);
+      }
+    };
+    copyDir(from, to);
   }
   fs.writeFileSync(
     path.join(mdir, "읽어라.md"),
@@ -383,7 +396,7 @@ ${rows}
       "",
       "| 업무 | 부르는 말 |",
       "| --- | --- |",
-      ...list.map((m) => `| [${m.title}](${m.id}.md) | ${m.trigger || "—"} |`),
+      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${m.trigger || "—"} |`),
     ].join("\n") + "\n",
     "utf8"
   );
