@@ -49,19 +49,23 @@
 
 3. **그 사람 톤을 확인한다 — L1**
    `<드라이브>/영상 편집/[공통] 유용한 소스/캡션 자동 생성/학습용 데이터/<사람> (@핸들)/`
-   - `프로필.html` — 표시 이름·핸들·정체성·톤. **여기 없는 경력이나 전문성을 지어내지 마라**
-   - 하위 예시들의 `캡션.html` — 실제로 쓰는 문장 형태
+   - **`_경향.md`** — 길이·이모지 수·구분선 비율을 실제로 센 숫자다. **여기부터 본다**
+   - `프로필.html` — 표시 이름·정체성·톤. **여기 없는 경력이나 전문성을 지어내지 마라**
+   - 예시 폴더는 **조회수 높은 순**으로 이름이 붙어 있다. 앞쪽 것을 더 강하게 따른다
 
-   같은 사람 예시를 우선하되, 지금 영상 주제와 가까운 예시를 더 강하게 따른다.
-   예시가 부족하면 아래 "레퍼런스 늘리기" 를 먼저 한다.
+4. **캡션을 쓴다.** 사람마다 형식이 정말 다르다. 섞으면 바로 티가 난다.
 
-4. **캡션을 쓴다.** 사람마다 형식이 다르다. 섞지 마라.
+   실측한 숫자다(260817 · 인스타 최근 편 기준).
 
-   | 사람 | 특징 |
-   | --- | --- |
-   | 제선영 | 이모지 많음, 구어체 반말체 설명, `━━━` 구분선, `1️⃣2️⃣3️⃣` 항목, 훅이 강함 |
-   | 하루건강약사 | 존댓말, 50대 이후 대상, `1️⃣ 1위 …` 랭킹, 끝에 `팔로우 👉 @haruyaksa` |
-   | 오주헌·김주성 | 예시가 적다. `프로필.html` 과 실제 계정을 보고 맞춘다 |
+   | 사람 | 길이 | 줄 | 이모지 | 숫자이모지 | 구분선 | 특징 |
+   | --- | --- | --- | --- | --- | --- | --- |
+   | 제선영 | 615자 | 24 | 16개 | 38% | 21% | 가장 길고 이모지가 많다. 팔로우 유도 96% |
+   | 김주성 | 507자 | 24 | 11개 | 22% | **78%** | `━━━` 구분선이 특징. 저장 유도 67% |
+   | 오주헌 | 476자 | 23 | 13개 | **63%** | 8% | 숫자 이모지로 항목을 나눈다. 구분선은 거의 안 쓴다 |
+   | 하루건강약사 | 457자 | **12** | 12개 | **88%** | **0%** | 짧고 조밀하다. `1️⃣ 1위 …` 랭킹, 팔로우 유도 100% |
+
+   **길이가 두 배로 길거나 이모지가 없으면 그 사람 글이 아니다.**
+   자세한 숫자와 자주 쓰는 해시태그는 각 폴더의 `_경향.md` 에 있다.
 
 5. **`캡션.html` 을 영상과 같은 폴더에 만든다 — L1**
    기존 파일 형식을 그대로 본뜬다. 본문은 `<textarea id="caption">` 안에 넣는다.
@@ -69,30 +73,61 @@
 
 6. **채팅에 코드블록으로 찍는다.** 이걸 빼먹지 마라 — 폰에서 시킨 사람은 파일을 못 연다.
 
-## 레퍼런스 늘리기 (정확도가 여기서 갈린다)
+## 레퍼런스 늘리기
 
-예시가 적으면 캡션이 그 사람 말투를 못 따라간다. 지금 상태는 이렇다.
+예시가 적으면 캡션이 그 사람 말투를 못 따라간다. 260817 에 인스타에서 긁어 이만큼 채웠다.
 
-| 사람 | 캡션 예시 | 상태 |
-| --- | --- | --- |
-| 제선영 | 8개 | 쓸 만하다 |
-| 오주헌 | 4개 | 얇다 |
-| 김주성 | **1개** | 거의 없다 |
-| 전종열 | **폴더 없음** | 만들어야 한다 |
+| 사람 | 캡션 예시 |
+| --- | --- |
+| 오주헌 | 48개 |
+| 제선영 | 39개 |
+| 하루건강약사 | 24개 |
+| 김주성 | 18개 |
+| 김미주 · 박영아 · 최형지 | 3~5개 (부차적. 필요하면 같은 방법으로 채운다) |
+| 전종열 | 인스타 핸들을 모른다 |
 
-늘리는 법 — **인스타 실제 게시물에서 가져온다.**
+### 긁는 법 — 한 번에 끝난다
 
-1. `yt-dlp` 로는 인스타 프로필을 못 읽는다(지원이 끊겼다). **크롬 확장(L3)으로 한다**
-2. 그 사람 인스타 계정에 들어가 최근 릴스를 연다
-3. 캡션 원문과 화면을 가져와 학습용 데이터에 넣는다
+`yt-dlp` 로는 인스타를 못 읽는다(지원 끊김). **로그인된 크롬(L3)에서 인스타 내부 API 를 부른다.**
+계정 하나에 클릭 없이 24편이 온다.
+
+1. `https://www.instagram.com/` 을 연다 (로그인돼 있어야 한다)
+2. `javascript_tool` 로 아래를 돌린다. `names` 만 바꾸면 된다
+
+```js
+const H={'x-ig-app-id':'936619743392459'};
+async function pull(username, want=24){
+  const p = await (await fetch(`/api/v1/users/web_profile_info/?username=${username}`,{headers:H})).json();
+  if(!p?.data?.user) return {username, error:'프로필 없음'};
+  const u = p.data.user; const out=[]; let max=null;
+  for(let i=0;i<3 && out.length<want;i++){
+    const j = await (await fetch(`/api/v1/feed/user/${u.id}/?count=12`+(max?`&max_id=${max}`:''),{headers:H})).json();
+    for(const it of (j.items||[])){ const cap=(it.caption?.text||'').trim();
+      if(cap) out.push({code:it.code, cap, play:it.play_count??it.view_count??null, like:it.like_count??null, ts:it.taken_at}); }
+    if(!j.more_available || !j.next_max_id) break; max=j.next_max_id;
+  }
+  return {username:u.username, full:u.full_name, bio:u.biography,
+          posts:u.edge_owner_to_timeline_media?.count, followers:u.edge_followed_by?.count, items:out.slice(0,want)};
+}
+const names=['kimjejo_pharma','oyakstory','jessi_yaksa','haruyaksa'];
+const all={}; for(const n of names){ all[n]=await pull(n); await new Promise(r=>setTimeout(r,700)); }
+const b=new Blob([JSON.stringify(all,null,1)],{type:'application/json'});
+const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='ig-captions.json';
+document.body.appendChild(a); a.click(); a.remove();
+Object.entries(all).map(([k,v])=>`${k}: ${v.items?.length||0}개`)
+```
+
+3. 내려받은 파일을 넣는다
+   ```bash
+   node "<OPS>/manuals/caption-gen/scripts/build-corpus.mjs" "C:/Users/<사용자>/Downloads/ig-captions.json"
    ```
-   학습용 데이터/<사람> (@핸들)/<주제>/
-     캡션.html          ← 원문 그대로. 요약하거나 다듬지 마라
-     <영상>.mp4         ← 있으면 좋다
-   ```
-4. **원문을 그대로 넣는다.** 손보면 톤 학습이 망가진다
 
-`프로필.html` 이 없으면 계정 소개글을 보고 만든다.
+`build-corpus.mjs` 가 하는 일 — 조회수 높은 순으로 `<조회수> <제목>/캡션.html` 을 쌓고,
+`프로필.html` 을 만들고(없을 때만), **`_경향.md` 에 실측 통계**를 다시 쓴다.
+사람이 손으로 넣은 예시는 이름이 겹치면 건너뛴다.
+
+**결과를 툴로 되받지 마라.** 캡션이 길어서 잘린다. 반드시 파일로 내려받아 Node 로 읽는다.
+크롬이 **연속 다운로드를 막을 때가 있다.** 두 번째가 안 떨어지면 한 번에 합쳐서 받는다.
 
 ## 산출물
 
@@ -116,7 +151,10 @@
   캡션 대상은 편집자 폴더 안의 것이거나 작은 `.mp4` 다. 스크립트가 걸러 주지만 눈으로도 확인한다
 - **차수가 최종본이다.** `_수정1` `_수정2` 가 있으면 **가장 높은 숫자**를 쓴다
 - 프리미어 자동저장 폴더(`Adobe Premiere Pro Auto-Save`)에는 영상이 없다. 들어가지 마라
-- **사람마다 캡션 형식이 다르다.** 제선영 형식을 오주헌에게 쓰면 어색하다
+- **사람마다 캡션 형식이 다르다.** 김주성은 구분선 78%인데 오주헌은 8%다. 섞으면 바로 티가 난다
+- **인스타 캡션을 툴 결과로 되받으면 잘린다.** 파일로 내려받아 Node 로 읽는다
+- 크롬이 **연속 다운로드를 막는다.** 두 번째가 안 떨어지면 합쳐서 한 번에 받는다
+- 폴더 이름 끝에 **점이나 공백이 있으면 Windows 가 거부한다.** build-corpus.mjs 가 걸러 준다
 - `프로필.html` 에 없는 경력·전문성·수상을 지어내지 마라
 
 ## 묻지 말고 이렇게 한다
