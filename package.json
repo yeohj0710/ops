@@ -9,7 +9,9 @@
     "doctor": "node ops.mjs doctor",
     "next": "node ops.mjs next",
     "status": "node ops.mjs status",
-    "scan": "node scripts/scan-secrets.mjs"
+    "scan": "node scripts/scan-secrets.mjs",
+    "site": "node site/build.mjs",
+    "deploy": "node site/deploy.mjs"
   },
   "license": "MIT"
 }
