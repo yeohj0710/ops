@@ -14,10 +14,14 @@ Claude Code 와 Codex 가 **둘 다** 읽는 파일이다. 회사 업무를 이 
 manuals/<업무id>/MANUAL.md   절차서 — 사람도 읽고 에이전트도 읽는다
 runners/claude.md            Claude 가 어떤 도구로 화면을 만지는지
 runners/codex.md             Codex 가 어떤 도구로 화면을 만지는지
+skill/SKILL.md               ops 스킬 원본 — sync 가 양쪽 도구에 설치한다
 tasks/queue|doing|done/      일감 한 건 = 파일 한 개
 work/<taskId>/               그 태스크의 중간 산출물
 ops.mjs                      일감 배급기
 ```
+
+세션에서 이 시스템을 부르는 통로는 **`ops` 스킬**이다. 상시 컨텍스트에는 스킬 설명 한 줄만 남고,
+절차는 스킬이 불릴 때 로드된다. 지침을 전역 설정에 적지 마라 — 매 세션 전부 싣게 된다.
 
 ---
 

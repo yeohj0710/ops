@@ -8,6 +8,7 @@
 //   done <taskId> [--note "…"]     완료 검사를 돌리고 끝낸다
 //   block <taskId> --note "…"      막혔다고 적고 큐로 돌려보낸다
 //   new <id> --title "…"           새 매뉴얼 뼈대를 만든다
+//   sync                           매뉴얼 목록으로 ops 스킬 설명줄을 다시 쓰고 양쪽 도구에 설치
 //   manuals [검색어]               매뉴얼 목록
 //   status                         큐·진행·완료 현황
 //   doctor                         이 기계 설정 점검
@@ -146,6 +147,66 @@ function cmdManuals(argv) {
   }
 }
 
+// ---------- 스킬 ----------
+// 상시 컨텍스트에 남는 건 아래에서 만드는 설명 한 줄뿐이다. 본문은 스킬이 불릴 때만 로드된다.
+// 그래서 등록된 업무가 늘어도 세션 비용은 한 줄씩만 는다.
+
+const SKILL_TARGETS = [
+  { tool: "claude", dir: path.join(os.homedir(), ".claude", "skills", "ops") },
+  { tool: "codex", dir: path.join(os.homedir(), ".codex", "skills", "ops") },
+];
+
+function skillDescription() {
+  const list = manualList().filter((m) => !m.hidden);
+  const MAX = 12;
+  const shown = list.slice(0, MAX).map((m) => {
+    const words = m.trigger
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join("·");
+    return words ? `${m.title}(${words})` : m.title;
+  });
+  const more = list.length > MAX ? ` 외 ${list.length - MAX}개` : "";
+  const registered = shown.length ? `지금 등록된 업무 — ${shown.join(", ")}${more}.` : "아직 등록된 업무가 없다.";
+
+  return (
+    "회사 반복 업무를 매뉴얼대로 실행하거나 새 업무를 매뉴얼로 등록한다. " +
+    registered +
+    " 이 중 하나를 시키거나, " +
+    '"업무로 등록해줘"·"매뉴얼로 만들어"·"시스템에 반영해"·"방금 한 거 등록해"·' +
+    '"일감 뽑아서 해줘" 라고 하면 쓴다. 회사 업무처럼 들리는데 매뉴얼이 있는지 모를 때도 먼저 확인용으로 쓴다.'
+  ).replace(/\s+/g, " ");
+}
+
+function cmdSync() {
+  const src = path.join(ROOT, "skill", "SKILL.md");
+  if (!fs.existsSync(src)) die("skill/SKILL.md 가 없다.");
+
+  let body = fs.readFileSync(src, "utf8");
+  const desc = skillDescription();
+  // 저장소 원본의 설명줄도 최신으로 유지한다.
+  body = body.replace(/^description:.*$/m, "description: " + desc);
+  // 매뉴얼 경로는 기계마다 다를 수 있으니 설치할 때 이 기계 값으로 굳힌다.
+  const installed = body.replace(/C:\/dev\/ops/g, ROOT.replace(/\\/g, "/"));
+  fs.writeFileSync(src, body, "utf8");
+
+  for (const t of SKILL_TARGETS) {
+    const parent = path.dirname(t.dir);
+    if (!fs.existsSync(parent)) {
+      console.log(`건너뜀 (${t.tool} 스킬 폴더 없음): ${parent}`);
+      continue;
+    }
+    fs.mkdirSync(t.dir, { recursive: true });
+    fs.writeFileSync(path.join(t.dir, "SKILL.md"), installed, "utf8");
+    console.log(`${t.tool} 스킬 설치: ${path.join(t.dir, "SKILL.md")}`);
+  }
+  console.log("");
+  console.log("상시 컨텍스트에 남는 건 이 설명 한 줄뿐이다 (" + desc.length + "자):");
+  console.log("  " + desc);
+}
+
 function cmdNew(argv) {
   const id = argv._[0];
   if (!id)
@@ -173,7 +234,7 @@ function cmdNew(argv) {
   console.log("이제 할 일:");
   console.log("  1. 머리말 네 줄(부르는 말·런너·제어층·시간)을 채운다");
   console.log("  2. 절차·알려진 함정·완료 검사를 채운다 — 방금 한 일이 있으면 그대로 옮긴다");
-  console.log("  3. node ops.mjs manuals " + id + " 로 목록에 뜨는지 확인한다");
+  console.log("  3. node ops.mjs sync — 스킬 설명줄에 이 업무를 올린다 (부르는 말을 채운 뒤에 돌려라)");
   console.log("  4. 커밋하고 push 한다 (git add -A && git commit && git push)");
 }
 
@@ -413,6 +474,7 @@ const table = {
   next: cmdNext,
   add: cmdAdd,
   new: cmdNew,
+  sync: cmdSync,
   done: cmdDone,
   block: cmdBlock,
   manuals: cmdManuals,
@@ -430,6 +492,7 @@ if (!cmd || !table[cmd]) {
       "  node ops.mjs done <taskId> --note \"…\"",
       "  node ops.mjs block <taskId> --note \"…\"",
       "  node ops.mjs manuals [검색어]",
+      "  node ops.mjs sync",
       "  node ops.mjs status",
       "  node ops.mjs doctor",
     ].join("\n")

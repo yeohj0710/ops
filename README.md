@@ -30,6 +30,7 @@ Claude·Codex 전역 설정에 이 저장소를 가리키는 블록 넣기.
 | --- | --- |
 | 매뉴얼 찾기 | `node ops.mjs manuals "카톡"` |
 | 새 업무 등록 | `node ops.mjs new proposal-deck --title "제안서 제작"` |
+| 스킬 설명줄 갱신 | `node ops.mjs sync` |
 | 일감 넣기 | `node ops.mjs add --manual kakao-triage --title "오늘 카톡 확인"` |
 | 일감 뽑기 | `node ops.mjs next --runner claude` |
 | 끝내기 | `node ops.mjs done <taskId> --note "…"` |
@@ -62,6 +63,19 @@ work/<taskId>/         그 태스크의 중간 산출물
 세션이 `node ops.mjs new <id> --title "…"` 로 뼈대를 만들고 템플릿 칸을 채운 뒤 push 한다.
 처음 하는 업무면 `manuals/_new-manual/MANUAL.md` 를 펴고 **기록 모드**로 진행한다 —
 하면서 적은 기록이 그대로 매뉴얼 초안이 된다.
+
+## 트리거는 스킬로 문다
+
+세션에서 이 시스템을 부르는 통로는 `ops` 스킬이다.
+`skill/SKILL.md` 가 원본이고 `ops.mjs sync` 가 `~/.claude/skills/ops/` 와 `~/.codex/skills/ops/`
+양쪽에 설치한다. 두 도구가 같은 형식을 쓴다.
+
+**상시 컨텍스트에는 설명 한 줄만 남는다.** 본문(절차)은 스킬이 불릴 때만 로드된다.
+설명줄은 `sync` 가 `manuals/` 를 읽어 자동으로 다시 쓰므로, 업무가 늘어도 사람이 손댈 일이 없고
+세션 비용은 업무 하나당 짧은 구절 하나씩만 는다.
+
+전역 설정(`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`)에는 스킬을 가리키는 두 줄만 둔다.
+지침을 여기 적으면 매 세션 전부 싣게 된다.
 
 ## 설계에서 지킨 것
 
