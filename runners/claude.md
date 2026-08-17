@@ -46,9 +46,50 @@ ToolSearch: select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome
 폼이 있으면 `form_input`, 오류를 봐야 하면 `read_console_messages` 를 같은 호출에 얹는다.
 
 - 카페24 관리자, 인스타그램, Figma, 노션처럼 로그인 세션이 필요한 곳은 전부 여기.
-- **별도 창으로 뜨는 기능은 이 층으로도 못 만진다.** 카페24 일괄 수정이 그렇다.
-  매뉴얼에 우회로가 적혀 있으면 그대로 따르고, 없으면 `block` 으로 적는다.
 - 파일 업로드는 `file_upload` 가 있는지 먼저 확인한다. 없으면 사람이 해야 한다.
+
+### 팝업·새 창은 안 잡힌다 — 주소를 가로채서 내 탭에서 연다
+
+**실측한 것.** 페이지가 `window.open` 으로 띄운 팝업도, `target="_blank"` 로 연 새 탭도
+`tabs_context_mcp` 목록에 **안 나온다.** 그룹 밖에 생기기 때문이다. 화면에는 보이는데 만질 수가 없다.
+헤매지 말고 아래대로 한다.
+
+**1. 누르기 전에 가로채기를 심는다.**
+
+```js
+window.__opened = [];
+const _open = window.open;
+window.open = function(u, ...r){ if(u) window.__opened.push(String(u)); return _open.call(window, u, ...r); };
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[target="_blank"]');
+  if (a && a.href) window.__opened.push(a.href);
+}, true);
+```
+
+**2. 버튼을 누른다. 3. `window.__opened` 를 읽는다. 4. 그 주소를 내 탭에서 연다.**
+
+```
+navigate {tabId: <내 탭>, url: <가로챈 주소>}      기존 탭에서 이어서
+tabs_create_mcp → navigate                          원래 탭을 남겨야 하면
+```
+
+이제 그 화면은 내 탭이라 `read_page` · `form_input` · 클릭이 다 된다.
+
+**팝업이 아예 안 뜰 때도 있다.** 확장이 만든 클릭은 사용자 제스처로 안 쳐줘서 팝업 차단기에 막힌다.
+위 가로채기는 차단돼도 주소를 남기니 그대로 쓰면 된다.
+
+**같은 탭에서 열어버리는 방법**도 있다. 폼 입력만 하면 되는 팝업엔 이게 제일 간단하다.
+
+```js
+window.open = u => { if(u) location.href = u; return null };
+document.querySelectorAll('a[target="_blank"]').forEach(a => a.removeAttribute('target'));
+```
+
+단 **OAuth·결제 인증창에는 쓰지 마라.** 그건 팝업이 부모 창에 결과를 돌려주는 구조라 흐름이 깨진다.
+그런 창은 주소를 가로채 새 탭에서 열고, 끝나면 원래 탭으로 돌아간다.
+
+**브라우저 밖 창은 여기서 못 만진다.** 윈도우 파일 선택창, 공동인증서 창, ActiveX 결제창이 그렇다.
+그건 L4 로 가야 하는데 컴퓨터 제어는 브라우저가 읽기 등급이라 클릭이 막힌다. 이 경우만 사람을 부른다.
 
 ## L4 — 컴퓨터 제어
 

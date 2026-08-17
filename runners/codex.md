@@ -44,8 +44,29 @@
 이미 로그인된 세션이 필요한 곳 — 카페24 관리자, 인스타그램, Figma, 노션.
 
 - 컴퓨터 제어로 크롬을 만지지 마라. 브라우저 일은 이 층이 정답이다.
-- 별도 창으로 뜨는 기능(카페24 일괄 수정 등)은 이 층으로도 못 만진다.
-  우회로가 매뉴얼에 있으면 따르고, 없으면 `block` 으로 적는다.
+
+### 팝업·새 창은 탭 목록에 안 나온다
+
+실측 결과 `window.open` 팝업도 `target="_blank"` 새 탭도 잡히지 않는다. 그룹 밖에 생긴다.
+헤매지 말고 **주소를 가로채서 내가 관리하는 탭에서 연다.**
+
+누르기 전에 이걸 심는다.
+
+```js
+window.__opened = [];
+const _open = window.open;
+window.open = function(u, ...r){ if(u) window.__opened.push(String(u)); return _open.call(window, u, ...r); };
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[target="_blank"]');
+  if (a && a.href) window.__opened.push(a.href);
+}, true);
+```
+
+버튼을 누르고 `window.__opened` 를 읽어 그 주소로 이동한다. 그러면 만질 수 있다.
+폼만 채우면 되는 팝업은 아예 같은 탭에서 열어도 된다 (`window.open = u => location.href = u`).
+**OAuth·결제 인증창에는 쓰지 마라** — 부모 창에 결과를 돌려주는 구조라 깨진다.
+
+브라우저 밖 창(파일 선택창, 공동인증서, ActiveX 결제창)은 이 층으로 못 만진다. 그때만 사람을 부른다.
 
 ## L4 — 컴퓨터 제어
 
