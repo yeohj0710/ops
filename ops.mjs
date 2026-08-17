@@ -74,6 +74,28 @@ function git(args, opts = {}) {
   }
 }
 
+// fs.rmSync({recursive:true}) 은 한글 경로에서 stderr 없이 프로세스를 죽인다(exit 127).
+// 드라이브 경로에 '내 드라이브'·'에이전트' 가 들어가므로 절대 쓰지 않는다.
+function removeTreeSafe(p) {
+  if (!fs.existsSync(p)) return;
+  let st;
+  try {
+    st = fs.lstatSync(p);
+  } catch {
+    return;
+  }
+  if (st.isDirectory()) {
+    for (const e of fs.readdirSync(p)) removeTreeSafe(path.join(p, e));
+    try {
+      fs.rmdirSync(p);
+    } catch {}
+  } else {
+    try {
+      fs.unlinkSync(p);
+    } catch {}
+  }
+}
+
 const isRepo = () => git(["rev-parse", "--git-dir"]).ok;
 const hasRemote = () => isRepo() && git(["remote"]).out.length > 0;
 
@@ -214,13 +236,27 @@ function writeDriveGuide() {
 > 이 파일은 \`node ops.mjs sync\` 가 다시 쓴다. 손으로 고치지 마라.
 
 회사 반복 업무를 매뉴얼로 적어두고, Claude Code 와 Codex 가 그걸 보고 처리한다.
-**이 폴더 하나로 새 컴퓨터를 처음부터 세팅할 수 있다.** 미리 해둘 건 없다.
+**이 폴더 하나면 된다.** 세팅이 안 된 컴에서도 여기만 보고 바로 일할 수 있다.
 
 등록된 업무와 일감 현황은 사이트에서 본다 — **https://wnbx.vercel.app**
 
 ---
 
-## 새 컴퓨터에서 — 이 한 줄이면 된다
+## 세팅 안 된 컴에서 바로 일하기 (설치 없이)
+
+사람이 "○○ 업무 해줘" 라고 하면 이 순서로 한다.
+
+1. **\`매뉴얼/읽어라.md\`** 를 열어 그 업무의 매뉴얼 파일을 찾는다. 찾으면 **끝까지** 읽고 그대로 한다
+2. 회사 정보(사업자번호·주소·계정)가 필요하면 **\`정보/\`** 를 본다
+3. 로그인 창을 만나면 **\`자격증명/계정.md\`** 에서 찾아 쓴다.
+   대부분은 크롬에 이미 로그인돼 있어 그냥 열린다
+4. 스크립트가 API 키를 쓰면 **\`자격증명/.env\`** 를 읽힌다
+
+매뉴얼에 없는 업무면 \`매뉴얼/_new-manual.md\` 를 보고 **기록 모드**로 진행한다.
+
+**결제 정보(카드·CVC·계좌·ISP 비밀번호)는 어떤 입력창에도 넣지 않는다.** 그 단계에서 사람을 부른다.
+
+## 그 컴을 계속 쓸 거면 — 한 줄 설치
 
 **이 파일 옆에 있는 \`설치.mjs\` 를 실행한다.** 드라이브 문자는 컴마다 다르니 경로는 실제 위치에 맞춘다.
 
@@ -289,9 +325,10 @@ ${rows}
 | \`시작.md\` | 지금 읽는 것 |
 | \`설치.mjs\` | 새 컴에 전부 깐다 (드라이브 → 컴) |
 | \`백업.mjs\` | 이 컴 설정을 거둔다 (컴 → 드라이브) |
-| \`설정/\` | 실제 담긴 지침·스킬·기억 |
-| \`정보/\` | 회사 기본 정보와 계정 지도 — 에이전트가 묻기 전에 여기부터 본다 |
-| \`자격증명/\` | 스크립트가 읽는 \`.env\`. 비밀번호는 두지 않는다 |
+| \`매뉴얼/\` | 업무 절차서 사본 (읽기용). 설치 없이도 여기만 보면 일할 수 있다 |
+| \`정보/\` | 회사 기본 정보 — 사업자번호·주소·거래 |
+| \`자격증명/\` | \`계정.md\`(로그인 정보) · \`.env\`(API 키) |
+| \`설정/\` | 지침·스킬·기억. 설치기가 제자리에 놓는다 |
 | \`목록.md\` | 무엇이 어디로 가는지 표 |
 | \`manifest.json\` | 두 스크립트가 보는 목록 원본 |
 `;
@@ -305,6 +342,33 @@ ${rows}
     const src = path.join(bs, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, f));
   }
+
+  // 매뉴얼 사본. 저장소가 없는 컴에서도 드라이브만 보고 일할 수 있어야 한다.
+  // 읽기용이다 — 고치는 건 저장소에서 한다(겹침 판정을 git 이 해야 하므로).
+  const mdir = path.join(dir, "매뉴얼");
+  removeTreeSafe(mdir);
+  for (const m of manualList()) {
+    const to = path.join(mdir, m.id + ".md");
+    fs.mkdirSync(path.dirname(to), { recursive: true });
+    fs.copyFileSync(m.file, to);
+  }
+  fs.writeFileSync(
+    path.join(mdir, "읽어라.md"),
+    [
+      "# 매뉴얼 사본 (읽기용)",
+      "",
+      "> `node ops.mjs sync` 가 저장소에서 복사한다. 여기서 고치면 다음 sync 에 지워진다.",
+      "> 고칠 일이 있으면 저장소에서 고친다 — https://github.com/yeohj0710/ops",
+      "",
+      "저장소가 없는 컴에서도 이 폴더만 보고 업무를 할 수 있게 두었다.",
+      "일감 큐를 쓰려면 저장소가 있어야 한다(겹침을 git push 경쟁으로 판정한다).",
+      "",
+      "| 업무 | 부르는 말 |",
+      "| --- | --- |",
+      ...list.map((m) => `| [${m.title}](${m.id}.md) | ${m.trigger || "—"} |`),
+    ].join("\n") + "\n",
+    "utf8"
+  );
 
   // 정보·자격증명 자리. 이미 사람이 채운 파일은 절대 덮지 않는다.
   const tmpl = path.join(bs, "정보-틀");
