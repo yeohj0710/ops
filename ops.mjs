@@ -100,6 +100,20 @@ function pullFirst() {
   git(["pull", "--rebase"]);
 }
 
+// 다른 컴에서 등록한 업무를 놓치지 않게 가끔 당겨온다.
+// 매번 당기면 오프라인일 때 느려지므로 시간으로 끊는다.
+function pullIfStale(hours = 6) {
+  if (!hasRemote()) return;
+  const mark = path.join(ROOT, ".git", "ops-last-pull");
+  try {
+    if (fs.existsSync(mark) && Date.now() - fs.statSync(mark).mtimeMs < hours * 3600e3) return;
+  } catch {}
+  git(["pull", "--rebase"]);
+  try {
+    fs.writeFileSync(mark, "");
+  } catch {}
+}
+
 // ---------- 매뉴얼 ----------
 
 function manualList() {
@@ -126,6 +140,7 @@ function manualList() {
 }
 
 function cmdManuals(argv) {
+  pullIfStale();
   const q = argv._[0];
   let list = manualList();
   if (q) {
@@ -180,6 +195,76 @@ function skillDescription() {
   ).replace(/\s+/g, " ");
 }
 
+// 구글 드라이브에 두는 안내문. 새 컴에서 이 시스템을 발견하는 유일한 통로다.
+// 운영은 git 저장소가 한다 — 드라이브에는 저장소를 두지 않는다(Drive 가 .git 을 건드려 깨뜨린다).
+function writeDriveGuide() {
+  const me = machine();
+  if (!me.drive_root || !fs.existsSync(me.drive_root)) {
+    console.log("구글 드라이브를 못 찾아 안내문은 건너뛴다 (node setup.mjs --drive <경로>)");
+    return;
+  }
+  const dir = path.join(me.drive_root, "에이전트");
+  const list = manualList().filter((m) => !m.hidden);
+  const rows = list.length
+    ? list.map((m) => `| ${m.title} | ${m.trigger || "—"} |`).join("\n")
+    : "| (아직 없다) | |";
+
+  const text = `# 에이전트 업무 시스템
+
+> 이 파일은 \`node ops.mjs sync\` 가 다시 쓴다. 손으로 고치지 마라.
+> 원본과 실제 동작은 전부 https://github.com/yeohj0710/ops 에 있다.
+
+회사 반복 업무를 매뉴얼로 적어두고, Claude Code 와 Codex 가 그걸 보고 처리한다.
+
+---
+
+## 새 컴퓨터에서 처음 쓸 때
+
+세션에 이 폴더를 보라고 한 뒤, 아래 두 줄을 그대로 돌리게 하면 끝난다.
+git 과 node 만 있으면 된다.
+
+\`\`\`bash
+git clone https://github.com/yeohj0710/ops.git C:/dev/ops
+node C:/dev/ops/setup.mjs
+\`\`\`
+
+setup 이 하는 일 — 이 기계 등록, 커밋 전 검사 훅 설치, **ops 스킬을 Claude·Codex 양쪽에 설치**.
+폴더를 \`C:/dev/ops\` 말고 다른 데 둬도 되고, 그러면 뒤 명령의 경로만 맞추면 된다.
+
+**이 말은 컴퓨터 한 대당 한 번만 하면 된다.** 그 다음부터는 아래처럼 짧게 시킨다.
+
+## 세팅한 뒤에는
+
+| 하고 싶은 것 | 세션에 하는 말 |
+| --- | --- |
+| 등록된 업무 시키기 | 아래 표의 "부르는 말" 을 그대로 |
+| 새 업무 등록하기 | "○○ 업무로 등록해줘" · "방금 한 거 등록해줘" |
+| 큐에서 뽑아 돌리기 | "일감 뽑아서 해줘" |
+
+## 지금 등록된 업무 ${list.length}개
+
+| 업무 | 부르는 말 |
+| --- | --- |
+${rows}
+
+## 왜 드라이브가 아니라 git 인가
+
+- 매뉴얼과 일감은 **저장소**에 있다. 드라이브에는 이 안내문만 둔다.
+- 두 에이전트가 동시에 일할 때 겹침을 \`git push\` 경쟁으로 판정한다. 드라이브에는 그 심판이 없어서
+  같은 파일을 만지면 "충돌 사본" 이 생긴다.
+- 드라이브 폴더 안에 git 저장소를 두면 동기화가 \`.git\` 을 건드려 깨진다.
+
+## 컴 사이 동기화
+
+\`ops.mjs\` 가 일감을 뽑거나 현황을 볼 때 알아서 \`git pull\` 한다.
+직접 맞추고 싶으면 \`git -C C:/dev/ops pull\`.
+`;
+
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "시작.md"), text, "utf8");
+  console.log("드라이브 안내문: " + path.join(dir, "시작.md"));
+}
+
 function cmdSync() {
   const src = path.join(ROOT, "skill", "SKILL.md");
   if (!fs.existsSync(src)) die("skill/SKILL.md 가 없다.");
@@ -202,6 +287,7 @@ function cmdSync() {
     fs.writeFileSync(path.join(t.dir, "SKILL.md"), installed, "utf8");
     console.log(`${t.tool} 스킬 설치: ${path.join(t.dir, "SKILL.md")}`);
   }
+  writeDriveGuide();
   console.log("");
   console.log("상시 컨텍스트에 남는 건 이 설명 한 줄뿐이다 (" + desc.length + "자):");
   console.log("  " + desc);

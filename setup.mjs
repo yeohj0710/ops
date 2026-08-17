@@ -16,6 +16,23 @@ const opt = (k, d) => {
 };
 
 const name = opt("name", os.hostname().toLowerCase());
+
+// 구글 드라이브 — 컴마다 드라이브 문자가 다르니 찾아본다.
+function findDrive() {
+  const given = opt("drive", null);
+  if (given) return given.replace(/\\/g, "/");
+  const roots = [];
+  for (const L of "GHIJKDEF") roots.push(`${L}:/내 드라이브`, `${L}:/My Drive`);
+  roots.push(path.join(os.homedir(), "Google Drive", "My Drive"));
+  for (const r of roots) {
+    try {
+      if (fs.existsSync(r) && fs.statSync(r).isDirectory()) return r.replace(/\\/g, "/");
+    } catch {}
+  }
+  return null;
+}
+const driveRoot = findDrive();
+
 let devRoot = opt("dev", null);
 if (!devRoot) {
   for (const c of ["C:/dev", path.join(os.homedir(), "dev")]) {
@@ -28,10 +45,15 @@ if (!devRoot) {
 const machinePath = path.join(ROOT, "machine.json");
 fs.writeFileSync(
   machinePath,
-  JSON.stringify({ name, dev_root: devRoot.replace(/\\/g, "/"), os: process.platform }, null, 2) + "\n",
+  JSON.stringify(
+    { name, dev_root: devRoot.replace(/\\/g, "/"), drive_root: driveRoot, os: process.platform },
+    null,
+    2
+  ) + "\n",
   "utf8"
 );
 console.log("기계 등록: " + name + "  (프로젝트 폴더 " + devRoot + ")");
+console.log(driveRoot ? "구글 드라이브: " + driveRoot : "구글 드라이브를 못 찾았다 — --drive 로 알려주면 된다");
 
 // 2. 폴더
 for (const d of ["tasks/queue", "tasks/doing", "tasks/done", "work"]) {
