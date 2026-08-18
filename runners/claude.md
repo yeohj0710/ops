@@ -48,9 +48,10 @@ ToolSearch: select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome
 - 카페24 관리자, 인스타그램, Figma, 노션처럼 로그인 세션이 필요한 곳은 전부 여기.
 - 파일 업로드는 `file_upload` 가 있는지 먼저 확인한다. 없으면 사람이 해야 한다.
 
-### 화면이 멀쩡해 보이는데 아무 일도 안 일어날 때, 이 셋부터 본다
+### 화면이 멀쩡해 보이는데 아무 일도 안 일어날 때, 이 넷부터 본다
 
-세 가지 모두 **오류를 안 낸다.** 그래서 엉뚱한 데를 파게 된다. 260818 에 이것들로 몇 시간을 썼다.
+넷 다 **엉뚱한 얼굴로 돌아온다.** 오류가 안 나거나, 나더라도 원인과 상관없는 말이라
+엉뚱한 데를 파게 된다. 260818 에 이것들로 몇 시간을 썼다.
 
 **1. 새 화면에 들어온 직후 첫 클릭은 페이지에 도달하지 않는다.**
 
@@ -78,7 +79,18 @@ ToolSearch: select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome
 창 제목은 그 창의 **활성 탭 제목**이라, 내 탭이 뒤에 있으면 제목으로 못 찾는다.
 그럴 땐 **그룹에 탭을 하나만 남긴다.** 나머지를 닫으면 남은 탭이 활성이 된다.
 
-**3. `form_input` 은 값만 넣고 앱 상태를 안 바꾼다.**
+**3. 어떤 화면에서는 `form_input` 과 `find` 만 45초 타임아웃으로 죽는다.**
+
+`javascript_tool` 도 `computer` 도 멀쩡한데 이 둘만 "Page still loading (executeScript waited 45000ms
+for document_idle)" 로 돌아온다. 260818 김제조 보드에서 실측했다. 페이지가 `document_idle` 을 영영
+안 주는 구조면 그 둘이 걸린다. `document.readyState` 를 찍어 보면 `complete` 라 더 헷갈린다.
+
+**막히면 도구를 바꾼다.** 값은 `javascript_tool` 로 넣고(`input` 과 `change` 를 같이 쏜다),
+누르기는 `computer` 로 한다. 요소를 찾는 것도 `find` 대신 `javascript_tool` 로
+`getBoundingClientRect()` 를 재서 좌표를 뽑는다. 화면 캡처 크기와 `innerWidth` 가 다르면
+비율을 곱해야 한다(`k = 캡처폭 / innerWidth`). **창 크기는 작업 중에도 바뀌니 매번 다시 잰다.**
+
+**4. `form_input` 은 값만 넣고 앱 상태를 안 바꾼다.**
 
 React 화면에서 자주 문다. 칸에 값은 보이는데 그 값으로 계산되는 금액이나 합계, 다음 버튼이
 안 깨어난다. `input` 과 `change` 이벤트를 손으로 쏴도 안 되는 경우가 있다.
