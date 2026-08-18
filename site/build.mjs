@@ -262,34 +262,21 @@ const LAYER_WHY = {
   L4: "화면을 직접 제어합니다. 기계당 한 번에 하나만 돕니다",
 };
 
-// 목록은 줄 하나짜리 카드다. 눌러서 설명 모달을 열고, 손잡이를 끌어 순서를 바꾸거나 보관함에 넣는다.
+// 목록은 접힌 줄 하나다. 눌러서 펼치고, 손잡이를 끌어 순서를 바꾸거나 보관함에 넣는다.
 const cards = M.map((m) => {
-  const lay = layer(m.surfaces);
-  return [
-    '<article class="card rev" id="' + m.id + '" data-id="' + m.id + '">',
-    '<span class="grip" title="끌어서 순서를 바꾸거나 보관함에 넣습니다" aria-label="끌기 손잡이">' + GRIP + "</span>",
-    '<button class="open" type="button" data-open="' + m.id + '">',
-    '<span class="ttl">' + esc(m.title) + "</span>",
-    '<span class="lay lay' + lay[1] + '" data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + "</span>",
-    '<span class="go" aria-hidden="true">설명 보기</span>',
-    "</button></article>",
-  ].join("");
-}).join("\n");
-
-// 업무마다 설명 모달을 하나씩 굽는다. 쉬운 설명이 먼저 나오고, 매뉴얼 본문은 접어 둔다.
-const taskModals = M.map((m) => {
   const runnerTip = m.runner.includes("codex")
     ? "길게 도는 작업이라 Codex 가 맡습니다"
     : "10분 안에 끝나는 작업이라 Claude 가 맡습니다";
   const lay = layer(m.surfaces);
   return [
-    '<dialog class="help task" id="dlg-' + m.id + '">',
-    '<div class="hhead"><h2>' + esc(m.title) + "</h2>",
-    '<button class="hclose" type="button" aria-label="닫기">&times;</button></div>',
-    '<div class="hbody">',
-    // 개요(`무엇을 만드는 업무인가`)는 에이전트가 읽는 문장이라 사람에게는 딱딱하다.
-    // 쉬운 설명이 있으면 그걸 본문으로 쓰고, 없을 때만 개요를 보여준다.
-    !m.easy && m.what ? '<p class="lead">' + esc(m.what) + "</p>" : "",
+    '<details class="card rev" id="' + m.id + '" data-id="' + m.id + '">',
+    "<summary>",
+    '<span class="grip" title="끌어서 순서를 바꾸거나 보관함에 넣습니다" aria-label="끌기 손잡이">' + GRIP + "</span>",
+    '<span class="ttl">' + esc(m.title) + "</span>",
+    '<span class="lay lay' + lay[1] + '" data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + "</span>",
+    '<span class="caret"></span>',
+    "</summary>",
+    '<div class="body">',
     '<div class="say"><span class="saylabel">이렇게 말하면 됩니다</span><div class="chips">' +
       m.triggers.map((w) => '<button class="chip" data-copy="' + esc(w) + '">' + esc(w) + "</button>").join("") +
       "</div></div>",
@@ -304,15 +291,17 @@ const taskModals = M.map((m) => {
     m.scripts.length ? '<li data-tip="' + esc(m.scripts.join(", ")) + '">전용 도구 ' + m.scripts.length + "개</li>" : "",
     '<li data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + " 까지 씁니다</li>",
     "</ul>",
-    m.easy ? '<div class="easy">' + md(m.easy) + "</div>" : "",
-    '<details class="hsec"><summary>매뉴얼 전문 (에이전트가 읽는 절차서) <span class="caret"></span></summary><div class="in">',
+    // 개요(`무엇을 만드는 업무인가`)는 에이전트가 읽는 문장이라 사람에게는 딱딱하다.
+    // 쉬운 설명이 있으면 그걸 본문으로 쓰고, 없을 때만 개요를 보여준다.
+    m.easy ? '<div class="easy">' + md(m.easy) + "</div>" : m.what ? '<p class="lead">' + esc(m.what) + "</p>" : "",
+    '<details class="more"><summary>매뉴얼 전문 (에이전트가 읽는 절차서) <span class="caret"></span></summary><div class="detail">',
     m.steps ? '<h4 class="dh">절차</h4>' + md(m.steps) : "",
     m.outputs ? '<h4 class="dh">산출물</h4>' + md(m.outputs) : "",
     m.traps ? '<h4 class="dh">겪어 본 함정</h4>' + md(m.traps) : "",
     m.noask ? '<h4 class="dh">묻지 않고 진행하는 것</h4>' + md(m.noask) : "",
     '<p class="src"><a href="' + REPO + "/blob/main/manuals/" + m.id + '/MANUAL.md">매뉴얼 원문 보기</a></p>',
     "</div></details>",
-    "</div></dialog>",
+    "</div></details>",
   ]
     .filter(Boolean)
     .join("\n");
@@ -323,12 +312,12 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>업무 관제탑</title>
-<meta name="description" content="한 문장만 말하면 됩니다. 등록된 업무와 부르는 말을 모아 둔 곳.">
+<title>웰니스박스 에이전트 기반 업무 자동화</title>
+<meta name="description" content="반복하는 회사 일을 매뉴얼 한 장씩 적어 뒀습니다. 새 세션에 한 줄만 말하면 끝까지 합니다.">
 <meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex">
-<meta property="og:title" content="업무 관제탑">
-<meta property="og:description" content="한 문장만 말하면 됩니다.">
+<meta property="og:title" content="웰니스박스 에이전트 기반 업무 자동화">
+<meta property="og:description" content="반복하는 회사 일을 매뉴얼 한 장씩 적어 뒀습니다.">
 <link rel="icon" type="image/svg+xml" href="${favicon}">
 <link rel="apple-touch-icon" href="${favicon}">
 <script>document.documentElement.className='js'</script>
