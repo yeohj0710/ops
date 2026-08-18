@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// 커밋 전 검사 — 남의 개인정보와 살아있는 자격증명만 막는다.
-// 회사 내부 자료·단가·기획은 통과시킨다. 이 저장소는 공개다.
+// 커밋 전 검사. 남의 개인정보와 살아있는 자격증명만 막는다.
+// 회사 내부 자료, 단가, 기획은 통과시킨다. 이 저장소는 공개다.
 //
 // 사람이 확인하고 통과시키려면:  OPS_SCAN_OK=1 git commit ...
 
@@ -17,7 +17,7 @@ if (process.env.OPS_SCAN_OK === "1") {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const RULES = [
-  { name: "API 키·토큰", re: /\b(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|ya29\.[A-Za-z0-9_-]{20,})\b/ },
+  { name: "API 키와 토큰", re: /\b(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{30,}|ya29\.[A-Za-z0-9_-]{20,})\b/ },
   { name: "개인 키 파일", re: /-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/ },
   { name: "주민등록번호", re: /\b\d{6}[-\s]?[1-4]\d{6}\b/ },
   { name: "휴대폰 번호", re: /\b01[016789][-\s]?\d{3,4}[-\s]?\d{4}\b/ },
@@ -27,7 +27,7 @@ const RULES = [
 ];
 
 const FILENAME_RULES = [
-  { name: "신분증·통장 사본으로 보이는 파일", re: /(신분증|주민등록증|운전면허|여권|통장사본|사업자등록증)/ },
+  { name: "신분증이나 통장 사본으로 보이는 파일", re: /(신분증|주민등록증|운전면허|여권|통장사본|사업자등록증)/ },
   { name: "환경변수 파일", re: /(^|\/)\.env(\.|$)/ },
 ];
 

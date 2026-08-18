@@ -20,10 +20,10 @@ const OPS = path.join(devRoot, "ops").replace(/\\/g, "/");
 
 console.log("가져오는 곳: " + HERE);
 console.log("프로젝트 폴더: " + devRoot);
-if (dry) console.log("(--dry — 무엇이 바뀔지만 보여주고 쓰지 않는다)");
+if (dry) console.log("(--dry 라 무엇이 바뀔지만 보여주고 쓰지 않는다)");
 console.log("");
 
-// 0. git · node 확인
+// 0. git, node 확인
 function has(cmd, args) {
   try {
     execFileSync(cmd, args, { stdio: "ignore" });
@@ -33,7 +33,7 @@ function has(cmd, args) {
   }
 }
 const gitOK = has("git", ["--version"]);
-console.log((gitOK ? "OK  " : "빠짐") + " git" + (gitOK ? "" : " — 설치해야 저장소를 받는다"));
+console.log((gitOK ? "OK  " : "빠짐") + " git" + (gitOK ? "" : ". 설치해야 저장소를 받는다"));
 console.log("OK   node " + process.version);
 console.log("");
 
@@ -47,7 +47,7 @@ for (const item of manifest.items) {
   const from = path.join(HERE, item.store);
   const to = resolveTarget(item, devRoot);
   if (!fs.existsSync(from)) {
-    console.log(`  건너뜀  ${item.what} — 드라이브에 없다`);
+    console.log(`  건너뜀  ${item.what}. 드라이브에 없다`);
     continue;
   }
   const exists = fs.existsSync(to);
@@ -69,7 +69,7 @@ for (const item of manifest.items) {
 }
 if (!dry && moved) console.log("  기존 설정 " + moved + "건은 " + backupDir + " 에 옮겨뒀다");
 
-// 1-b. 자격증명 (.env) — manifest 에 없다. 드라이브에만 있고 저장소로는 안 간다.
+// 1-b. 자격증명 (.env). manifest 에 없다. 드라이브에만 있고 저장소로는 안 간다.
 const envFrom = path.join(HERE, "자격증명", ".env");
 const envTo = path.join(devRoot, "ops", ".env");
 if (fs.existsSync(envFrom)) {
@@ -81,7 +81,7 @@ if (fs.existsSync(envFrom)) {
     console.log(`     1개  자격증명 .env → ${envTo}`);
   }
 } else {
-  console.log("  건너뜀  자격증명 .env — 드라이브에 없다 (있으면 자동으로 놓는다)");
+  console.log("  건너뜀  자격증명 .env. 드라이브에 없다 (있으면 자동으로 놓는다)");
 }
 
 // 2. 관제탑 저장소
@@ -94,7 +94,7 @@ if (fs.existsSync(path.join(OPS, "ops.mjs"))) {
       execFileSync("git", ["-C", OPS, "pull", "--rebase"], { stdio: "ignore" });
       console.log("  최신으로 당겼다");
     } catch {
-      console.log("  당기지 못했다 — 나중에 git -C " + OPS + " pull");
+      console.log("  당기지 못했다. 나중에 git -C " + OPS + " pull");
     }
   }
 } else if (!gitOK) {
@@ -107,11 +107,11 @@ if (fs.existsSync(path.join(OPS, "ops.mjs"))) {
     execFileSync("git", ["clone", "https://github.com/yeohj0710/ops.git", OPS], { stdio: "inherit" });
     console.log("  받았다: " + OPS);
   } catch {
-    console.log("  clone 실패 — 인터넷과 git 을 확인해라");
+    console.log("  clone 실패. 인터넷과 git 을 확인해라");
   }
 }
 
-// 3. 관제탑 세팅 (기계 등록·검사 훅·스킬 설치)
+// 3. 관제탑 세팅 (기계 등록, 검사 훅, 스킬 설치)
 console.log("");
 console.log("[3/3] 관제탑 세팅");
 if (dry) {
@@ -123,7 +123,7 @@ if (dry) {
       stdio: "inherit",
     });
   } catch {
-    console.log("  실패 — node " + OPS + "/setup.mjs 를 직접 돌려라");
+    console.log("  실패. node " + OPS + "/setup.mjs 를 직접 돌려라");
   }
 } else {
   console.log("  저장소가 없어 건너뛴다");
@@ -136,6 +136,6 @@ if (!dry) {
   console.log("확인:  node \"" + OPS + "/ops.mjs\" doctor");
   console.log("이제 세션에 \"카톡 봐줘\" 처럼 짧게 시키면 된다.");
   console.log("");
-  console.log("사람이 직접 해야 하는 것 — Claude·Codex 로그인, 그리고 Codex 설정(config.toml).");
+  console.log("사람이 직접 해야 하는 것은 둘이다. Claude 와 Codex 로그인, 그리고 Codex 설정(config.toml).");
   console.log("그 둘은 기계마다 값이 달라 드라이브에 담지 않았다.");
 }

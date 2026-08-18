@@ -10,7 +10,7 @@
 //   new <id> --title "…"           새 매뉴얼 뼈대를 만든다
 //   sync                           매뉴얼 목록으로 ops 스킬 설명줄을 다시 쓰고 양쪽 도구에 설치
 //   manuals [검색어]               매뉴얼 목록
-//   status                         큐·진행·완료 현황
+//   status                         큐, 진행, 완료 현황
 //   doctor                         이 기계 설정 점검
 
 import fs from "node:fs";
@@ -75,7 +75,7 @@ function git(args, opts = {}) {
 }
 
 // fs.rmSync({recursive:true}) 은 한글 경로에서 stderr 없이 프로세스를 죽인다(exit 127).
-// 드라이브 경로에 '내 드라이브'·'에이전트' 가 들어가므로 절대 쓰지 않는다.
+// 드라이브 경로에 '내 드라이브', '에이전트' 가 들어가므로 절대 쓰지 않는다.
 function removeTreeSafe(p) {
   if (!fs.existsSync(p)) return;
   let st;
@@ -178,7 +178,7 @@ function cmdManuals(argv) {
     console.log(`  ${m.id}`);
     console.log(`    ${m.title}`);
     if (m.trigger) console.log(`    부르는 말: ${m.trigger}`);
-    console.log(`    런너 ${m.runner} · 제어층 ${m.surfaces}`);
+    console.log(`    런너 ${m.runner}, 제어층 ${m.surfaces}`);
     console.log(`    ${m.file}`);
     console.log("");
   }
@@ -202,23 +202,23 @@ function skillDescription() {
       .map((s) => s.trim())
       .filter(Boolean)
       .slice(0, 3)
-      .join("·");
+      .join(", ");
     return words ? `${m.title}(${words})` : m.title;
   });
   const more = list.length > MAX ? ` 외 ${list.length - MAX}개` : "";
-  const registered = shown.length ? `지금 등록된 업무 — ${shown.join(", ")}${more}.` : "아직 등록된 업무가 없다.";
+  const registered = shown.length ? `지금 등록된 업무는 이렇다. ${shown.join(" / ")}${more}.` : "아직 등록된 업무가 없다.";
 
   return (
     "회사 반복 업무를 매뉴얼대로 실행하거나 새 업무를 매뉴얼로 등록한다. " +
     registered +
     " 이 중 하나를 시키거나, " +
-    '"업무로 등록해줘"·"매뉴얼로 만들어"·"시스템에 반영해"·"방금 한 거 등록해"·' +
+    '"업무로 등록해줘", "매뉴얼로 만들어", "시스템에 반영해", "방금 한 거 등록해", ' +
     '"일감 뽑아서 해줘" 라고 하면 쓴다. 회사 업무처럼 들리는데 매뉴얼이 있는지 모를 때도 먼저 확인용으로 쓴다.'
   ).replace(/\s+/g, " ");
 }
 
 // 구글 드라이브에 두는 안내문. 새 컴에서 이 시스템을 발견하는 유일한 통로다.
-// 운영은 git 저장소가 한다 — 드라이브에는 저장소를 두지 않는다(Drive 가 .git 을 건드려 깨뜨린다).
+// 운영은 git 저장소가 한다. 드라이브에는 저장소를 두지 않는다(Drive 가 .git 을 건드려 깨뜨린다).
 function writeDriveGuide() {
   const me = machine();
   if (!me.drive_root || !fs.existsSync(me.drive_root)) {
@@ -228,7 +228,7 @@ function writeDriveGuide() {
   const dir = path.join(me.drive_root, "에이전트");
   const list = manualList().filter((m) => !m.hidden);
   const rows = list.length
-    ? list.map((m) => `| ${m.title} | ${m.trigger || "—"} |`).join("\n")
+    ? list.map((m) => `| ${m.title} | ${m.trigger || "(없음)"} |`).join("\n")
     : "| (아직 없다) | |";
 
   const text = `# 에이전트 업무 시스템
@@ -236,7 +236,7 @@ function writeDriveGuide() {
 > 이 파일은 \`node ops.mjs sync\` 가 다시 쓴다. 손으로 고치지 마라.
 
 **여기가 뿌리다.** 필요한 걸 아래 표에서 고르고 그 파일 하나만 연다.
-전부 읽지 마라 — 한 번에 한 갈래씩 내려가면 두세 번에 닿는다.
+전부 읽지 마라. 한 번에 한 갈래씩 내려가면 두세 번에 닿는다.
 
 세팅이 안 된 컴에서도 이 폴더만 보고 바로 일할 수 있다.
 등록된 업무와 일감 현황은 **https://wnbx.vercel.app**
@@ -248,11 +248,11 @@ function writeDriveGuide() {
 | 찾는 것 | 열 파일 |
 | --- | --- |
 | **업무를 어떻게 하나** | \`매뉴얼/읽어라.md\` → 그 업무의 \`.md\` |
-| 사업자번호·법인번호·주소·전화·매출 | \`정보/회사.md\` |
-| 사업자등록증·인감·도장·로고·명함·사업계획서 파일 | \`정보/핵심자료.md\` |
-| 회의록·기획·진행 상황·제품별 논의 | \`정보/노션.md\` |
-| 코드 폴더·배포 주소·카톡 대화 읽는 법 | \`정보/프로젝트.md\` |
-| 로그인 ID·비밀번호 | \`자격증명/계정.md\` |
+| 사업자번호, 법인번호, 주소, 전화, 매출 | \`정보/회사.md\` |
+| 사업자등록증, 인감, 도장, 로고, 명함, 사업계획서 파일 | \`정보/핵심자료.md\` |
+| 회의록, 기획, 진행 상황, 제품별 논의 | \`정보/노션.md\` |
+| 코드 폴더, 배포 주소, 카톡 대화 읽는 법 | \`정보/프로젝트.md\` |
+| 로그인 ID, 비밀번호 | \`자격증명/계정.md\` |
 | API 키 | \`자격증명/.env\` |
 | 이 컴에 설치하기 | 아래 "한 줄 설치" |
 
@@ -264,13 +264,13 @@ function writeDriveGuide() {
 
 ## 멈추고 사람을 부르는 곳
 
-- **결제** — 등록된 카드가 있으면 금액을 보고하고 승인받아 결제까지 한다.
+- **결제.** 등록된 카드가 있으면 금액을 보고하고 승인받아 결제까지 한다.
   등록이 안 돼 있으면 거기서 멈춘다. 카드번호를 손으로 쳐 넣지 않는다
-- **주민등록번호·공동인증서(NPKI)** — 열지도 옮기지도 않는다
-- **도장 찍는 자리**, 인감증명서·통장사본을 바깥으로 보내기
-- 메시지·메일·DM 보내기, 공개 게시, 삭제
+- **주민등록번호와 공동인증서(NPKI)**: 열지도 옮기지도 않는다
+- **도장 찍는 자리**, 인감증명서와 통장사본을 바깥으로 보내기
+- 메시지, 메일, DM 보내기, 공개 게시, 삭제
 
-## 그 컴을 계속 쓸 거면 — 한 줄 설치
+## 그 컴을 계속 쓸 거면 (한 줄 설치)
 
 **이 파일 옆에 있는 \`설치.mjs\` 를 실행한다.** 드라이브 문자는 컴마다 다르니 경로는 실제 위치에 맞춘다.
 
@@ -283,26 +283,26 @@ node "<이 폴더>/설치.mjs"
 
 설치.mjs 가 하는 일.
 
-1. \`설정/\` 에 담긴 것을 제자리에 놓는다 — Claude 전역 지침·권한 설정·스킬·기억,
-   Codex 전역 지침·스킬·규칙, 프로젝트 작업 지도. **기존 파일은 지우지 않고 백업해두고 덮는다.**
+1. \`설정/\` 에 담긴 것을 제자리에 놓는다. Claude 전역 지침, 권한 설정, 스킬, 기억,
+   Codex 전역 지침, 스킬, 규칙, 프로젝트 작업 지도. **기존 파일은 지우지 않고 백업해두고 덮는다.**
 2. 관제탑 저장소를 받는다 (https://github.com/yeohj0710/ops)
-3. 이 기계를 등록하고 ops 스킬을 Claude·Codex 양쪽에 설치한다
+3. 이 기계를 등록하고 ops 스킬을 Claude 와 Codex 양쪽에 설치한다
 
 무엇이 어디로 가는지는 \`목록.md\` 에 있다.
 
-**사람이 직접 해야 하는 것은 두 가지뿐이다** — Claude·Codex 로그인, 그리고 Codex 설정(\`config.toml\`).
+**사람이 직접 해야 하는 것은 두 가지뿐이다.** Claude 와 Codex 로그인, 그리고 Codex 설정(\`config.toml\`).
 그 둘은 기계마다 값이 달라서 담지 않았다.
 
 ## 회사 정보를 채워두면 에이전트가 안 묻는다
 
-\`정보/회사.md\` 에 사업자번호·법인번호·주소·전화·매출이 들어 있다.
-\`정보/핵심자료.md\` 는 사업자등록증·인감증명서·도장·로고·명함·사업계획서가 **어느 파일인지** 알려준다
+\`정보/회사.md\` 에 사업자번호, 법인번호, 주소, 전화, 매출이 들어 있다.
+\`정보/핵심자료.md\` 는 사업자등록증, 인감증명서, 도장, 로고, 명함, 사업계획서가 **어느 파일인지** 알려준다
 (원본은 \`내 드라이브/여형준님/00 핵심 자료/\`. 사본을 만들지 마라).
 
 로그인 정보는 \`자격증명/계정.md\`, API 키는 \`자격증명/.env\` 에 있고
 \`설치.mjs\` 가 \`.env\` 를 새 컴의 \`<프로젝트폴더>/ops/.env\` 로도 놓는다.
 
-**주민등록번호·공동인증서는 열지 않는다. 결제 정보는 입력창에 넣지 않는다.**
+**주민등록번호와 공동인증서는 열지 않는다. 결제 정보는 입력창에 넣지 않는다.**
 도장을 찍는 자리는 사람이 정한다. 자세한 건 \`자격증명/읽어라.md\`.
 
 ## 설정을 고친 뒤에는
@@ -315,7 +315,7 @@ node "<이 폴더>/설치.mjs"
 | 하고 싶은 것 | 세션에 하는 말 |
 | --- | --- |
 | 등록된 업무 시키기 | 아래 표의 "부르는 말" 을 그대로 |
-| 새 업무 등록하기 | "○○ 업무로 등록해줘" · "방금 한 거 등록해줘" |
+| 새 업무 등록하기 | "○○ 업무로 등록해줘", "방금 한 거 등록해줘" |
 | 큐에서 뽑아 돌리기 | "일감 뽑아서 해줘" |
 
 ## 지금 등록된 업무 ${list.length}개
@@ -344,9 +344,9 @@ ${rows}
 | \`설치.mjs\` | 새 컴에 전부 깐다 (드라이브 → 컴) |
 | \`백업.mjs\` | 이 컴 설정을 거둔다 (컴 → 드라이브) |
 | \`매뉴얼/\` | 업무 절차서 사본 (읽기용). 설치 없이도 여기만 보면 일할 수 있다 |
-| \`정보/\` | \`회사.md\`(사업자번호·주소·매출) · \`핵심자료.md\`(서류·도장·로고 어디 있나) |
-| \`자격증명/\` | \`계정.md\`(로그인 정보) · \`.env\`(API 키) |
-| \`설정/\` | 지침·스킬·기억. 설치기가 제자리에 놓는다 |
+| \`정보/\` | \`회사.md\`(사업자번호, 주소, 매출), \`핵심자료.md\`(서류, 도장, 로고 어디 있나) |
+| \`자격증명/\` | \`계정.md\`(로그인 정보), \`.env\`(API 키) |
+| \`설정/\` | 지침, 스킬, 기억. 설치기가 제자리에 놓는다 |
 | \`목록.md\` | 무엇이 어디로 가는지 표 |
 | \`manifest.json\` | 두 스크립트가 보는 목록 원본 |
 `;
@@ -362,7 +362,7 @@ ${rows}
   }
 
   // 매뉴얼 사본. 저장소가 없는 컴에서도 드라이브만 보고 일할 수 있어야 한다.
-  // 읽기용이다 — 고치는 건 저장소에서 한다(겹침 판정을 git 이 해야 하므로).
+  // 읽기용이다. 고치는 건 저장소에서 한다(겹침 판정을 git 이 해야 하므로).
   const mdir = path.join(dir, "매뉴얼");
   removeTreeSafe(mdir);
   // 폴더를 통째로 옮긴다. 매뉴얼이 딸린 스크립트를 부르는데 저장소 없는 컴에는 그게 없다.
@@ -389,19 +389,19 @@ ${rows}
       "# 매뉴얼 사본 (읽기용)",
       "",
       "> `node ops.mjs sync` 가 저장소에서 복사한다. 여기서 고치면 다음 sync 에 지워진다.",
-      "> 고칠 일이 있으면 저장소에서 고친다 — https://github.com/yeohj0710/ops",
+      "> 고칠 일이 있으면 저장소에서 고친다. https://github.com/yeohj0710/ops",
       "",
       "저장소가 없는 컴에서도 이 폴더만 보고 업무를 할 수 있게 두었다.",
       "일감 큐를 쓰려면 저장소가 있어야 한다(겹침을 git push 경쟁으로 판정한다).",
       "",
       "| 업무 | 부르는 말 |",
       "| --- | --- |",
-      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${m.trigger || "—"} |`),
+      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${m.trigger || "(없음)"} |`),
     ].join("\n") + "\n",
     "utf8"
   );
 
-  // 정보·자격증명 자리. 이미 사람이 채운 파일은 절대 덮지 않는다.
+  // 정보와 자격증명 자리. 이미 사람이 채운 파일은 절대 덮지 않는다.
   const tmpl = path.join(bs, "정보-틀");
   if (fs.existsSync(tmpl)) {
     fs.mkdirSync(path.join(dir, "정보"), { recursive: true });
@@ -414,7 +414,7 @@ ${rows}
       if (!fs.existsSync(to)) fs.copyFileSync(path.join(tmpl, f), to);
     }
   }
-  console.log("드라이브 안내문·설치기: " + dir);
+  console.log("드라이브 안내문과 설치기: " + dir);
 
   // 이 컴 설정을 거둔다.
   try {
@@ -423,7 +423,7 @@ ${rows}
       stdio: "inherit",
     });
   } catch {
-    console.log("설정 백업 실패 — node \"" + path.join(dir, "백업.mjs") + "\" 를 직접 돌려라");
+    console.log("설정 백업 실패. node \"" + path.join(dir, "백업.mjs") + "\" 를 직접 돌려라");
   }
 }
 
@@ -458,18 +458,18 @@ function cmdSync() {
 function cmdNew(argv) {
   const id = argv._[0];
   if (!id)
-    die('매뉴얼 id 가 필요하다. 영문 소문자·하이픈. 예: node ops.mjs new proposal-deck --title "제안서 제작"');
-  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) die("id 는 영문 소문자·숫자·하이픈만 쓴다. 예: proposal-deck");
+    die('매뉴얼 id 가 필요하다. 영문 소문자와 하이픈만 쓴다. 예: node ops.mjs new proposal-deck --title "제안서 제작"');
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) die("id 는 영문 소문자, 숫자, 하이픈만 쓴다. 예: proposal-deck");
   const dest = path.join(DIR.manuals, id);
   if (fs.existsSync(dest)) die(`manuals/${id} 가 이미 있다. 새로 만들지 말고 그걸 고쳐라.`);
 
-  // 비슷한 매뉴얼이 이미 있으면 알려준다 — 매뉴얼이 둘로 갈라지는 게 제일 나쁘다.
+  // 비슷한 매뉴얼이 이미 있으면 알려준다. 매뉴얼이 둘로 갈라지는 게 제일 나쁘다.
   if (argv.title) {
     const needle = String(argv.title).toLowerCase();
     const near = manualList().filter(
       (m) => !m.hidden && [m.id, m.title, m.trigger].join(" ").toLowerCase().includes(needle)
     );
-    for (const m of near) console.log(`주의: 비슷한 매뉴얼이 있다 — ${m.id} (${m.title})`);
+    for (const m of near) console.log(`주의: 비슷한 매뉴얼이 있다. ${m.id} (${m.title})`);
   }
 
   fs.cpSync(path.join(DIR.manuals, "_template"), dest, { recursive: true });
@@ -480,9 +480,9 @@ function cmdNew(argv) {
   console.log("만들었다: " + path.join(dest, "MANUAL.md"));
   console.log("");
   console.log("이제 할 일:");
-  console.log("  1. 머리말 네 줄(부르는 말·런너·제어층·시간)을 채운다");
-  console.log("  2. 절차·알려진 함정·완료 검사를 채운다 — 방금 한 일이 있으면 그대로 옮긴다");
-  console.log("  3. node ops.mjs sync — 스킬 설명줄에 이 업무를 올린다 (부르는 말을 채운 뒤에 돌려라)");
+  console.log("  1. 머리말 네 줄(부르는 말, 런너, 제어층, 시간)을 채운다");
+  console.log("  2. 절차, 알려진 함정, 완료 검사를 채운다. 방금 한 일이 있으면 그대로 옮긴다");
+  console.log("  3. node ops.mjs sync 로 스킬 설명줄에 이 업무를 올린다 (부르는 말을 채운 뒤에 돌려라)");
   console.log("  4. 커밋하고 push 한다 (git add -A && git commit && git push)");
 }
 
@@ -647,7 +647,7 @@ function cmdDone(argv) {
   const s = sync(`done: ${id}`);
   console.log("끝냈다: " + id);
   console.log(dest);
-  if (!s.pushed && hasRemote()) console.log("주의: 올리지 못했다 — " + s.reason);
+  if (!s.pushed && hasRemote()) console.log("주의: 올리지 못했다. " + s.reason);
 }
 
 function cmdBlock(argv) {
@@ -668,7 +668,7 @@ function cmdStatus() {
   pullFirst();
   const q = ls(DIR.queue).length;
   const d = doingNow();
-  console.log(`대기 ${q} · 진행 ${d.length}`);
+  console.log(`대기 ${q}, 진행 ${d.length}`);
   for (const t of d) {
     console.log(
       `  ${t.id}  ${t.title}  ← ${t.lease?.runner}@${t.lease?.machine} (${t.lease?.at})`
@@ -732,7 +732,7 @@ const table = {
 if (!cmd || !table[cmd]) {
   console.log(
     [
-      "ops — 회사 업무 관제탑",
+      "ops, 회사 업무 관제탑",
       "",
       "  node ops.mjs next [--runner claude|codex]",
       "  node ops.mjs new <매뉴얼id> --title \"…\"",

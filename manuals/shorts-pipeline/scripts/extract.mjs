@@ -5,7 +5,7 @@
 //   node extract.mjs <영상ID> [<영상ID> ...]    그 영상들을 뽑는다
 //
 // 추출기 exe(`YouTube·Instagram 미디어 추출기`)와 같은 로직이다. yt-dlp 를 직접 쓴다.
-// 폴더 하나에 mp4 · metadata.json · caption.txt · 캡션.html · 업로드 준비.json 다섯 개를 만든다.
+// 폴더 하나에 mp4, metadata.json, caption.txt, 캡션.html, 업로드 준비.json 다섯 개를 만든다.
 // 캡션 내용은 사람이나 에이전트가 채운다 (P5). 이 스크립트는 틀과 영상만 만든다.
 
 import fs from "node:fs";
@@ -144,7 +144,7 @@ function grab(id) {
 <style>body{font:15px/1.7 -apple-system,"Malgun Gothic",sans-serif;margin:0;padding:24px;background:#f7f7f5}
 h1{font-size:17px;margin:0 0 14px}textarea{width:100%;min-height:70vh;padding:14px;border:1px solid #ddd;border-radius:8px;font:inherit;white-space:pre-wrap}</style>
 </head><body>
-<h1>${title} — 인스타 캡션</h1>
+<h1>${title} 인스타 캡션</h1>
 <textarea id="caption" spellcheck="false"></textarea>
 </body></html>
 `;
@@ -166,7 +166,7 @@ if (args.includes("--list") || !args.length) {
   for (const id of args) {
     try {
       const r = grab(id);
-      console.log(`OK  ${r.uploader} · ${r.title}`);
+      console.log(`OK  ${r.uploader} / ${r.title}`);
       console.log(`    ${r.dir}`);
     } catch (e) {
       console.error(`실패 ${id}: ${e.message}`);

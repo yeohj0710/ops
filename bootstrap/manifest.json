@@ -4,7 +4,7 @@
     "백업.mjs 가 컴 → 드라이브, 설치.mjs 가 드라이브 → 컴 방향으로 이 표를 그대로 쓴다.",
     "home 은 사용자 폴더, dev 는 프로젝트 폴더(보통 C:/dev)를 가리킨다.",
     "자격증명(auth.json, .env, 토큰)과 기계마다 다른 것(config.toml, sessions, cache)은 여기 없다.",
-    "일부러 뺐다 — 드라이브에 올리면 안 되고, 올려도 다른 컴에서 안 맞는다."
+    "일부러 뺐다. 드라이브에 올리면 안 되고, 올려도 다른 컴에서 안 맞는다."
   ],
   "items": [
     {
@@ -12,14 +12,14 @@
       "path": ".claude/CLAUDE.md",
       "store": "설정/claude/CLAUDE.md",
       "type": "file",
-      "what": "Claude 전역 지침 (API 비용·글쓰기·카톡 규칙)"
+      "what": "Claude 전역 지침 (API 비용, 글쓰기, 카톡 규칙)"
     },
     {
       "base": "home",
       "path": ".claude/settings.json",
       "store": "설정/claude/settings.json",
       "type": "file",
-      "what": "Claude 권한·알림 설정"
+      "what": "Claude 권한과 알림 설정"
     },
     {
       "base": "home",
@@ -33,7 +33,7 @@
       "path": ".claude/projects/C--/memory",
       "store": "설정/claude/memory",
       "type": "dir",
-      "what": "Claude 기억 — 프로젝트 배경지식"
+      "what": "Claude 기억 (프로젝트 배경지식)"
     },
     {
       "base": "home",
@@ -61,12 +61,12 @@
       "path": "AGENTS.md",
       "store": "설정/dev/AGENTS.md",
       "type": "file",
-      "what": "C:/dev 작업 지도 — Claude·Codex 공용"
+      "what": "C:/dev 작업 지도 (Claude, Codex 공용)"
     }
   ],
   "제외": {
-    "auth.json · 토큰 · .env": "자격증명. 드라이브에 올리지 않는다",
-    "config.toml": "기계마다 다른 파이프 경로·해시가 박혀 있고 프로젝트 이력 4천 줄이 섞여 있다. 새 컴에서 사람이 맞춘다",
-    "sessions · cache · shell-snapshots": "그 컴에서만 뜻이 있는 임시 자료"
+    "auth.json, 토큰, .env": "자격증명. 드라이브에 올리지 않는다",
+    "config.toml": "기계마다 다른 파이프 경로와 해시가 박혀 있고 프로젝트 이력 4천 줄이 섞여 있다. 새 컴에서 사람이 맞춘다",
+    "sessions, cache, shell-snapshots": "그 컴에서만 뜻이 있는 임시 자료"
   }
 }

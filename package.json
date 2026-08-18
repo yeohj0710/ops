@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": false,
   "type": "module",
-  "description": "회사 업무 관제탑 — 매뉴얼 한 폴더로 업무 하나, Claude와 Codex가 같은 큐에서 일한다",
+  "description": "회사 업무 관제탑. 매뉴얼 한 폴더로 업무 하나, Claude와 Codex가 같은 큐에서 일한다",
   "scripts": {
     "setup": "node setup.mjs",
     "doctor": "node ops.mjs doctor",

@@ -15,7 +15,7 @@ import path from "node:path";
 
 const ROOT = "G:/내 드라이브/영상 편집";
 
-// 폴더 이름이 점으로 시작한다. 일반 glob·ls 로는 안 보인다.
+// 폴더 이름이 점으로 시작한다. 일반 glob 이나 ls 로는 안 보인다.
 const PEOPLE = [
   { key: "김주성", dir: ".김주성 대표님", handle: "@kimjejo_pharma" },
   { key: "오주헌", dir: ".오주헌 약사님", handle: "@oyakstory" },
@@ -31,7 +31,7 @@ const ALIAS = {
 };
 
 const VIDEO = /\.(mp4|mov|m4v)$/i;
-// 프리미어 자동저장·미리보기 폴더는 영상이 아니다. 들어가면 느려지기만 한다.
+// 프리미어 자동저장과 미리보기 폴더는 영상이 아니다. 들어가면 느려지기만 한다.
 const SKIP_DIR = /^(Adobe Premiere Pro (Auto-Save|Audio Previews|Video Previews)|\.tmp|__MACOSX)$/i;
 
 const arg = (name, def = null) => {
@@ -149,8 +149,8 @@ if (AS_JSON) {
 } else {
   const dropped = results.length - shown.length;
   console.log(
-    `최근 ${DAYS}일 · 편집 완성본 ${shown.length}개` +
-      (dropped ? ` (원본 촬영분 ${dropped}개는 뺐다 — 보려면 --raw)` : "") + "\n"
+    `최근 ${DAYS}일, 편집 완성본 ${shown.length}개` +
+      (dropped ? ` (원본 촬영분 ${dropped}개는 뺐다. 보려면 --raw)` : "") + "\n"
   );
   for (const r of shown) {
     console.log(`  ${r.person}${r.editor ? " / 편집자 " + r.editor : ""}`);

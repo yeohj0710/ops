@@ -2,7 +2,7 @@
 // 관제탑 사이트를 굽는다. 저장소를 읽어 정적 파일 하나로 만든다.
 //   node site/build.mjs   →  site/dist/index.html
 //
-// 이 사이트가 답해야 하는 질문은 하나다 — "이거 어떻게 시키지?"
+// 이 사이트가 답해야 하는 질문은 하나다. "이거 어떻게 시키지?"
 // 그래서 부르는 말을 제일 크게 두고, 눌러서 복사되게 했다(폰에서 쓴다).
 
 import fs from "node:fs";
@@ -73,7 +73,7 @@ function md(src) {
       continue;
     }
 
-    // 번호 목록. 항목 하나가 여러 줄이고 코드블록·표가 섞이므로 조각으로 모은다.
+    // 번호 목록. 항목 하나가 여러 줄이고 코드블록과 표가 섞이므로 조각으로 모은다.
     if (/^\s*\d+\.\s+/.test(L)) {
       const items = [];
       const add = (part) => {
@@ -103,7 +103,7 @@ function md(src) {
           else add({ t: "p", v: cur.trim() });
           i++;
         } else if (cur.trim() === "") {
-          // 빈 줄에서 끊지 않는다. 코드블록·표 뒤에 빈 줄이 오고 다음 번호가 이어지는데,
+          // 빈 줄에서 끊지 않는다. 코드블록이나 표 뒤에 빈 줄이 오고 다음 번호가 이어지는데,
           // 여기서 break 하면 항목마다 <ol> 이 새로 생겨 번호가 전부 1 이 된다.
           let j = i + 1;
           while (j < lines.length && lines[j].trim() === "") j++;
@@ -130,8 +130,8 @@ function md(src) {
       continue;
     }
 
-    if (/^###\s+/.test(L)) {
-      out.push("<h4>" + inline(L.replace(/^###\s+/, "")) + "</h4>");
+    if (/^#{2,3}\s+/.test(L)) {
+      out.push("<h4>" + inline(L.replace(/^#{2,3}\s+/, "")) + "</h4>");
       i++;
       continue;
     }
@@ -174,6 +174,17 @@ function manuals() {
       const scriptDir = path.join(dir, d.name, "scripts");
       const scripts = fs.existsSync(scriptDir) ? fs.readdirSync(scriptDir) : [];
 
+      // 절차를 "## 절차" 로 안 적고 "## P1." 처럼 단계별 절로 나눈 매뉴얼이 있다(쇼츠).
+      // 그럴 때는 개요 다음부터 산출물 앞까지를 통째로 절차로 본다. 안 그러면 카드가 텅 빈다.
+      const steps = (() => {
+        const s = section("절차");
+        if (s) return s;
+        const m = t.match(/\n(## P\d[\s\S]*?)(?=\n## 산출물|\n## 완료 검사|$)/);
+        return m ? m[1].trim() : "";
+      })();
+      const stepCount =
+        (section("절차").match(/^\d+\.\s/gm) || []).length || (steps.match(/^## P\d/gm) || []).length;
+
       return {
         id: d.name,
         title: (t.match(/^#\s+(.+)$/m) || [, d.name])[1].trim(),
@@ -182,11 +193,11 @@ function manuals() {
         surfaces: grab("제어층", "L1"),
         minutes: grab("한 번에 걸리는 시간"),
         what: plain(section("무엇을 만드는 업무인가").split("\n\n")[0] || ""),
-        steps: section("절차"),
+        steps,
         outputs: section("산출물"),
         traps: section("알려진 함정"),
         noask: section("묻지 말고 이렇게 한다") || section("묻는 건 이것 하나뿐"),
-        stepCount: (section("절차").match(/^\d+\.\s/gm) || []).length,
+        stepCount,
         trapCount: (section("알려진 함정").match(/^-\s/gm) || []).length,
         scripts,
       };
@@ -194,7 +205,7 @@ function manuals() {
     .filter(Boolean);
 }
 
-// 회사 로고 — "W" 심볼. 원본은 드라이브의 로고 모음 SVG 인데 940KB 색프로파일이 박혀 있어
+// 회사 로고, "W" 심볼. 원본은 드라이브의 로고 모음 SVG 인데 940KB 색프로파일이 박혀 있어
 // 기하만 꺼내 site/logo.svg 로 들여놨다. fill 은 currentColor 라 쓰는 자리에서 색을 정한다.
 // 브랜드 심볼색 #60A5FA, 워드마크 네이비 #004881.
 const SKY = "#60A5FA";
@@ -204,7 +215,7 @@ const logoBox = (logoRaw.match(/viewBox="([^"]+)"/) || [, "0 0 120.3888 90.54146
 const logoSvg = (cls) =>
   '<svg class="' + cls + '" viewBox="' + logoBox + '" aria-hidden="true">' + logoInner + "</svg>";
 // 파비콘은 정사각이라야 한다. 가로가 긴 심볼(120.4 x 90.5)을 가운데로 넣는다.
-// 탭에서 16px 로 줄어드니 여백은 최소만 준다 — 심볼이 가로폭의 97% 를 차지한다.
+// 탭에서 16px 로 줄어드니 여백은 최소만 준다. 심볼이 가로폭의 97% 를 차지한다.
 const favicon =
   "data:image/svg+xml," +
   encodeURIComponent(
@@ -306,7 +317,7 @@ const html = `<!doctype html>
 <link rel="apple-touch-icon" href="${favicon}">
 <script>document.documentElement.className='js'</script>
 <style>
-/* 색과 그라데이션은 wellnessbox.kr 에서 가져왔다 — 하늘색 글로우 + 흰 바탕. */
+/* 색과 그라데이션은 wellnessbox.kr 에서 가져왔다. 하늘색 글로우 + 흰 바탕. */
 :root{
   --card:#fff; --ink:#0f172a; --ink2:#475569; --dim:#94a3b8;
   --line:rgba(226,232,240,.9); --line2:#cbd5e1;
@@ -770,7 +781,7 @@ help.addEventListener('click', function (e) {   // 바깥을 누르면 닫는다
   if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) help.close();
 });
 
-// ── 목록 손보기 — 순서와 치워둔 것을 이 브라우저에 기억한다 ──────
+// ── 목록 손보기. 순서와 치워둔 것을 이 브라우저에 기억한다 ──────
 var LIST = document.getElementById('list');
 var BOX = document.getElementById('boxed');
 var WRAP = document.getElementById('boxwrap');
@@ -877,5 +888,5 @@ if (window.IntersectionObserver) {
 fs.mkdirSync(DIST, { recursive: true });
 fs.writeFileSync(path.join(DIST, "index.html"), html, "utf8");
 console.log(
-  "구웠다: " + path.join(DIST, "index.html") + "  (" + (html.length / 1024).toFixed(0) + "KB · 업무 " + M.length + "개)"
+  "구웠다: " + path.join(DIST, "index.html") + "  (" + (html.length / 1024).toFixed(0) + "KB, 업무 " + M.length + "개)"
 );
