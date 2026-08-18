@@ -343,7 +343,7 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="chips"><button class="chip" data-copy="캡션 생성해줘">캡션 생성해줘</button><button class="chip" data-copy="캡션 뽑아줘">캡션 뽑아줘</button><button class="chip" data-copy="캡션 써줘">캡션 써줘</button><button class="chip" data-copy="오약 캡션">오약 캡션</button><button class="chip" data-copy="제선영 캡션">제선영 캡션</button><button class="chip" data-copy="오늘 작업된 영상 캡션">오늘 작업된 영상 캡션</button></div></div>
+<div class="say"><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 편집 끝난 영상에 인스타 캡션 달기 업무 해줘">G드라이브 에이전트 폴더 참고해서 편집 끝난 영상에 인스타 캡션 달기 업무 해줘</button></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">영상 하나에 10~15분</li>
@@ -355,7 +355,9 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
 <div class="easy"><h4>쓰는 상황</h4>
 <p>편집자가 약사님 영상 편집을 끝내 놓았습니다. 이제 그 영상에 붙일 인스타그램 글을 써야 합니다.</p>
 <h4>시키는 말</h4>
-<p>새 세션에 &quot;캡션 생성해줘&quot; 라고 하면 됩니다. 한 분 것만 원하면 &quot;오약 캡션 써줘&quot; 처럼 이름을 붙입니다.</p>
+<p>Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.</p>
+<blockquote>G드라이브 에이전트 폴더 참고해서 편집 끝난 영상에 인스타 캡션 달기 업무 해줘</blockquote>
+<p>세팅이 끝난 컴퓨터에서는 &quot;캡션 생성해줘&quot; 로 줄여도 됩니다. 한 분 것만 원하면 &quot;오약 캡션 써줘&quot; 처럼 이름을 붙이면 그 분 폴더만 봅니다.</p>
 <h4>진행 순서</h4>
 <ol><li><p>구글 드라이브에서 최근 이틀 안에 편집이 끝난 영상을 찾습니다. 약사님 네 분 폴더만 봅니다. 폴더 이름이 점으로 시작해서 탐색기에서는 잘 안 보이지만, 에이전트는 그 자리를 알고 있습니다.</p></li><li><p>찾은 영상을 1초에 한 장씩 그림으로 잘라서 직접 읽습니다. 화면에 뜬 제품 이름, 성분 이름, 말하는 순서가 캡션에 들어갈 재료입니다.</p></li><li><p>그 약사님이 그동안 인스타그램에 올린 글 수십 개를 미리 모아 뒀습니다. 글자 수가 평균 몇 자인지, 이모지를 몇 개 쓰는지, 구분선을 얼마나 자주 넣는지까지 세어 놓았습니다. 그 숫자에 맞춰 새 글을 씁니다. 그래서 약사님마다 다른 말투가 나옵니다.</p></li><li><p>다 쓰면 영상과 같은 폴더에 <code>캡션.html</code> 파일로 저장합니다.</p></li><li><p>채팅 창에도 캡션 전문을 그대로 찍어 줍니다. 폰으로 시켰으면 파일을 못 여니까, 화면에서 바로 복사해 인스타그램에 붙여넣으면 됩니다.</p></li></ol>
 <h4>결과물</h4>
@@ -380,7 +382,7 @@ ffmpeg -i &quot;&lt;영상&gt;&quot; -vf fps=1 -q:v 3 &quot;&lt;임시폴더&gt;
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="chips"><button class="chip" data-copy="인포크 세팅해줘">인포크 세팅해줘</button><button class="chip" data-copy="DM 자동화 세팅">DM 자동화 세팅</button><button class="chip" data-copy="댓글 자동화">댓글 자동화</button><button class="chip" data-copy="자료형 릴스 세팅">자료형 릴스 세팅</button></div></div>
+<div class="say"><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 인포크링크 DM 자동화 세팅 업무 해줘">G드라이브 에이전트 폴더 참고해서 인포크링크 DM 자동화 세팅 업무 해줘</button></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">15~25분</li>
@@ -391,7 +393,9 @@ ffmpeg -i &quot;&lt;영상&gt;&quot; -vf fps=1 -q:v 3 &quot;&lt;임시폴더&gt;
 <div class="easy"><h4>쓰는 상황</h4>
 <p>약사님 인스타그램에 자료형 릴스를 올렸습니다. &quot;댓글에 '자료' 라고 남겨주시면 정리본 보내드려요&quot; 를 걸어서 팔로워를 늘리고 싶을 때 씁니다.</p>
 <h4>시키는 말</h4>
-<p>&quot;인포크 세팅해줘&quot; 라고 하면서 어느 계정에, 어떤 단어를 댓글로 받을지, 어떤 자료 링크를 보낼지 알려주면 됩니다.</p>
+<p>Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.</p>
+<blockquote>G드라이브 에이전트 폴더 참고해서 인포크링크 DM 자동화 세팅 업무 해줘</blockquote>
+<p>어느 계정에, 어떤 단어를 댓글로 받을지, 어떤 자료 링크를 보낼지를 같이 알려주면 됩니다. 세팅이 끝난 컴퓨터에서는 &quot;인포크 세팅해줘&quot; 로 줄여도 됩니다.</p>
 <h4>진행 순서</h4>
 <ol><li><p>이미 로그인해 둔 크롬으로 인포크링크 관리자 화면에 들어갑니다.</p></li><li><p>성적이 잘 나온 기존 세팅을 복제해서 시작합니다. 처음부터 만들면 빠뜨리는 칸이 생깁니다.</p></li><li><p>네 단계를 채웁니다. 댓글에 공개 답글을 달지, 팔로워와 안 팔로우한 사람에게 다른 메시지를 보낼지, 어떤 단어가 달린 댓글에 반응할지, 어느 게시물에 걸지입니다.</p></li><li><p>DM 문구를 세 벌 씁니다. 모두에게 가는 것, 팔로워에게 가는 것, 아직 팔로우하지 않은 사람에게 가는 것입니다. 약사님마다 말투가 달라서 그 계정 글투에 맞춥니다.</p></li><li><p>세팅한 내용을 채팅에 요약해서 찍어 줍니다. 켜기 전에 사람이 눈으로 확인합니다.</p></li></ol>
 <h4>결과물</h4>
@@ -416,7 +420,7 @@ ffmpeg -i &quot;&lt;영상&gt;&quot; -vf fps=1 -q:v 3 &quot;&lt;임시폴더&gt;
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="chips"><button class="chip" data-copy="카톡 봐줘">카톡 봐줘</button><button class="chip" data-copy="카톡 뭐 왔나">카톡 뭐 왔나</button><button class="chip" data-copy="카톡 보고 알아서 처리해라">카톡 보고 알아서 처리해라</button><button class="chip" data-copy="톡방 확인">톡방 확인</button></div></div>
+<div class="say"><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 카톡 확인하고 할 일 뽑기 업무 해줘">G드라이브 에이전트 폴더 참고해서 카톡 확인하고 할 일 뽑기 업무 해줘</button></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">5~10분</li>
@@ -427,7 +431,9 @@ ffmpeg -i &quot;&lt;영상&gt;&quot; -vf fps=1 -q:v 3 &quot;&lt;임시폴더&gt;
 <div class="easy"><h4>쓰는 상황</h4>
 <p>하루 이틀 자리를 비운 사이 업무 톡방에 대화가 쌓였습니다. 무엇을 놓쳤는지, 내가 결정해야 할 것이 무엇인지 빠르게 보고 싶을 때 씁니다.</p>
 <h4>시키는 말</h4>
-<p>&quot;카톡 봐줘&quot; 라고 하면 됩니다.</p>
+<p>Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.</p>
+<blockquote>G드라이브 에이전트 폴더 참고해서 카톡 확인하고 할 일 뽑기 업무 해줘</blockquote>
+<p>세팅이 끝난 컴퓨터에서는 &quot;카톡 봐줘&quot; 로 줄여도 됩니다.</p>
 <h4>진행 순서</h4>
 <ol><li><p>카카오톡 창을 열지 않습니다. 톡방 대화는 이미 컴퓨터 안에 텍스트 파일로 쌓여 있어서 그 파일만 읽습니다. 화면이 깜빡이지 않습니다.</p></li><li><p>쌓아 둔 대화가 하루 넘게 오래됐을 때만 수집기를 한 번 돌립니다. 이때는 카카오톡 창이 1~2분 떴다 사라지기 때문에 돌리기 전에 물어봅니다.</p></li><li><p>지난번 브리핑 뒤에 새로 온 대화만 읽습니다. 이미 정리한 것을 또 정리하지 않습니다.</p></li><li><p>읽은 내용을 셋으로 가릅니다. 사람이 결정해야 하는 것(금액, 일정, 계약, 답장할지 말지), 에이전트가 대신 할 수 있는 일(자료 만들기, 조사, 정리), 답장을 써야 하는 것입니다.</p></li><li><p>대신 할 수 있는 일은 곧바로 일감 목록에 넣습니다. 답장이 필요한 건은 문안 초안만 써 둡니다. 보내지는 않습니다.</p></li></ol>
 <h4>결과물</h4>
@@ -457,7 +463,7 @@ ffmpeg -i &quot;&lt;영상&gt;&quot; -vf fps=1 -q:v 3 &quot;&lt;임시폴더&gt;
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="chips"><button class="chip" data-copy="미모미 시딩 상황 파악해줘">미모미 시딩 상황 파악해줘</button><button class="chip" data-copy="미모미 인스타 확인해줘">미모미 인스타 확인해줘</button><button class="chip" data-copy="시딩 진행표 동기화해줘">시딩 진행표 동기화해줘</button><button class="chip" data-copy="미모미 DM 확인해줘">미모미 DM 확인해줘</button><button class="chip" data-copy="글로벌 계정 DM 봐줘">글로벌 계정 DM 봐줘</button></div></div>
+<div class="say"><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 미모미약국 인스타 시딩 상황 파악 업무 해줘">G드라이브 에이전트 폴더 참고해서 미모미약국 인스타 시딩 상황 파악 업무 해줘</button></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">20~40분 (새 DM 개수에 따라)</li>
@@ -468,7 +474,9 @@ ffmpeg -i &quot;&lt;영상&gt;&quot; -vf fps=1 -q:v 3 &quot;&lt;임시폴더&gt;
 <div class="easy"><h4>쓰는 상황</h4>
 <p>섭외 DM 을 보내 놓고 며칠 지났습니다. 답장이 몇 개 왔는지, 누가 수락했고 누가 거절했는지, 진행표에는 아직 안 적혀 있습니다. 그걸 맞추고 싶을 때 씁니다.</p>
 <h4>시키는 말</h4>
-<p>&quot;미모미 시딩 상황 파악해줘&quot; 라고 하면 됩니다. 세팅이 안 된 컴퓨터라면 앞에 &quot;G드라이브 에이전트 폴더 참고해서&quot; 를 붙이면 됩니다.</p>
+<p>Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.</p>
+<blockquote>G드라이브 에이전트 폴더 참고해서 미모미약국 인스타 시딩 상황 파악 업무 해줘</blockquote>
+<p>세팅이 끝난 컴퓨터에서는 &quot;미모미 시딩 상황 파악해줘&quot; 로 줄여도 됩니다.</p>
 <h4>진행 순서</h4>
 <ol><li><p>크롬에서 인스타그램을 열고 <strong>공식 글로벌 계정으로 바꿉니다.</strong> 대개 이미 로그인돼 있어서 계정 전환만 하면 됩니다.</p></li><li><p><strong>DM 함을 열기 전에 안 읽은 방이 어디인지 먼저 적어 둡니다.</strong> 읽는 순간 읽음으로 바뀌어서 나중에는 어디가 안 읽음이었는지 알 수 없습니다.</p></li><li><p>방을 하나씩 열어 회신을 읽습니다. 수락인지, 금액을 더 달라는 것인지, 거절인지, 질문인지를 가립니다. 중국어라 그대로 옮겨 적습니다.</p></li><li><p><strong>읽기 전에 안 읽음이었던 방을 다시 안 읽음으로 되돌립니다.</strong> 방 목록에서 그 방을 오른쪽 클릭하면 &quot;읽지 않음으로 표시&quot; 가 나옵니다. 사람이 나중에 폰으로 볼 때 무엇이 새 메시지였는지 그대로 보이게 하려는 것입니다.</p></li><li><p>읽은 내용을 <strong>진행표 시트에 옮깁니다.</strong> 계정 이름으로 행을 찾아 응답, 메모, 합의 단가, 확정 여부, 진행 상태를 고칩니다. 없는 계정이 답장했으면 줄을 새로 만듭니다.</p></li><li><p>정리한 것을 채팅에 표로 찍고, 사람이 결정해야 하는 것을 따로 모아 둡니다. 금액을 올려 달라는 요구, 애매한 질문, 배송형으로 바꿔 달라는 요청이 그것입니다.</p></li></ol>
 <h4>결과물</h4>
@@ -498,7 +506,7 @@ R ④합의 단가 · S ⑤확정 · AE 품질·운영 메모</code></pre></li><
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="chips"><button class="chip" data-copy="발송 처리해줘">발송 처리해줘</button><button class="chip" data-copy="PDRN 발송">PDRN 발송</button><button class="chip" data-copy="리퀴드샷 발송">리퀴드샷 발송</button><button class="chip" data-copy="배송 엑셀 만들어줘">배송 엑셀 만들어줘</button><button class="chip" data-copy="송장 확인해줘">송장 확인해줘</button></div></div>
+<div class="say"><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 PDRN 리퀴드샷 발송 처리 업무 해줘">G드라이브 에이전트 폴더 참고해서 PDRN 리퀴드샷 발송 처리 업무 해줘</button></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">20~40분</li>
@@ -509,7 +517,9 @@ R ④합의 단가 · S ⑤확정 · AE 품질·운영 메모</code></pre></li><
 <div class="easy"><h4>쓰는 상황</h4>
 <p>PDRN 리퀴드샷 배송 신청이 들어왔습니다. 오늘 보낼 건만 골라서 물류 담당자에게 넘겨야 할 때 씁니다.</p>
 <h4>시키는 말</h4>
-<p>&quot;발송 처리해줘&quot; 라고 하면 됩니다.</p>
+<p>Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.</p>
+<blockquote>G드라이브 에이전트 폴더 참고해서 PDRN 리퀴드샷 발송 처리 업무 해줘</blockquote>
+<p>세팅이 끝난 컴퓨터에서는 &quot;발송 처리해줘&quot; 로 줄여도 됩니다.</p>
 <h4>진행 순서</h4>
 <ol><li><p>이 업무는 절차서가 따로 있습니다. 원본 절차 열 단계, 수량 규칙, 파일 이름 규칙이 전부 거기 있어서 그 파일부터 읽습니다.</p></li><li><p>노션 주문 확인 페이지와 구글 시트 세 개(협찬, 사전테스트, 이벤트 당첨)를 서로 맞춰 봅니다. 한쪽에만 있는 건이 자주 나옵니다.</p></li><li><p>아직 송장 번호가 없는 건만 남깁니다. 이미 보낸 사람에게 또 보내지 않습니다.</p></li><li><p>남은 건으로 오늘 날짜 발송 요청 엑셀을 만듭니다. 열 순서와 서식은 물류에서 쓰는 그대로 맞춥니다. 협찬은 10박스, 이벤트 당첨은 1박스처럼 수량 규칙도 같이 채웁니다.</p></li><li><p>만든 엑셀 파일을 카카오톡 나와의 채팅으로 보냅니다. 서성만 과장님께 그대로 전달할 메시지 초안도 같이 써 둡니다.</p></li></ol>
 <h4>결과물</h4>
@@ -531,7 +541,7 @@ R ④합의 단가 · S ⑤확정 · AE 품질·운영 메모</code></pre></li><
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="chips"><button class="chip" data-copy="쇼츠 돌려줘">쇼츠 돌려줘</button><button class="chip" data-copy="영상 올려줘">영상 올려줘</button><button class="chip" data-copy="유튜브 업로드해줘">유튜브 업로드해줘</button><button class="chip" data-copy="인스타 올려줘">인스타 올려줘</button><button class="chip" data-copy="릴스 올려줘">릴스 올려줘</button><button class="chip" data-copy="조회수 넣어줘">조회수 넣어줘</button></div></div>
+<div class="say"><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 쇼츠 생성부터 인스타 업로드까지 업무 해줘">G드라이브 에이전트 폴더 참고해서 쇼츠 생성부터 인스타 업로드까지 업무 해줘</button></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">전 단계 2~3시간 / 한 단계 10~30분</li>
@@ -543,7 +553,9 @@ R ④합의 단가 · S ⑤확정 · AE 품질·운영 메모</code></pre></li><
 <div class="easy"><h4>쓰는 상황</h4>
 <p>유튜브 채널 두 개와 인스타그램 계정 하나에 올릴 쇼츠를 만들어야 할 때 씁니다. 소재 찾기부터 조회수 주문까지 여덟 단계인데, 통째로 시켜도 되고 한 단계만 시켜도 됩니다.</p>
 <h4>시키는 말</h4>
-<p>전부 돌리려면 &quot;쇼츠 돌려줘&quot; 라고 합니다. 인스타그램에만 올리려면 &quot;인스타 올려줘&quot;, 캡션만 필요하면 &quot;캡션 써줘&quot; 라고 합니다.</p>
+<p>Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.</p>
+<blockquote>G드라이브 에이전트 폴더 참고해서 쇼츠 생성부터 인스타 업로드까지 업무 해줘</blockquote>
+<p>여덟 단계를 통째로 돕니다. 한 단계만 원하면 그 단계를 말하면 됩니다. 인스타그램에만 올리려면 &quot;인스타 올려줘&quot;, 캡션만 필요하면 &quot;캡션 써줘&quot; 입니다.</p>
 <h4>진행 순서</h4>
 <ol><li><p>컴퓨터에서 돌고 있는 n8n 이라는 자동화 프로그램을 켭니다. 여기에 만들 영상 주제가 줄 서 있습니다. 주제가 비어 있으면 새로 채우는데, 이미 올린 영상과 겹치지 않는지 먼저 확인합니다.</p></li><li><p>n8n 이 주제 하나로 쇼츠 한 편을 만들어 유튜브에 올립니다. 채널이 둘이라 두 편이 올라갑니다. 이 단계는 이미지를 만드는 데 돈이 나가기 때문에, 시작하기 전에 남은 잔액과 몇 편을 만들지 숫자로 먼저 알려 드립니다.</p></li><li><p>유튜브에 제대로 올라갔는지 확인하고, 각 계정으로 자기 영상에 좋아요를 하나씩 누릅니다.</p></li><li><p>올라간 유튜브 영상을 다시 내려받아 인스타그램에 올릴 수 있는 형태로 만듭니다. 아직 안 올린 영상이 밀려 있으면 같이 처리합니다.</p></li><li><p>그 영상에 붙일 인스타그램 캡션을 씁니다. 채널 말투에 맞춰 랭킹 형식으로 쓰고 끝에 팔로우 유도 문구를 붙입니다.</p></li><li><p>인스타그램에 릴스로 올립니다. 비율을 원본으로 맞춰야 영상이 안 잘립니다.</p></li><li><p>올린 릴스에 조회수를 2천 회 주문합니다. 값은 200원입니다. 금액과 대상 링크를 화면에 적고 그대로 주문까지 마칩니다. 답을 기다리느라 멈추지 않습니다.</p></li><li><p>계정 세 개로 그 릴스에 좋아요를 누르고, 저장하고, 서로에게 공유합니다.</p></li></ol>
 <h4>결과물</h4>
@@ -677,7 +689,7 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
           <a href="https://wellnessbox.kr/about/privacy">개인정보처리방침</a>
           <a href="https://wellnessbox.kr/about/contact">문의하기</a>
         </div>
-        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-18 12:19</span></p>
+        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-18 12:20</span></p>
       </div>
 
       <div class="fcol">
@@ -726,11 +738,13 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
     <details class="hsec" open>
       <summary>시키는 법 <span class="caret"></span></summary>
       <div class="in">
-        <p>업무 카드를 펼치면 <b>부르는 말</b>이 나옵니다. 눌러서 복사한 뒤 그대로 말하면 됩니다.
-        같은 업무를 부르는 말은 여러 개라 아무거나 써도 걸립니다.</p>
-        <button class="chip quote" data-copy="캡션 생성해줘">캡션 생성해줘</button>
-        <p>이 컴퓨터처럼 세팅이 끝난 자리에서는 저 말만 하면 됩니다.
-        처음 켠 컴퓨터라면 앞에 <b>"G드라이브 에이전트 폴더 보고"</b> 를 붙이세요.</p>
+        <p>형식은 하나뿐입니다. <b>업무 이름</b>만 갈아 끼우면 됩니다.</p>
+        <button class="chip quote" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘</button>
+        <p>업무 카드를 펼치면 그 업무 이름을 넣어 만든 문장이 나옵니다.
+        눌러서 복사한 뒤 Claude 나 Codex 새 세션에 그대로 붙여넣으면 됩니다.</p>
+        <p>줄여서 "캡션 써줘" 처럼 말해도 알아듣습니다. 매뉴얼마다 줄임말을 적어 뒀습니다.
+        다만 <b>처음 켠 컴퓨터에서는 위 형식을 그대로 쓰세요.</b> 그래야 에이전트가
+        드라이브에서 매뉴얼을 먼저 찾습니다.</p>
       </div>
     </details>
 

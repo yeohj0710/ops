@@ -277,9 +277,12 @@ const cards = M.map((m) => {
     '<span class="caret"></span>',
     "</summary>",
     '<div class="body">',
-    '<div class="say"><div class="chips">' +
-      m.triggers.map((w) => '<button class="chip" data-copy="' + esc(w) + '">' + esc(w) + "</button>").join("") +
-      "</div></div>",
+    // 부르는 말을 여러 개 늘어놓으면 위 원리에 적어 둔 한 가지 형식과 어긋나 헷갈린다.
+    // 카드에는 그 형식 그대로 만든 문장 하나만 둔다.
+    (() => {
+      const say = "G드라이브 에이전트 폴더 참고해서 " + m.title + " 업무 해줘";
+      return '<div class="say"><button class="chip" data-copy="' + esc(say) + '">' + esc(say) + "</button></div>";
+    })(),
     '<ul class="meta">',
     '<li data-tip="' + esc(runnerTip) + '">' + esc(m.runner) + " 가 맡습니다</li>",
     m.minutes ? '<li data-tip="한 번 돌릴 때 걸리는 시간입니다">' + esc(m.minutes) + "</li>" : "",
@@ -721,11 +724,13 @@ ${BIZ.map(
     <details class="hsec" open>
       <summary>시키는 법 <span class="caret"></span></summary>
       <div class="in">
-        <p>업무 카드를 펼치면 <b>부르는 말</b>이 나옵니다. 눌러서 복사한 뒤 그대로 말하면 됩니다.
-        같은 업무를 부르는 말은 여러 개라 아무거나 써도 걸립니다.</p>
-        <button class="chip quote" data-copy="캡션 생성해줘">캡션 생성해줘</button>
-        <p>이 컴퓨터처럼 세팅이 끝난 자리에서는 저 말만 하면 됩니다.
-        처음 켠 컴퓨터라면 앞에 <b>"G드라이브 에이전트 폴더 보고"</b> 를 붙이세요.</p>
+        <p>형식은 하나뿐입니다. <b>업무 이름</b>만 갈아 끼우면 됩니다.</p>
+        <button class="chip quote" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘</button>
+        <p>업무 카드를 펼치면 그 업무 이름을 넣어 만든 문장이 나옵니다.
+        눌러서 복사한 뒤 Claude 나 Codex 새 세션에 그대로 붙여넣으면 됩니다.</p>
+        <p>줄여서 "캡션 써줘" 처럼 말해도 알아듣습니다. 매뉴얼마다 줄임말을 적어 뒀습니다.
+        다만 <b>처음 켠 컴퓨터에서는 위 형식을 그대로 쓰세요.</b> 그래야 에이전트가
+        드라이브에서 매뉴얼을 먼저 찾습니다.</p>
       </div>
     </details>
 
