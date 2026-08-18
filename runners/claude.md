@@ -110,6 +110,22 @@ ToolSearch: { query: "computer-use", max_results: 30 }
 
 ---
 
+## 끝나면 닫는다 — 탭을 쌓아 두지 마라
+
+탭과 창이 많으면 기계가 눈에 띄게 느려진다. **내가 연 것은 내가 닫는다.**
+
+| 무엇 | 닫는 법 |
+| --- | --- |
+| 크롬 탭 (L3) | `mcp__claude-in-chrome__tabs_close_mcp {tabId}` |
+| 인앱 브라우저 탭 (L2) | `mcp__Claude_Browser__tabs_close {tabId}` — 첫 탭은 못 닫으니 거긴 `navigate` 로 딴 데 보낸다 |
+| 개발 서버 | `mcp__Claude_Browser__preview_stop {serverId}` |
+
+- **원래 떠 있던 탭은 건드리지 마라.** 사람이 보던 것일 수 있다.
+  `tabs_context_mcp` 로 처음에 목록을 받아 두면 뭐가 내 것인지 알 수 있다.
+- 검증이 끝나면 바로 닫는다. 보고를 쓰기 전에 닫아라 — 쓰고 나면 잊는다.
+- 막혀서 그만둘 때도 닫고 나간다.
+- 여러 건을 도는 작업은 **한 건 끝날 때마다** 닫는다. 마지막에 몰아서 치우려다 놓친다.
+
 ---
 
 ## 준비는 직접 한다 — 사람 시키지 마라
