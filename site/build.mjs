@@ -392,31 +392,37 @@ h1{margin:0 0 12px;font-size:clamp(28px,6.4vw,42px);font-weight:760;letter-spaci
 .helpbtn svg{width:16px;height:16px}
 h2{font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin:34px 0 12px}
 .cards{display:flex;flex-direction:column;gap:9px;min-height:12px}
-.card{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--line);
-  border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;
-  transition:box-shadow .2s var(--ease),border-color .2s}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .2s var(--ease),border-color .2s}
 .card:hover{box-shadow:var(--shadow2);border-color:var(--line2)}
-.card .open{flex:1;min-width:0;display:flex;align-items:center;gap:10px;
-  font:inherit;font-size:18px;font-weight:680;letter-spacing:-.02em;line-height:1.35;color:inherit;
-  background:none;border:0;cursor:pointer;text-align:left;padding:16px 18px 16px 4px}
-.card .open:hover .ttl{color:var(--acc)}
-.card .open:focus-visible,.boxhead:focus-visible,.helpbtn:focus-visible,.chip:focus-visible,.hclose:focus-visible{
-  outline:2px solid var(--acc);outline-offset:-2px;border-radius:12px}
+.card>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;
+  padding:15px 18px 15px 8px;font-size:18px;font-weight:680;letter-spacing:-.02em;line-height:1.35;
+  transition:background .15s}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary:hover{background:var(--accBg)}
+.card>summary:hover .ttl{color:var(--acc)}
+.card[open]{border-color:var(--line2)}
+.card[open]>summary{border-bottom:1px solid var(--line)}
+.card[open]>summary .caret{transform:rotate(180deg)}
 .ttl{flex:1;min-width:0;transition:color .15s}
-.go{flex:none;font-size:12.5px;font-weight:600;color:var(--dim);opacity:0;transition:opacity .15s;
-  letter-spacing:0}
-.card:hover .go,.card:focus-within .go{opacity:1}
-@media(hover:none){.go{opacity:.65}}
+.card>summary .caret{color:var(--dim);flex:none}
+.body{padding:20px}
+/* 초점 테두리. 요소마다 실제 모양에 맞춰 준다. 한 규칙으로 몰면 네모가 어긋나 보인다. */
+.card>summary:focus-visible,.boxhead:focus-visible{outline:2px solid var(--acc);outline-offset:-2px;border-radius:0}
+.chip:focus-visible,.helpbtn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.hclose:focus-visible,.grip:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.more>summary:focus-visible,.hsec>summary:focus-visible{outline:2px solid var(--acc);outline-offset:3px;border-radius:6px}
+a:focus-visible{outline:2px solid var(--acc);outline-offset:2px;border-radius:4px}
 
 /* 끌어서 옮기기. 잡은 카드는 손끝을 따라다니고, 원래 자리에는 빈 자리가 남는다. */
-.grip{flex:none;align-self:center;display:grid;place-items:center;width:34px;height:44px;
+.grip{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:9px;
   color:var(--dim);cursor:grab;touch-action:none;transition:color .15s,background .15s}
 .grip svg{width:16px;height:16px;fill:currentColor}
-.grip:hover{color:var(--acc);background:var(--accBg)}
+.grip:hover{color:var(--acc);background:rgba(37,99,235,.12)}
 .card.dragging{position:fixed;z-index:60;margin:0;pointer-events:none;cursor:grabbing;
   border-color:var(--acc);box-shadow:0 18px 44px -14px rgba(15,23,42,.42);
   transform:rotate(-.6deg) scale(1.02);transition:none}
-.card.dragging .go{opacity:0}
+.card.dragging>summary{background:none}
 .ghost{border:2px dashed var(--acc);border-radius:var(--r);background:var(--accBg);opacity:.7}
 body.dnd{cursor:grabbing;user-select:none;-webkit-user-select:none}
 
@@ -439,7 +445,7 @@ body.dnd{cursor:grabbing;user-select:none;-webkit-user-select:none}
 .boxed:empty::after{content:"끌어다 놓으면 목록에서 치워집니다";display:block;text-align:center;
   padding:20px 8px;font-size:13px;color:var(--dim)}
 .boxed .card{box-shadow:none;background:transparent;border-style:dashed}
-.boxed .card .open{font-size:16.5px;padding-top:12px;padding-bottom:12px}
+.boxed .card>summary{font-size:16.5px;padding-top:12px;padding-bottom:12px}
 .boxed .card:hover{background:var(--card);border-style:solid}
 body.dnd .boxed{border-color:var(--acc);background:var(--accBg)}
 .what{margin:0 0 18px;color:var(--ink2);font-size:15px}
@@ -506,26 +512,23 @@ dialog.help[open]{animation:pop .26s var(--ease)}
 .hbody{padding:20px 22px 26px;overflow-y:auto;max-height:calc(86vh - 74px);font-size:15px;color:var(--ink2)}
 .hbody>p{margin:0 0 16px}
 .hbody b{color:var(--ink);font-weight:650}
-dialog.task .hhead h2{font-size:20px}
 .lead{margin:0 0 18px;font-size:15.5px;color:var(--ink2)}
-dialog.task .say{margin:0 0 14px}
-dialog.task .saylabel{display:block;font-size:12px;font-weight:600;color:var(--dim);margin-bottom:8px}
-dialog.task .chips{display:flex;flex-wrap:wrap;gap:7px}
-dialog.task ul.meta{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 20px;padding:0;
-  font-size:13px;color:var(--dim)}
-dialog.task ul.meta li{cursor:help;border-bottom:1px dotted var(--line2);padding-bottom:1px}
-/* 쉬운 설명. 여기가 사람이 읽는 본문이라 제일 크게 둔다. */
-.easy{border-top:1px solid var(--line);padding-top:18px}
-.easy p{margin:0 0 14px;font-size:15px;line-height:1.72}
-.easy strong{display:inline;color:var(--ink);font-weight:700}
+/* 쉬운 설명. 사람이 읽는 본문이라 카드 안에서 제일 크게 둔다. */
+.easy{margin-top:18px;border-top:1px solid var(--line);padding-top:4px}
+.easy p{margin:0 0 14px;font-size:15px;line-height:1.72;color:var(--ink2)}
+.easy strong{color:var(--ink);font-weight:660}
+.easy h4{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--dim);
+  text-transform:none;margin:20px 0 9px}
 .easy ol{margin:2px 0 18px;padding:0;list-style:none;counter-reset:e;
   display:flex;flex-direction:column;gap:12px}
 .easy ol>li{counter-increment:e;display:grid;grid-template-columns:24px minmax(0,1fr);gap:11px;
-  align-items:start;font-size:15px;line-height:1.7}
+  align-items:start;font-size:15px;line-height:1.7;color:var(--ink2)}
 .easy ol>li::before{content:counter(e);display:grid;place-items:center;width:24px;height:24px;
   border-radius:8px;background:var(--accBg);color:var(--acc);font-size:12px;font-weight:700;margin-top:2px}
 .easy ol>li>p{margin:0}
-.easy h4{font-size:14.5px;color:var(--ink);margin:20px 0 8px}
+.easy ul{margin:0 0 14px;padding-left:19px;font-size:15px;color:var(--ink2)}
+.easy li{margin-bottom:6px}
+.easy code{font-size:13px}
 .hsec{border-top:1px solid var(--line)}
 .hsec>summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;
   padding:14px 2px;font-size:15.5px;font-weight:660;color:var(--ink)}
@@ -793,8 +796,6 @@ ${BIZ.map(
   </div>
 </dialog>
 
-${taskModals}
-
 <div class="toast" id="toast"><span class="tick">&#10003;</span><span class="tx">복사했습니다</span></div>
 <script>
 document.addEventListener('click', async function (e) {
@@ -828,12 +829,13 @@ if (biz) biz.addEventListener('toggle', function () {
   biz.querySelector('.pilltx').textContent = biz.open ? '접기' : '열기';
 });
 
-// ── 모달. 사용법 하나와 업무별 설명 여럿을 같은 방식으로 연다 ──
-function openDlg(d) { if (d && !d.open) d.showModal(); }
+// ── 사용법 모달 ────────────────────────────────────────────────
 document.addEventListener('click', function (e) {
-  var o = e.target.closest('[data-open]');
-  if (o) { openDlg(document.getElementById('dlg-' + o.dataset.open)); return; }
-  if (e.target.closest('#helpopen')) { openDlg(document.getElementById('help')); return; }
+  if (e.target.closest('#helpopen')) {
+    var d = document.getElementById('help');
+    if (!d.open) d.showModal();
+    return;
+  }
   if (e.target.closest('.hclose')) { e.target.closest('dialog').close(); return; }
   // 바깥(백드롭)을 누르면 닫는다. dialog 자체가 클릭 대상이면 바깥이다.
   if (e.target.tagName === 'DIALOG') e.target.close();
@@ -923,6 +925,9 @@ document.addEventListener('pointermove', function (e) {
   if (!drag.moved) {
     if (Math.abs(e.clientY - drag.sy) < 5 && Math.abs(e.clientX - drag.sx) < 5) return;
     drag.moved = true;
+    drag.card.open = false;             // 펼쳐진 채로 끌면 화면을 다 덮는다
+    var rr = drag.card.getBoundingClientRect();
+    drag.h = rr.height; drag.dy = Math.min(drag.dy, rr.height - 8);
     drag.ghost = document.createElement('div');
     drag.ghost.className = 'ghost';
     drag.ghost.style.height = drag.h + 'px';
