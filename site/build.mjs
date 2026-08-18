@@ -17,7 +17,6 @@ const FENCE = "```";
 
 const esc = (s) =>
   String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const ls = (d) => (fs.existsSync(d) ? fs.readdirSync(d).filter((f) => f.endsWith(".json")) : []);
 
 const inline = (t) =>
   esc(t)
@@ -195,18 +194,7 @@ function manuals() {
     .filter(Boolean);
 }
 
-function tasks() {
-  const T = path.join(ROOT, "tasks");
-  const doneDir = path.join(T, "done");
-  let done = 0;
-  if (fs.existsSync(doneDir))
-    for (const e of fs.readdirSync(doneDir, { withFileTypes: true }))
-      if (e.isDirectory()) done += ls(path.join(doneDir, e.name)).length;
-  return { queue: ls(path.join(T, "queue")).length, doing: ls(path.join(T, "doing")).length, done };
-}
-
 const M = manuals();
-const T = tasks();
 let commit = "";
 try {
   commit = execFileSync("git", ["log", "-1", "--format=%cd", "--date=format:%Y-%m-%d %H:%M"], {
@@ -214,7 +202,6 @@ try {
     encoding: "utf8",
   }).trim();
 } catch {}
-const now = new Date().toLocaleString("ko-KR", { dateStyle: "long", timeStyle: "short" });
 
 const layer = (s) => (String(s).match(/L[1-4]/g) || ["L1"]).pop();
 const LAYER_WHY = {
@@ -229,10 +216,15 @@ const cards = M.map((m) => {
     ? "길게 도는 작업이라 Codex 가 맡습니다"
     : "10분 안에 끝나는 작업이라 Claude 가 맡습니다";
   const lay = layer(m.surfaces);
+  // 접힌 상태에서는 제목만 보인다. 펼치면 개요, 한 번 더 펼치면 매뉴얼 본문.
   return [
-    '<article class="card" id="' + m.id + '">',
-    '<header class="chead"><h3>' + esc(m.title) + "</h3>",
-    '<span class="lay lay' + lay[1] + '" data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + "</span></header>",
+    '<details class="card" id="' + m.id + '">',
+    "<summary>",
+    '<span class="ttl">' + esc(m.title) + "</span>",
+    '<span class="lay lay' + lay[1] + '" data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + "</span>",
+    '<span class="caret"></span>',
+    "</summary>",
+    '<div class="body">',
     m.what ? '<p class="what">' + esc(m.what) + "</p>" : "",
     '<div class="say"><span class="saylabel">이렇게 말하면 됩니다</span><div class="chips">' +
       m.triggers
@@ -248,13 +240,14 @@ const cards = M.map((m) => {
       : "",
     m.scripts.length ? '<li data-tip="' + esc(m.scripts.join(", ")) + '">전용 도구 ' + m.scripts.length + "</li>" : "",
     "</ul>",
-    '<details><summary>자세히 <span class="caret"></span></summary><div class="detail">',
+    '<details class="more"><summary>매뉴얼 전문 <span class="caret"></span></summary><div class="detail">',
     m.steps ? '<h4 class="dh">어떻게 하나</h4>' + md(m.steps) : "",
     m.outputs ? '<h4 class="dh">무엇이 남나</h4>' + md(m.outputs) : "",
     m.traps ? '<h4 class="dh">겪어 본 함정</h4>' + md(m.traps) : "",
     m.noask ? '<h4 class="dh">이럴 땐 묻지 않고 진행합니다</h4>' + md(m.noask) : "",
     '<p class="src"><a href="' + REPO + "/blob/main/manuals/" + m.id + '/MANUAL.md">매뉴얼 원문 보기 →</a></p>',
-    "</div></details></article>",
+    "</div></details>",
+    "</div></details>",
   ]
     .filter(Boolean)
     .join("\n");
@@ -297,19 +290,22 @@ body{margin:0;background:var(--bg);color:var(--ink);
   font:16px/1.68 -apple-system,BlinkMacSystemFont,"Pretendard","Apple SD Gothic Neo","Malgun Gothic",Segoe UI,sans-serif;
   -webkit-font-smoothing:antialiased;word-break:keep-all}
 .wrap{max-width:760px;margin:0 auto;padding:64px 20px 88px}
-header.top{margin-bottom:44px}
+header.top{margin-bottom:26px}
 h1{margin:0 0 14px;font-size:clamp(28px,6vw,38px);font-weight:750;letter-spacing:-.03em;line-height:1.2}
 .lede{margin:0;color:var(--ink2);font-size:17px;max-width:34em}
 .lede strong{color:var(--ink);font-weight:650}
-.stamp{margin:18px 0 0;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums}
-.how{margin:28px 0 0;padding:18px 20px;background:var(--accBg);border-radius:var(--r);font-size:15px;color:var(--ink2);line-height:1.7}
-.how b{color:var(--ink)}
-.how .ex{display:inline-block;margin-top:10px;padding:7px 14px;background:var(--card);border:1px solid var(--line2);border-radius:99px;font-size:15px;color:var(--ink);font-weight:600}
 h2{font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin:52px 0 16px}
-.cards{display:flex;flex-direction:column;gap:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px 22px 18px;box-shadow:var(--shadow)}
-.chead{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
-.card h3{margin:0;font-size:19px;font-weight:680;letter-spacing:-.02em;flex:1;line-height:1.35}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
+.card>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;
+  padding:17px 20px;font-size:18px;font-weight:680;letter-spacing:-.02em;line-height:1.35;transition:background .13s}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary:hover{background:var(--accBg)}
+.card[open]>summary{border-bottom:1px solid var(--line)}
+.ttl{flex:1}
+.card>summary .caret{color:var(--dim);flex:none}
+.card[open]>summary .caret{transform:rotate(180deg)}
+.body{padding:20px}
 .what{margin:0 0 18px;color:var(--ink2);font-size:15px}
 .say{margin:0 0 16px}
 .saylabel{display:block;font-size:12px;color:var(--dim);margin-bottom:8px;font-weight:600}
@@ -333,11 +329,11 @@ ul.meta li{cursor:help;border-bottom:1px dotted var(--line2);padding-bottom:1px}
   background:var(--ink);color:var(--bg);font-size:12.5px;font-weight:500;line-height:1.5;
   padding:7px 11px;border-radius:8px;white-space:normal;width:max-content;max-width:240px;
   z-index:20;pointer-events:none;box-shadow:0 6px 20px -8px rgba(0,0,0,.4);letter-spacing:0;text-transform:none}
-details{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
-summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--acc);list-style:none;display:inline-flex;align-items:center;gap:5px}
-summary::-webkit-details-marker{display:none}
+.more{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.more>summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--acc);list-style:none;display:inline-flex;align-items:center;gap:5px}
+.more>summary::-webkit-details-marker{display:none}
 .caret{display:inline-block;width:0;height:0;border:4px solid transparent;border-top-color:currentColor;margin-top:3px;transition:.15s}
-details[open] .caret{transform:rotate(180deg);margin-top:-3px}
+.more[open]>summary .caret{transform:rotate(180deg);margin-top:-3px}
 .detail{padding-top:6px;font-size:14.5px;color:var(--ink2)}
 .dh{font-size:13px;font-weight:700;color:var(--ink);margin:22px 0 8px}
 .dh:first-child{margin-top:14px}
@@ -356,16 +352,14 @@ th,td{text-align:left;padding:7px 12px 7px 0;border-bottom:1px solid var(--line)
 th{color:var(--dim);font-weight:600;font-size:12.5px;white-space:nowrap}
 .src{margin:18px 0 0;font-size:13px}
 .src a{color:var(--acc);text-decoration:none;font-weight:600}
-.board{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-@media(max-width:560px){.board{grid-template-columns:1fr}}
-.col{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow)}
-.col h3{margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
-.col .n{font-size:26px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.2}
-.col p{margin:4px 0 0;font-size:13px;color:var(--dim)}
-.setup{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px;box-shadow:var(--shadow)}
-.setup p{margin:0 0 12px;font-size:15px;color:var(--ink2)}
-.setup p:last-child{margin-bottom:0}
-.setup b{color:var(--ink)}
+.doc{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:24px;box-shadow:var(--shadow)}
+.doc h3{font-size:15.5px;font-weight:700;color:var(--ink);letter-spacing:-.015em;margin:30px 0 9px}
+.doc h3:first-child{margin-top:0}
+.doc p{margin:0 0 12px;font-size:15px;color:var(--ink2)}
+.doc p:last-child{margin-bottom:0}
+.doc b{color:var(--ink);font-weight:650}
+.chip.quote{display:block;width:100%;text-align:left;margin:0 0 12px;padding:13px 16px;border-radius:10px;font-size:15.5px}
+.doc td:first-child{white-space:nowrap;font-weight:700;color:var(--ink);font-size:12.5px}
 footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--dim);display:flex;flex-wrap:wrap;gap:6px 16px}
 footer a{color:var(--acc);text-decoration:none}
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,14px);background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;transition:.2s;pointer-events:none;z-index:50}
@@ -378,43 +372,43 @@ footer a{color:var(--acc);text-decoration:none}
 
 <header class="top">
   <h1>업무 관제탑</h1>
-  <p class="lede">회사에서 반복하는 일을 <strong>매뉴얼 한 장</strong>으로 적어 뒀습니다.
-  Claude 나 Codex 새 세션에 <strong>한 문장</strong>만 말하면 그대로 처리합니다.</p>
-
-  <div class="how">
-    <b>쓰는 법</b> — 아래 업무 카드에서 따옴표 안의 말을 그대로 하면 됩니다. 눌러서 복사할 수 있습니다.
-    <br><span class="ex">카톡 봐줘</span>
-  </div>
-
-  <p class="stamp">${esc(now)} 기준 · 등록된 업무 ${M.length}개</p>
+  <p class="lede">반복하는 회사 일을 <strong>매뉴얼 한 장</strong>씩 적어 뒀습니다.
+  눌러서 펼치면 뭐라고 말하면 되는지 나옵니다.</p>
 </header>
 
 <section>
-  <h2>등록된 업무</h2>
   <div class="cards">
 ${cards || '<p class="what">아직 없습니다.</p>'}
   </div>
 </section>
 
 <section>
-  <h2>일감</h2>
-  <div class="board">
-    <div class="col"><h3>대기</h3><div class="n">${T.queue}</div><p>줄 서 있는 일</p></div>
-    <div class="col"><h3>진행</h3><div class="n">${T.doing}</div><p>지금 돌아가는 일</p></div>
-    <div class="col"><h3>완료</h3><div class="n">${T.done}</div><p>끝낸 일 누적</p></div>
-  </div>
-</section>
+  <h2>돌아가는 방식</h2>
+  <div class="doc">
 
-<section>
-  <h2>새 컴퓨터에서 쓰려면</h2>
-  <div class="setup">
-    <p>구글 드라이브 <b>내 드라이브 → 에이전트</b> 폴더의 <code>설치.mjs</code> 를 한 번 실행하면 끝납니다.
-    지침·스킬·기억·매뉴얼이 전부 제자리에 깔립니다.</p>
-    <pre><code>node "&lt;드라이브&gt;/내 드라이브/에이전트/설치.mjs"</code></pre>
-    <p>설치가 안 된 컴퓨터에서도 <b>"G드라이브 에이전트 폴더 보고 ○○ 해줘"</b> 라고 하면 바로 됩니다.
-    그 폴더 하나에 매뉴얼·회사 정보·계정이 다 들어 있습니다.</p>
-    <p><b>새 업무를 늘리려면</b> 그냥 시켜 보고 <b>"방금 한 거 업무로 등록해줘"</b> 라고 하면 됩니다.
-    하면서 겪은 함정까지 매뉴얼에 적혀서 다음부터는 헤매지 않습니다.</p>
+    <h3>세팅은 구글 드라이브 한 곳에 있다</h3>
+    <p>구글 드라이브 <b>내 드라이브 → 에이전트</b> 폴더에 매뉴얼·회사 정보·로그인 계정을 다 넣어 뒀습니다.
+    그래서 아무것도 안 깔린 새 컴퓨터에서도, Claude 나 Codex 새 세션에 이 한 줄이면 됩니다.</p>
+    <button class="chip quote" data-copy="G드라이브 에이전트 폴더 보고 카톡 봐줘" data-tip="누르면 복사됩니다">G드라이브 에이전트 폴더 보고 카톡 봐줘</button>
+    <p>에이전트가 그 폴더에서 매뉴얼을 찾아 읽고, 필요한 회사 정보와 계정도 거기서 꺼내 씁니다.
+    배경을 매번 설명해 줄 필요가 없습니다. 시킬 때마다 <b>한 문장이면 끝납니다.</b></p>
+
+    <h3>화면까지 직접 만진다 — L1에서 L4까지</h3>
+    <p>일마다 어디까지 만져야 하는지가 다릅니다. 매뉴얼에 그 층을 적어 두면 에이전트가 맞는 도구를 골라 씁니다.</p>
+    <div class="tw"><table><thead><tr><th>층</th><th>무엇으로</th><th>예</th></tr></thead><tbody>
+      <tr><td>L1</td><td>명령어와 스크립트</td><td>파일 찾기, 영상 자르기, 데이터 만들기</td></tr>
+      <tr><td>L2</td><td>인앱 브라우저</td><td>로그인 없이 열리는 웹 화면 읽기</td></tr>
+      <tr><td>L3</td><td>이미 로그인된 크롬</td><td>인스타·유튜브·인포크처럼 계정이 있어야 하는 일</td></tr>
+      <tr><td>L4</td><td>컴퓨터 전체 제어</td><td>브라우저 밖 프로그램. 카톡, 한글, 프리미어</td></tr>
+    </tbody></table></div>
+    <p>L3·L4 까지 열어 뒀습니다. 그래서 <b>계정으로 하는 일은 대부분 사람 손을 안 거치고 끝납니다</b> —
+    유튜브에 올리고, 인스타에 게시하고, 관리자 페이지를 고치고, 카톡을 읽는 것까지.
+    보내기·게시·결제·삭제처럼 되돌릴 수 없는 것만 한 번 물어봅니다.</p>
+
+    <h3>업무 늘리기</h3>
+    <p>새 일은 그냥 시켜 보면 됩니다. 끝나고 <b>"방금 한 거 업무로 등록해줘"</b> 라고 하면
+    이 목록에 카드가 하나 늘어납니다. 하다가 막혔던 지점까지 매뉴얼에 적혀서 다음부터는 같은 데서 안 헤맵니다.</p>
+
   </div>
 </section>
 
