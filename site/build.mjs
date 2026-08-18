@@ -392,12 +392,15 @@ h1{margin:0 0 12px;font-size:clamp(28px,6.4vw,42px);font-weight:760;letter-spaci
 .helpbtn svg{width:16px;height:16px}
 h2{font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin:34px 0 12px}
 .cards{display:flex;flex-direction:column;gap:9px;min-height:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  box-shadow:var(--shadow);overflow:hidden;transition:box-shadow .2s var(--ease),border-color .2s}
-.card:hover{box-shadow:var(--shadow2);border-color:var(--line2)}
+/* overflow 를 숨기면 안 된다. 툴팁이 카드 밖으로 나가는데 거기서 잘린다.
+   대신 summary 자체에 모서리를 줘서 hover 배경이 둥근 테두리를 안 넘게 한다. */
+.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow);transition:box-shadow .2s var(--ease),border-color .2s}
+.card:hover{box-shadow:var(--shadow2);border-color:var(--line2);z-index:3}
 .card>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;
   padding:15px 18px 15px 8px;font-size:18px;font-weight:680;letter-spacing:-.02em;line-height:1.35;
-  transition:background .15s}
+  border-radius:calc(var(--r) - 1px);transition:background .15s}
+.card[open]>summary{border-radius:calc(var(--r) - 1px) calc(var(--r) - 1px) 0 0}
 .card>summary::-webkit-details-marker{display:none}
 .card>summary:hover{background:var(--accBg)}
 .card>summary:hover .ttl{color:var(--acc)}
@@ -468,12 +471,21 @@ ul.meta li{cursor:help;border-bottom:1px dotted var(--line2);padding-bottom:1px}
 .lay2{background:var(--accBg);color:var(--acc)}
 .lay3{background:var(--warnBg);color:var(--warn)}
 .lay4{background:var(--warnBg);color:var(--warn)}
+/* 툴팁은 마우스가 있는 화면에서만 뜬다. 손가락에는 hover 가 없어서 뜰 일이 없고,
+   좁은 폭에서 억지로 띄우면 화면 밖으로 나간다. */
 [data-tip]{position:relative}
-[data-tip]:hover::after,[data-tip]:focus-visible::after{
-  content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);
-  background:var(--ink);color:var(--bg);font-size:12.5px;font-weight:500;line-height:1.5;
-  padding:7px 11px;border-radius:8px;white-space:normal;width:max-content;max-width:240px;
-  z-index:20;pointer-events:none;box-shadow:0 6px 20px -8px rgba(0,0,0,.4);letter-spacing:0;text-transform:none}
+@media (hover:hover){
+  [data-tip]:hover::after,[data-tip]:focus-visible::after{
+    content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);
+    background:var(--ink);color:var(--bg);font-size:12.5px;font-weight:500;line-height:1.5;
+    padding:7px 11px;border-radius:8px;white-space:normal;width:max-content;max-width:min(240px,58vw);
+    z-index:40;pointer-events:none;box-shadow:0 6px 20px -8px rgba(0,0,0,.4);letter-spacing:0;text-transform:none}
+  /* 오른쪽 끝에 붙은 배지는 가운데 정렬하면 화면 밖으로 나간다. 오른쪽 모서리에 맞춘다. */
+  .lay[data-tip]:hover::after,.lay[data-tip]:focus-visible::after{left:auto;right:-6px;transform:none}
+  /* 메타 줄은 왼쪽부터 차니 앞쪽은 왼쪽, 뒤쪽 둘은 오른쪽 모서리에 맞춘다. */
+  ul.meta li:first-child[data-tip]:hover::after{left:0;transform:none}
+  ul.meta li:nth-last-child(-n+2)[data-tip]:hover::after{left:auto;right:0;transform:none}
+}
 .more{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
 .more>summary{cursor:pointer;font-size:14px;font-weight:600;color:var(--acc);list-style:none;display:inline-flex;align-items:center;gap:5px}
 .more>summary::-webkit-details-marker{display:none}
