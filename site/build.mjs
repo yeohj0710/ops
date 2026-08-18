@@ -140,10 +140,13 @@ function md(src) {
       continue;
     }
 
+    // 목록 기호는 뒤에 공백이 와야 목록이다. 이걸 안 따지면 `**굵게**` 로 시작하는 문단을
+    // 별표 목록으로 오해해서 어느 갈래에도 안 걸리고 통째로 사라진다.
+    const notList = (s) => !/^\s*([-*]\s|\d+\.\s)/.test(s);
     const para = [];
     while (
       i < lines.length && lines[i].trim() && !/^[#>|]/.test(lines[i]) &&
-      !isFence(lines[i]) && !/^\s*[-*\d]/.test(lines[i])
+      !isFence(lines[i]) && notList(lines[i])
     )
       para.push(lines[i++]);
     if (para.length) out.push("<p>" + inline(para.join(" ")) + "</p>");
@@ -193,6 +196,7 @@ function manuals() {
         surfaces: grab("제어층", "L1"),
         minutes: grab("한 번에 걸리는 시간"),
         what: plain(section("무엇을 만드는 업무인가").split("\n\n")[0] || ""),
+        easy: section("쉬운 설명"),
         steps,
         outputs: section("산출물"),
         traps: section("알려진 함정"),
@@ -258,45 +262,57 @@ const LAYER_WHY = {
   L4: "화면을 직접 제어합니다. 기계당 한 번에 하나만 돕니다",
 };
 
+// 목록은 줄 하나짜리 카드다. 눌러서 설명 모달을 열고, 손잡이를 끌어 순서를 바꾸거나 보관함에 넣는다.
 const cards = M.map((m) => {
+  const lay = layer(m.surfaces);
+  return [
+    '<article class="card rev" id="' + m.id + '" data-id="' + m.id + '">',
+    '<span class="grip" title="끌어서 순서를 바꾸거나 보관함에 넣습니다" aria-label="끌기 손잡이">' + GRIP + "</span>",
+    '<button class="open" type="button" data-open="' + m.id + '">',
+    '<span class="ttl">' + esc(m.title) + "</span>",
+    '<span class="lay lay' + lay[1] + '" data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + "</span>",
+    '<span class="go" aria-hidden="true">설명 보기</span>',
+    "</button></article>",
+  ].join("");
+}).join("\n");
+
+// 업무마다 설명 모달을 하나씩 굽는다. 쉬운 설명이 먼저 나오고, 매뉴얼 본문은 접어 둔다.
+const taskModals = M.map((m) => {
   const runnerTip = m.runner.includes("codex")
     ? "길게 도는 작업이라 Codex 가 맡습니다"
     : "10분 안에 끝나는 작업이라 Claude 가 맡습니다";
   const lay = layer(m.surfaces);
-  // 접힌 상태에서는 제목만 보인다. 펼치면 개요, 한 번 더 펼치면 매뉴얼 본문.
   return [
-    '<details class="card rev" id="' + m.id + '" data-id="' + m.id + '">',
-    "<summary>",
-    '<span class="grip" title="끌어서 순서 바꾸기" aria-label="순서 바꾸기">' + GRIP + "</span>",
-    '<span class="ttl">' + esc(m.title) + "</span>",
-    '<span class="lay lay' + lay[1] + '" data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + "</span>",
-    '<button class="stow" type="button" aria-label="보관함으로 치우기"></button>',
-    '<span class="caret"></span>',
-    "</summary>",
-    '<div class="body">',
-    m.what ? '<p class="what">' + esc(m.what) + "</p>" : "",
+    '<dialog class="help task" id="dlg-' + m.id + '">',
+    '<div class="hhead"><h2>' + esc(m.title) + "</h2>",
+    '<button class="hclose" type="button" aria-label="닫기">&times;</button></div>',
+    '<div class="hbody">',
+    // 개요(`무엇을 만드는 업무인가`)는 에이전트가 읽는 문장이라 사람에게는 딱딱하다.
+    // 쉬운 설명이 있으면 그걸 본문으로 쓰고, 없을 때만 개요를 보여준다.
+    !m.easy && m.what ? '<p class="lead">' + esc(m.what) + "</p>" : "",
     '<div class="say"><span class="saylabel">이렇게 말하면 됩니다</span><div class="chips">' +
-      m.triggers
-        .map((w) => '<button class="chip" data-copy="' + esc(w) + '" data-tip="누르면 복사됩니다">' + esc(w) + "</button>")
-        .join("") +
+      m.triggers.map((w) => '<button class="chip" data-copy="' + esc(w) + '">' + esc(w) + "</button>").join("") +
       "</div></div>",
     '<ul class="meta">',
-    '<li data-tip="' + esc(runnerTip) + '">' + esc(m.runner) + "</li>",
+    '<li data-tip="' + esc(runnerTip) + '">' + esc(m.runner) + " 가 맡습니다</li>",
     m.minutes ? '<li data-tip="한 번 돌릴 때 걸리는 시간입니다">' + esc(m.minutes) + "</li>" : "",
     m.stepCount ? '<li data-tip="매뉴얼에 적힌 단계 수입니다">' + m.stepCount + "단계</li>" : "",
     m.trapCount
-      ? '<li data-tip="실제로 겪고 적어 둔 실패 사례입니다. 같은 실수를 반복하지 않습니다">함정 ' + m.trapCount + "</li>"
+      ? '<li data-tip="실제로 겪고 적어 둔 실패 사례입니다. 같은 실수를 반복하지 않습니다">겪어 본 함정 ' +
+        m.trapCount + "가지</li>"
       : "",
-    m.scripts.length ? '<li data-tip="' + esc(m.scripts.join(", ")) + '">전용 도구 ' + m.scripts.length + "</li>" : "",
+    m.scripts.length ? '<li data-tip="' + esc(m.scripts.join(", ")) + '">전용 도구 ' + m.scripts.length + "개</li>" : "",
+    '<li data-tip="' + esc(LAYER_WHY[lay]) + '">' + lay + " 까지 씁니다</li>",
     "</ul>",
-    '<details class="more"><summary>매뉴얼 전문 <span class="caret"></span></summary><div class="detail">',
-    m.steps ? '<h4 class="dh">어떻게 하나</h4>' + md(m.steps) : "",
-    m.outputs ? '<h4 class="dh">무엇이 남나</h4>' + md(m.outputs) : "",
+    m.easy ? '<div class="easy">' + md(m.easy) + "</div>" : "",
+    '<details class="hsec"><summary>매뉴얼 전문 (에이전트가 읽는 절차서) <span class="caret"></span></summary><div class="in">',
+    m.steps ? '<h4 class="dh">절차</h4>' + md(m.steps) : "",
+    m.outputs ? '<h4 class="dh">산출물</h4>' + md(m.outputs) : "",
     m.traps ? '<h4 class="dh">겪어 본 함정</h4>' + md(m.traps) : "",
-    m.noask ? '<h4 class="dh">이럴 땐 묻지 않고 진행합니다</h4>' + md(m.noask) : "",
-    '<p class="src"><a href="' + REPO + "/blob/main/manuals/" + m.id + '/MANUAL.md">매뉴얼 원문 보기 →</a></p>',
+    m.noask ? '<h4 class="dh">묻지 않고 진행하는 것</h4>' + md(m.noask) : "",
+    '<p class="src"><a href="' + REPO + "/blob/main/manuals/" + m.id + '/MANUAL.md">매뉴얼 원문 보기</a></p>',
     "</div></details>",
-    "</div></details>",
+    "</div></dialog>",
   ]
     .filter(Boolean)
     .join("\n");
@@ -373,11 +389,12 @@ h1{margin:0 0 12px;font-size:clamp(28px,6.4vw,42px);font-weight:760;letter-spaci
 .why li::before{content:counter(w);display:grid;place-items:center;width:26px;height:26px;border-radius:9px;
   background:var(--accBg);color:var(--acc);font-size:12.5px;font-weight:700;margin-top:1px}
 .why b{color:var(--ink);font-weight:660}
-.why .say2{display:inline-block;margin-top:7px;padding:8px 14px;border-radius:99px;font-weight:650;
-  background:var(--accBg);color:var(--acc);font-size:14.5px;border:0;font-family:inherit;cursor:pointer;text-align:left}
+.why .say2{display:inline-block;margin-top:7px;padding:8px 15px;border-radius:99px;font-weight:650;
+  background:var(--accBg);color:var(--acc);font-size:14.5px;border:1px solid transparent;
+  font-family:inherit;cursor:pointer;text-align:left;transition:background .13s,color .13s,border-color .13s}
 .why .say2::before{content:"\\201C"}.why .say2::after{content:"\\201D"}
-.why .say2.copied{background:var(--okBg);color:var(--ok)}
-.why .say2.copied::before,.why .say2.copied::after{content:""}
+.why .say2:hover{border-color:var(--acc)}
+.why .say2.copied{background:var(--okBg);color:var(--ok);border-color:transparent}
 .helpbtn{position:relative;margin:16px 0 0;display:inline-flex;align-items:center;gap:8px;
   font:inherit;font-size:14.5px;font-weight:650;cursor:pointer;
   padding:10px 18px;border-radius:99px;border:1px solid var(--line2);background:var(--card);color:var(--ink);
@@ -385,61 +402,70 @@ h1{margin:0 0 12px;font-size:clamp(28px,6.4vw,42px);font-weight:760;letter-spaci
 .helpbtn:hover{transform:translateY(-1px);box-shadow:var(--shadow2);border-color:var(--acc);color:var(--acc)}
 .helpbtn svg{width:16px;height:16px}
 h2{font-size:12px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);margin:34px 0 12px}
-.cards{display:flex;flex-direction:column;gap:10px;min-height:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
-  overflow:hidden;transition:box-shadow .2s var(--ease),transform .2s var(--ease),border-color .2s}
-.card:hover{box-shadow:var(--shadow2)}
-.card>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;
-  padding:16px 18px;font-size:18px;font-weight:680;letter-spacing:-.02em;line-height:1.35;transition:background .15s}
-.card>summary::-webkit-details-marker{display:none}
-.card>summary:hover{background:linear-gradient(90deg,var(--accBg),transparent)}
-.card[open]>summary{border-bottom:1px solid var(--line)}
-.ttl{flex:1;min-width:0}
-.card>summary .caret{color:var(--dim);flex:none}
-.card[open]>summary .caret{transform:rotate(180deg)}
-.body{padding:20px}
+.cards{display:flex;flex-direction:column;gap:9px;min-height:12px}
+.card{display:flex;align-items:stretch;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;
+  transition:box-shadow .2s var(--ease),border-color .2s}
+.card:hover{box-shadow:var(--shadow2);border-color:var(--line2)}
+.card .open{flex:1;min-width:0;display:flex;align-items:center;gap:10px;
+  font:inherit;font-size:18px;font-weight:680;letter-spacing:-.02em;line-height:1.35;color:inherit;
+  background:none;border:0;cursor:pointer;text-align:left;padding:16px 18px 16px 4px}
+.card .open:hover .ttl{color:var(--acc)}
+.card .open:focus-visible,.boxhead:focus-visible,.helpbtn:focus-visible,.chip:focus-visible,.hclose:focus-visible{
+  outline:2px solid var(--acc);outline-offset:-2px;border-radius:12px}
+.ttl{flex:1;min-width:0;transition:color .15s}
+.go{flex:none;font-size:12.5px;font-weight:600;color:var(--dim);opacity:0;transition:opacity .15s;
+  letter-spacing:0}
+.card:hover .go,.card:focus-within .go{opacity:1}
+@media(hover:none){.go{opacity:.65}}
 
-/* 끌어서 순서 바꾸기. 손가락으로도 되게 포인터 이벤트로 만들었다. */
-.grip{flex:none;display:grid;place-items:center;width:26px;height:26px;margin-left:-6px;border-radius:8px;
-  color:var(--dim);cursor:grab;touch-action:none;transition:.15s}
+/* 끌어서 옮기기. 잡은 카드는 손끝을 따라다니고, 원래 자리에는 빈 자리가 남는다. */
+.grip{flex:none;align-self:center;display:grid;place-items:center;width:34px;height:44px;
+  color:var(--dim);cursor:grab;touch-action:none;transition:color .15s,background .15s}
 .grip svg{width:16px;height:16px;fill:currentColor}
-.grip:hover{background:var(--accBg);color:var(--acc)}
-.card.dragging{opacity:.55;transform:scale(.985);box-shadow:var(--shadow2);cursor:grabbing}
-body.dnd{cursor:grabbing;user-select:none}
-body.dnd .card:not(.dragging){transition:transform .22s var(--ease)}
-.stow{flex:none;width:28px;height:28px;border-radius:9px;border:0;background:none;cursor:pointer;
-  color:var(--dim);opacity:0;transition:.15s;display:grid;place-items:center;padding:0}
-.stow::before{content:"";width:13px;height:13px;border:1.7px solid currentColor;border-radius:3px;
-  border-top-width:5px}
-.card:hover .stow,.card:focus-within .stow{opacity:1}
-.stow:hover{background:var(--accBg);color:var(--acc)}
-@media(hover:none){.stow{opacity:.55}}
+.grip:hover{color:var(--acc);background:var(--accBg)}
+.card.dragging{position:fixed;z-index:60;margin:0;pointer-events:none;cursor:grabbing;
+  border-color:var(--acc);box-shadow:0 18px 44px -14px rgba(15,23,42,.42);
+  transform:rotate(-.6deg) scale(1.02);transition:none}
+.card.dragging .go{opacity:0}
+.ghost{border:2px dashed var(--acc);border-radius:var(--r);background:var(--accBg);opacity:.7}
+body.dnd{cursor:grabbing;user-select:none;-webkit-user-select:none}
 
-/* 자주 안 쓰는 업무를 치워두는 곳. 여기로 끌어 넣거나 버튼으로 보낸다. */
-.boxwrap{margin-top:14px}
-.boxwrap>summary{display:inline-flex;align-items:center;gap:7px;cursor:pointer;list-style:none;
-  font-size:13px;font-weight:600;color:var(--dim);padding:6px 2px;transition:color .15s}
-.boxwrap>summary::-webkit-details-marker{display:none}
-.boxwrap>summary:hover{color:var(--acc)}
-.boxwrap[open]>summary .caret{transform:rotate(180deg)}
-.boxed{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding:12px;border-radius:var(--r);
-  border:1px dashed var(--line2);background:rgba(148,163,184,.05);min-height:64px}
-.boxed:empty::after{content:"여기로 끌어다 놓으면 목록에서 치워집니다";display:block;text-align:center;
-  padding:16px 8px;font-size:13px;color:var(--dim)}
-.boxed .card{opacity:.75;box-shadow:none}
-.boxed .card:hover{opacity:1}
-.boxed .stow::before{border-top-width:1.7px;border-bottom-width:5px}
+/* 자주 안 쓰는 업무를 치워두는 곳. 끌어다 넣고, 끌어서 도로 꺼낸다. */
+.boxwrap{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+.boxhead{display:flex;align-items:center;gap:10px;width:100%;font:inherit;background:none;border:0;
+  cursor:pointer;padding:6px 2px;color:var(--ink2);text-align:left;transition:color .15s}
+.boxhead:hover{color:var(--acc)}
+.boxhead .bicon{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:9px;
+  background:rgba(148,163,184,.12);color:var(--dim)}
+.boxhead .bicon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6}
+.boxhead b{font-size:14px;font-weight:650;color:var(--ink)}
+.boxhead .bsub{font-size:12.5px;color:var(--dim)}
+.boxhead .caret{margin-left:auto;color:var(--dim)}
+.boxwrap.on .boxhead .caret{transform:rotate(180deg)}
+.boxwrap.on .boxhead .bicon{background:var(--accBg);color:var(--acc)}
+.boxed{display:none;flex-direction:column;gap:9px;margin-top:12px;padding:10px;border-radius:var(--r);
+  border:1.5px dashed var(--line2);background:rgba(148,163,184,.05)}
+.boxwrap.on .boxed,body.dnd .boxed{display:flex}
+.boxed:empty::after{content:"끌어다 놓으면 목록에서 치워집니다";display:block;text-align:center;
+  padding:20px 8px;font-size:13px;color:var(--dim)}
+.boxed .card{box-shadow:none;background:transparent;border-style:dashed}
+.boxed .card .open{font-size:16.5px;padding-top:12px;padding-bottom:12px}
+.boxed .card:hover{background:var(--card);border-style:solid}
 body.dnd .boxed{border-color:var(--acc);background:var(--accBg)}
 .what{margin:0 0 18px;color:var(--ink2);font-size:15px}
 .say{margin:0 0 16px}
 .saylabel{display:block;font-size:12px;color:var(--dim);margin-bottom:8px;font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;background:var(--accBg);color:var(--acc);border:1px solid transparent;padding:6px 13px;border-radius:99px;transition:.13s}
+/* 따옴표는 ::before / ::after 로 붙인다. 그래서 여기에 data-tip 을 달면 안 된다.
+   툴팁도 ::after 를 쓰기 때문에 hover 하는 순간 닫는 따옴표가 사라지고 폭이 줄어 글이 접힌다. */
+.chip{font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;background:var(--accBg);color:var(--acc);
+  border:1px solid transparent;padding:6px 13px;border-radius:99px;
+  transition:background .13s,color .13s,border-color .13s}
 .chip::before{content:"\\201C"}
 .chip::after{content:"\\201D"}
 .chip:hover{border-color:var(--acc)}
-.chip.copied{background:var(--okBg);color:var(--ok)}
-.chip.copied::before,.chip.copied::after{content:""}
+.chip.copied{background:var(--okBg);color:var(--ok);border-color:transparent}
 ul.meta{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;margin:0;padding:0;font-size:13px;color:var(--dim)}
 ul.meta li{cursor:help;border-bottom:1px dotted var(--line2);padding-bottom:1px}
 .lay{font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.04em;cursor:help;flex:none}
@@ -491,6 +517,26 @@ dialog.help[open]{animation:pop .26s var(--ease)}
 .hbody{padding:20px 22px 26px;overflow-y:auto;max-height:calc(86vh - 74px);font-size:15px;color:var(--ink2)}
 .hbody>p{margin:0 0 16px}
 .hbody b{color:var(--ink);font-weight:650}
+dialog.task .hhead h2{font-size:20px}
+.lead{margin:0 0 18px;font-size:15.5px;color:var(--ink2)}
+dialog.task .say{margin:0 0 14px}
+dialog.task .saylabel{display:block;font-size:12px;font-weight:600;color:var(--dim);margin-bottom:8px}
+dialog.task .chips{display:flex;flex-wrap:wrap;gap:7px}
+dialog.task ul.meta{list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 20px;padding:0;
+  font-size:13px;color:var(--dim)}
+dialog.task ul.meta li{cursor:help;border-bottom:1px dotted var(--line2);padding-bottom:1px}
+/* 쉬운 설명. 여기가 사람이 읽는 본문이라 제일 크게 둔다. */
+.easy{border-top:1px solid var(--line);padding-top:18px}
+.easy p{margin:0 0 14px;font-size:15px;line-height:1.72}
+.easy strong{display:inline;color:var(--ink);font-weight:700}
+.easy ol{margin:2px 0 18px;padding:0;list-style:none;counter-reset:e;
+  display:flex;flex-direction:column;gap:12px}
+.easy ol>li{counter-increment:e;display:grid;grid-template-columns:24px minmax(0,1fr);gap:11px;
+  align-items:start;font-size:15px;line-height:1.7}
+.easy ol>li::before{content:counter(e);display:grid;place-items:center;width:24px;height:24px;
+  border-radius:8px;background:var(--accBg);color:var(--acc);font-size:12px;font-weight:700;margin-top:2px}
+.easy ol>li>p{margin:0}
+.easy h4{font-size:14.5px;color:var(--ink);margin:20px 0 8px}
 .hsec{border-top:1px solid var(--line)}
 .hsec>summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;
   padding:14px 2px;font-size:15.5px;font-weight:660;color:var(--ink)}
@@ -552,8 +598,17 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
 .bizgrid dt{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:#64748b}
 .bizgrid dd{margin:8px 0 0;font-size:14px;line-height:1.6;color:#e2e8f0}
 .bizgrid .wide{grid-column:1/-1}
-.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,14px);background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:99px;font-size:14px;font-weight:600;opacity:0;transition:.2s;pointer-events:none;z-index:50}
-.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,12px);z-index:120;
+  display:flex;align-items:center;gap:9px;max-width:calc(100% - 32px);
+  background:#0f172a;color:#f1f5f9;padding:12px 20px;border-radius:14px;
+  font-size:14.5px;font-weight:600;line-height:1.4;
+  box-shadow:0 18px 40px -16px rgba(15,23,42,.55);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .18s var(--ease),transform .18s var(--ease),visibility .18s}
+.toast.on{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.toast .tick{flex:none;display:grid;place-items:center;width:19px;height:19px;border-radius:50%;
+  background:#34d399;color:#04231a;font-size:12px;font-weight:800}
+.toast .tx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -562,7 +617,7 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
 
 <header class="top">
   <a class="hmark" href="https://wellnessbox.kr" aria-label="웰니스박스">${logoSvg("")}</a>
-  <h1>업무 관제탑</h1>
+  <h1>웰니스박스<br>에이전트 기반 업무 자동화</h1>
   <p class="lede">반복하는 회사 일을 <strong>매뉴얼 한 장</strong>씩 적어 뒀습니다.</p>
 
   <div class="why rev">
@@ -570,7 +625,7 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
       <li><span><b>매뉴얼을 구글 드라이브에 미리 깔아 뒀습니다.</b>
         절차, 회사 정보, 로그인 계정이 에이전트 폴더 하나에 들어 있습니다.</span></li>
       <li><span><b>Claude 나 Codex 새 세션에 한 줄만 말하면 끝까지 합니다.</b>
-        <button class="chip say2" data-copy="G드라이브 에이전트 폴더 보고 카톡 봐줘" data-tip="누르면 복사됩니다">G드라이브 에이전트 폴더 보고 카톡 봐줘</button></span></li>
+        <button class="chip say2" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘</button></span></li>
       <li><span><b>원리는 CUA, 컴퓨터를 직접 조작하는 것입니다.</b>
         명령어(L1)부터 컴퓨터 전체 제어(L4)까지 써서, 계정으로 하는 일도 사람 손을 안 거칩니다.</span></li>
     </ol>
@@ -587,10 +642,16 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
 ${cards || '<p class="what">아직 없습니다.</p>'}
   </div>
 
-  <details class="boxwrap rev" id="boxwrap">
-    <summary>치워둔 업무 <span id="boxn">0</span>개 <span class="caret"></span></summary>
+  <div class="boxwrap rev" id="boxwrap">
+    <button class="boxhead" id="boxhead" type="button" aria-expanded="false">
+      <span class="bicon"><svg viewBox="0 0 20 20" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.8 6.4h14.4v9.3a1.3 1.3 0 0 1-1.3 1.3H4.1a1.3 1.3 0 0 1-1.3-1.3z"/>
+        <path d="M2.2 3.4h15.6v3H2.2z"/><path d="M8.2 9.9h3.6"/></svg></span>
+      <span><b>치워둔 업무</b> <span class="bsub" id="boxn">비어 있음</span></span>
+      <span class="caret"></span>
+    </button>
     <div class="boxed" id="boxed"></div>
-  </details>
+  </div>
 </section>
 
 </div>
@@ -644,7 +705,7 @@ ${BIZ.map(
 <dialog class="help" id="help">
   <div class="hhead">
     <h2>이 시스템 쓰는 법</h2>
-    <button class="hclose" id="helpclose" type="button" aria-label="닫기">&times;</button>
+    <button class="hclose" type="button" aria-label="닫기">&times;</button>
   </div>
   <div class="hbody">
     <p>반복하는 회사 일의 <b>절차서를 구글 드라이브에 미리 깔아 뒀습니다.</b>
@@ -657,7 +718,7 @@ ${BIZ.map(
       <div class="in">
         <p>업무 카드를 펼치면 <b>부르는 말</b>이 나옵니다. 눌러서 복사한 뒤 그대로 말하면 됩니다.
         같은 업무를 부르는 말은 여러 개라 아무거나 써도 걸립니다.</p>
-        <button class="chip quote" data-copy="캡션 생성해줘" data-tip="누르면 복사됩니다">캡션 생성해줘</button>
+        <button class="chip quote" data-copy="캡션 생성해줘">캡션 생성해줘</button>
         <p>이 컴퓨터처럼 세팅이 끝난 자리에서는 저 말만 하면 됩니다.
         처음 켠 컴퓨터라면 앞에 <b>"G드라이브 에이전트 폴더 보고"</b> 를 붙이세요.</p>
       </div>
@@ -723,7 +784,7 @@ ${BIZ.map(
       <summary>업무 늘리기 <span class="caret"></span></summary>
       <div class="in">
         <p>새 일은 그냥 시켜 보면 됩니다. 끝나고 이렇게 말하면 이 목록에 카드가 하나 늘어납니다.</p>
-        <button class="chip quote" data-copy="방금 한 거 업무로 등록해줘" data-tip="누르면 복사됩니다">방금 한 거 업무로 등록해줘</button>
+        <button class="chip quote" data-copy="방금 한 거 업무로 등록해줘">방금 한 거 업무로 등록해줘</button>
         <p>하다가 막혔던 지점까지 매뉴얼에 적히기 때문에, 다음부터는 같은 데서 안 헤맵니다.
         새 컴퓨터에서 쓰려면 드라이브 에이전트 폴더의 <code>설치.mjs</code> 를 한 번 실행하면 됩니다.</p>
       </div>
@@ -732,17 +793,20 @@ ${BIZ.map(
     <details class="hsec">
       <summary>이 목록 손보기 <span class="caret"></span></summary>
       <div class="in">
-        <p>왼쪽 손잡이를 <b>끌어서 순서를 바꿉니다.</b> 손가락으로도 됩니다.</p>
-        <p>자주 안 쓰는 업무는 카드 오른쪽 <b>치우기</b> 버튼을 누르거나
-        아래 <b>치워둔 업무</b> 칸으로 끌어다 놓으면 목록에서 빠집니다.
-        거기서 같은 버튼을 누르면 다시 올라옵니다.</p>
-        <p>순서와 치워둔 목록은 이 브라우저에만 저장합니다. 다른 컴퓨터에는 따라가지 않습니다.</p>
+        <p>업무 이름을 누르면 그 업무 설명이 열립니다. 언제 쓰는지, 뭐라고 말하면 되는지,
+        말하고 나면 무슨 일이 벌어지는지가 순서대로 적혀 있습니다.</p>
+        <p>왼쪽 점 여섯 개짜리 손잡이를 <b>끌면 순서가 바뀝니다.</b> 손가락으로도 됩니다.</p>
+        <p>자주 안 쓰는 업무는 아래 <b>치워둔 업무</b> 칸으로 끌어다 놓으면 목록에서 빠집니다.
+        도로 쓰려면 거기서 위 목록으로 끌어 올리면 됩니다.</p>
+        <p>바꾼 순서와 치워둔 목록은 이 브라우저에만 저장합니다. 다른 컴퓨터에는 따라가지 않습니다.</p>
       </div>
     </details>
   </div>
 </dialog>
 
-<div class="toast" id="toast">복사했습니다</div>
+${taskModals}
+
+<div class="toast" id="toast"><span class="tick">&#10003;</span><span class="tx">복사했습니다</span></div>
 <script>
 document.addEventListener('click', async function (e) {
   var b = e.target.closest('.chip');
@@ -754,11 +818,14 @@ document.addEventListener('click', async function (e) {
     ta.value = text; document.body.appendChild(ta); ta.select();
     document.execCommand('copy'); ta.remove();
   }
-  var old = b.textContent;
-  b.classList.add('copied'); b.textContent = '복사됨';
+  // 글자를 바꾸지 않는다. 바꾸면 칩 폭이 변해서 옆 글이 밀린다.
+  b.classList.add('copied');
   var t = document.getElementById('toast');
-  t.classList.add('on'); setTimeout(function () { t.classList.remove('on'); }, 1400);
-  setTimeout(function () { b.classList.remove('copied'); b.textContent = old; }, 1400);
+  t.querySelector('.tx').textContent = '복사했습니다  ' + text;
+  t.classList.add('on');
+  clearTimeout(window.__toastT);
+  window.__toastT = setTimeout(function () { t.classList.remove('on'); }, 1800);
+  setTimeout(function () { b.classList.remove('copied'); }, 1200);
 });
 
 // 저작권 연도는 서울 기준으로 맞춘다. 굽는 시점 값이 박혀 있어도 열 때 다시 쓴다.
@@ -772,24 +839,34 @@ if (biz) biz.addEventListener('toggle', function () {
   biz.querySelector('.pilltx').textContent = biz.open ? '접기' : '열기';
 });
 
-// ── 사용법 모달 ────────────────────────────────────────────────
-var help = document.getElementById('help');
-document.getElementById('helpopen').addEventListener('click', function () { help.showModal(); });
-document.getElementById('helpclose').addEventListener('click', function () { help.close(); });
-help.addEventListener('click', function (e) {   // 바깥을 누르면 닫는다
-  var r = help.getBoundingClientRect();
-  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) help.close();
+// ── 모달. 사용법 하나와 업무별 설명 여럿을 같은 방식으로 연다 ──
+function openDlg(d) { if (d && !d.open) d.showModal(); }
+document.addEventListener('click', function (e) {
+  var o = e.target.closest('[data-open]');
+  if (o) { openDlg(document.getElementById('dlg-' + o.dataset.open)); return; }
+  if (e.target.closest('#helpopen')) { openDlg(document.getElementById('help')); return; }
+  if (e.target.closest('.hclose')) { e.target.closest('dialog').close(); return; }
+  // 바깥(백드롭)을 누르면 닫는다. dialog 자체가 클릭 대상이면 바깥이다.
+  if (e.target.tagName === 'DIALOG') e.target.close();
 });
 
 // ── 목록 손보기. 순서와 치워둔 것을 이 브라우저에 기억한다 ──────
 var LIST = document.getElementById('list');
 var BOX = document.getElementById('boxed');
 var WRAP = document.getElementById('boxwrap');
+var HEAD = document.getElementById('boxhead');
 var KEY = 'wnbx.list.v1';
 
 function count() {
-  document.getElementById('boxn').textContent = BOX.children.length;
+  var n = BOX.children.length;
+  document.getElementById('boxn').textContent = n ? n + '개' : '비어 있음';
 }
+function openBox(on) {
+  WRAP.classList.toggle('on', on);
+  HEAD.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+HEAD.addEventListener('click', function () { openBox(!WRAP.classList.contains('on')); });
+
 function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify({
@@ -805,60 +882,94 @@ function save() {
   var all = {};
   [].forEach.call(document.querySelectorAll('.card'), function (c) { all[c.dataset.id] = c; });
   (s.order || []).forEach(function (id) { if (all[id]) LIST.appendChild(all[id]); });
-  (s.boxed || []).forEach(function (id) { if (all[id]) { all[id].open = false; BOX.appendChild(all[id]); } });
+  (s.boxed || []).forEach(function (id) { if (all[id]) BOX.appendChild(all[id]); });
+  if (BOX.children.length) openBox(true);
   count();
 })();
 
-// 치우기 / 되돌리기. summary 안의 버튼이라 펼침이 같이 열리지 않게 막는다.
-document.addEventListener('click', function (e) {
-  var b = e.target.closest('.stow');
-  if (!b) return;
-  e.preventDefault(); e.stopPropagation();
-  var card = b.closest('.card');
-  card.open = false;
-  if (card.parentElement === BOX) LIST.appendChild(card);
-  else { BOX.appendChild(card); WRAP.open = true; }
-  save();
-});
-
-// 끌어서 옮기기. HTML5 드래그는 손가락에서 안 먹어 포인터 이벤트로 짰다.
+// 끌어서 옮기기.
+// 잡은 카드는 position:fixed 로 손끝을 따라다니고, 원래 자리에는 같은 높이의 빈 자리를 둔다.
+// 그래야 무엇을 잡고 있는지 눈에 보인다. HTML5 드래그는 손가락에서 안 먹어 포인터 이벤트로 짰다.
 var drag = null, suppress = false;
-document.addEventListener('pointerdown', function (e) {
-  var g = e.target.closest('.grip');
-  if (!g || e.button) return;
-  drag = { card: g.closest('.card'), y: e.clientY, moved: false };
-  g.setPointerCapture(e.pointerId);
-  e.preventDefault();
-});
-document.addEventListener('pointermove', function (e) {
-  if (!drag) return;
-  if (!drag.moved) {
-    if (Math.abs(e.clientY - drag.y) < 5) return;
-    drag.moved = true;
-    drag.card.classList.add('dragging');
-    document.body.classList.add('dnd');
-    WRAP.open = true;                       // 치우는 칸을 열어 둬야 거기로 끌 수 있다
-  }
-  var el = document.elementFromPoint(e.clientX, e.clientY);
+
+function place(x, y) {
+  var el = document.elementFromPoint(x, y);
   if (!el) return;
   var over = el.closest('.card');
-  if (over && over !== drag.card && (over.parentElement === LIST || over.parentElement === BOX)) {
+  if (over && over !== drag.card && over !== drag.ghost &&
+      (over.parentElement === LIST || over.parentElement === BOX)) {
     var r = over.getBoundingClientRect();
-    over.parentElement.insertBefore(drag.card, e.clientY > r.top + r.height / 2 ? over.nextSibling : over);
+    over.parentElement.insertBefore(drag.ghost, y > r.top + r.height / 2 ? over.nextSibling : over);
     return;
   }
   var zone = el.closest('#list, #boxed');
-  if (zone && zone !== drag.card.parentElement) zone.appendChild(drag.card);
+  if (zone && zone !== drag.ghost.parentElement) zone.appendChild(drag.ghost);
+}
+
+document.addEventListener('pointerdown', function (e) {
+  var g = e.target.closest('.grip');
+  if (!g || e.button) return;
+  var card = g.closest('.card');
+  var r = card.getBoundingClientRect();
+  drag = { card: card, grip: g, moved: false, sx: e.clientX, sy: e.clientY,
+           dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
+  g.setPointerCapture(e.pointerId);
+  e.preventDefault();
 });
-document.addEventListener('pointerup', function () {
+
+// 보관함이 화면 밖에 있으면 거기까지 끌고 갈 수가 없다. 위아래 끝에 닿으면 화면을 따라 굴린다.
+var edgeTimer = null, edgeY = 0;
+function edgeScroll() {
+  var h = window.innerHeight, band = 110, v = 0;
+  if (edgeY < band) v = -Math.ceil((band - edgeY) / 6);
+  else if (edgeY > h - band) v = Math.ceil((edgeY - (h - band)) / 6);
+  if (v) { window.scrollBy(0, v); if (drag) place(window.__dx, edgeY); }
+  edgeTimer = drag ? requestAnimationFrame(edgeScroll) : null;
+}
+
+document.addEventListener('pointermove', function (e) {
   if (!drag) return;
-  var moved = drag.moved;
-  drag.card.classList.remove('dragging');
-  document.body.classList.remove('dnd');
-  drag = null;
-  if (moved) { save(); suppress = true; setTimeout(function () { suppress = false; }, 0); }
+  window.__dx = e.clientX; edgeY = e.clientY;
+  if (!edgeTimer) edgeTimer = requestAnimationFrame(edgeScroll);
+  if (!drag.moved) {
+    if (Math.abs(e.clientY - drag.sy) < 5 && Math.abs(e.clientX - drag.sx) < 5) return;
+    drag.moved = true;
+    drag.ghost = document.createElement('div');
+    drag.ghost.className = 'ghost';
+    drag.ghost.style.height = drag.h + 'px';
+    drag.card.parentElement.insertBefore(drag.ghost, drag.card);
+    drag.card.style.width = drag.w + 'px';
+    drag.card.style.height = drag.h + 'px';
+    drag.card.classList.add('dragging');
+    document.body.classList.add('dnd');
+    openBox(true);                      // 치우는 칸이 열려 있어야 거기로 끌 수 있다
+  }
+  drag.card.style.left = (e.clientX - drag.dx) + 'px';
+  drag.card.style.top = (e.clientY - drag.dy) + 'px';
+  place(e.clientX, e.clientY);
 });
-// 끌고 난 직후의 클릭이 카드를 펼치지 않게 한다.
+
+function endDrag() {
+  if (!drag) return;
+  if (edgeTimer) { cancelAnimationFrame(edgeTimer); edgeTimer = null; }
+  var moved = drag.moved;
+  if (moved) {
+    drag.ghost.parentElement.insertBefore(drag.card, drag.ghost);
+    drag.ghost.remove();
+    drag.card.classList.remove('dragging');
+    drag.card.style.cssText = '';
+    document.body.classList.remove('dnd');
+    if (!BOX.children.length) openBox(false);
+    save();
+    suppress = true;
+    setTimeout(function () { suppress = false; }, 0);
+  }
+  drag = null;
+}
+document.addEventListener('pointerup', endDrag);
+document.addEventListener('pointercancel', endDrag);
+
+// 손잡이를 그냥 눌렀거나, 끌고 난 직후의 클릭이 설명 모달을 열지 않게 한다.
 document.addEventListener('click', function (e) {
   if (e.target.closest('.grip') || suppress) { e.preventDefault(); e.stopPropagation(); }
 }, true);
