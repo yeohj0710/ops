@@ -277,7 +277,7 @@ const cards = M.map((m) => {
     '<span class="caret"></span>',
     "</summary>",
     '<div class="body">',
-    '<div class="say"><span class="saylabel">이렇게 말하면 됩니다</span><div class="chips">' +
+    '<div class="say"><div class="chips">' +
       m.triggers.map((w) => '<button class="chip" data-copy="' + esc(w) + '">' + esc(w) + "</button>").join("") +
       "</div></div>",
     '<ul class="meta">',
@@ -453,7 +453,6 @@ body.dnd{cursor:grabbing;user-select:none;-webkit-user-select:none}
 body.dnd .boxed{border-color:var(--acc);background:var(--accBg)}
 .what{margin:0 0 18px;color:var(--ink2);font-size:15px}
 .say{margin:0 0 16px}
-.saylabel{display:block;font-size:12px;color:var(--dim);margin-bottom:8px;font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
 /* 따옴표는 ::before / ::after 로 붙인다. 그래서 여기에 data-tip 을 달면 안 된다.
    툴팁도 ::after 를 쓰기 때문에 hover 하는 순간 닫는 따옴표가 사라지고 폭이 줄어 글이 접힌다. */
