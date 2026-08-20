@@ -193,6 +193,17 @@ const SKILL_TARGETS = [
   { tool: "codex", dir: path.join(os.homedir(), ".codex", "skills", "ops") },
 ];
 
+// 능력 파일 목록. 파일 이름이 곧 능력 이름이다 (읽어라.md 는 색인이라 뺀다).
+function abilityList() {
+  const dir = path.join(ROOT, "abilities");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".md") && f !== "읽어라.md")
+    .map((f) => f.replace(/\.md$/, ""))
+    .sort();
+}
+
 function skillDescription() {
   const list = manualList().filter((m) => !m.hidden);
   const MAX = 12;
@@ -208,12 +219,21 @@ function skillDescription() {
   const more = list.length > MAX ? ` 외 ${list.length - MAX}개` : "";
   const registered = shown.length ? `지금 등록된 업무는 이렇다. ${shown.join(" / ")}${more}.` : "아직 등록된 업무가 없다.";
 
+  const abil = abilityList();
+  const abilities = abil.length
+    ? " 업무 이름이 없어도 쓰는 능력이 따로 있다. " +
+      abil.join(", ") +
+      '. "에이전트 폴더 참고해서 ○○ 해줘" 처럼 업무 이름 없이 시키거나, ' +
+      "카톡 대화를 찾아보거나 노션, 드라이브, 시트, 메일, 인스타, 피그마를 만져야 하면 이 스킬로 능력 목록을 편다."
+    : "";
+
   return (
     "회사 반복 업무를 매뉴얼대로 실행하거나 새 업무를 매뉴얼로 등록한다. " +
     registered +
     " 이 중 하나를 시키거나, " +
     '"업무로 등록해줘", "매뉴얼로 만들어", "시스템에 반영해", "방금 한 거 등록해", ' +
-    '"일감 뽑아서 해줘" 라고 하면 쓴다. 회사 업무처럼 들리는데 매뉴얼이 있는지 모를 때도 먼저 확인용으로 쓴다.'
+    '"일감 뽑아서 해줘" 라고 하면 쓴다. 회사 업무처럼 들리는데 매뉴얼이 있는지 모를 때도 먼저 확인용으로 쓴다.' +
+    abilities
   ).replace(/\s+/g, " ");
 }
 
@@ -247,7 +267,8 @@ function writeDriveGuide() {
 
 | 찾는 것 | 열 파일 |
 | --- | --- |
-| **업무를 어떻게 하나** | \`매뉴얼/읽어라.md\` → 그 업무의 \`.md\` |
+| **무엇을 할 수 있나** (카톡, 노션, 시트, 피그마, 결제 등) | \`능력/읽어라.md\` |
+| **정해진 업무를 절차대로** | \`매뉴얼/읽어라.md\` → 그 업무의 \`.md\` |
 | 사업자번호, 법인번호, 주소, 전화, 매출 | \`정보/회사.md\` |
 | 사업자등록증, 인감, 도장, 로고, 명함, 사업계획서 파일 | \`정보/핵심자료.md\` |
 | 회의록, 기획, 진행 상황, 제품별 논의 | \`정보/노션.md\` |
@@ -256,11 +277,25 @@ function writeDriveGuide() {
 | API 키 | \`자격증명/.env\` |
 | 이 컴에 설치하기 | 아래 "한 줄 설치" |
 
-## 사람이 "○○ 업무 해줘" 라고 하면
+## "에이전트 폴더 참고해서 ○○ 해줘" 라고만 하면
+
+**업무 이름을 대지 않아도 이 폴더의 능력은 그냥 쓴다.**
+카톡 읽기, 노션, 드라이브, 시트, 메일, 인스타, 피그마, 문서 만들기가 전부 여기 있다.
+
+1. \`능력/읽어라.md\` 를 연다. 표에서 지금 필요한 것 하나를 고른다
+2. 그 파일만 읽고 그대로 쓴다. 능력마다 어떻게 하는지, 무엇을 하면 안 되는지가 적혀 있다
+3. 목록에 없는 일이면 \`능력/화면과로그인.md\` 의 사다리(L1에서 L4)로 길이 있는지 보고 **일단 해본다**
+
+**"매뉴얼이 없어서 못 합니다" 는 답이 아니다.** 능력이 있으면 하고, 하고 나서 적어두면 된다.
+
+## 사람이 "○○ 업무 해줘" 라고 하면 (등록된 업무)
 
 1. \`매뉴얼/읽어라.md\` 에서 그 업무를 찾는다. 있으면 그 파일을 **끝까지** 읽고 그대로 한다
 2. 하다가 모르는 게 나오면 위 표에서 해당 갈래 하나만 연다
 3. 매뉴얼에 없는 업무면 \`매뉴얼/_new-manual.md\` 를 보고 **기록 모드**로 하고 매뉴얼로 남긴다
+
+매뉴얼은 "이 순서로 해라" 이고 능력은 "이건 할 수 있다" 다. 둘은 겹치지 않는다.
+매뉴얼을 하다가 도구 쓰는 법이 막히면 능력 쪽을 편다.
 
 ## 멈추고 사람을 부르는 곳
 
@@ -343,6 +378,7 @@ ${rows}
 | \`시작.md\` | 지금 읽는 것 |
 | \`설치.mjs\` | 새 컴에 전부 깐다 (드라이브 → 컴) |
 | \`백업.mjs\` | 이 컴 설정을 거둔다 (컴 → 드라이브) |
+| \`능력/\` | 업무 이름 없이도 쓰는 것들 (카톡, 노션, 드라이브, 시트, 메일, 인스타, 피그마, 문서, 화면, 돈) |
 | \`매뉴얼/\` | 업무 절차서 사본 (읽기용). 설치 없이도 여기만 보면 일할 수 있다 |
 | \`정보/\` | \`회사.md\`(사업자번호, 주소, 매출), \`핵심자료.md\`(서류, 도장, 로고 어디 있나) |
 | \`자격증명/\` | \`계정.md\`(로그인 정보), \`.env\`(API 키) |
@@ -359,6 +395,19 @@ ${rows}
   for (const f of ["설치.mjs", "백업.mjs", "lib.mjs", "manifest.json"]) {
     const src = path.join(bs, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(dir, f));
+  }
+
+  // 능력 사본. 업무 이름을 대지 않아도 쓰는 것들이다.
+  // 매뉴얼과 마찬가지로 읽기용이고, 고치는 건 저장소에서 한다.
+  const asrc = path.join(ROOT, "abilities");
+  if (fs.existsSync(asrc)) {
+    const adir = path.join(dir, "능력");
+    removeTreeSafe(adir);
+    fs.mkdirSync(adir, { recursive: true });
+    for (const f of fs.readdirSync(asrc)) {
+      if (f === "desktop.ini") continue;
+      fs.copyFileSync(path.join(asrc, f), path.join(adir, f));
+    }
   }
 
   // 매뉴얼 사본. 저장소가 없는 컴에서도 드라이브만 보고 일할 수 있어야 한다.
