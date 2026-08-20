@@ -16,3 +16,6 @@ Thumbs.db
 
 .vercel
 .env*
+
+etc/instagram-upload/
+etc/*.bak-*
