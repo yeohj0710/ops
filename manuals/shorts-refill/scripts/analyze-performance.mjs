@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// 인스타 실측 재생수를 발행 아카이브에 붙여 "무엇이 이겼나" 를 낸다.
+// 재고와 큐 위생을 본다. 어느 영역이 비었고, 큐에 발행분이 남았는지.
 //
-//   node analyze-performance.mjs <실측.tsv>
+//   node analyze-performance.mjs --stock-only        평소에는 이것만 쓴다
+//   node analyze-performance.mjs <실측.tsv>          재생수를 참고로 같이 볼 때
 //
-// 왜 필요한가. 소재를 감으로 뽑으면 죽은 프레임을 계속 다시 쓴다. 실제로
-// 260808 에 넓힌 생활민원 갈래(환급금, 구직)가 전부 5천 밑으로 죽었는데,
-// 실측을 안 보면 그게 안 보이고 다음 배치에 또 들어간다.
+// **무엇을 쓸지는 여기서 정하지 않는다.** 그건 `follow-strategy.mjs` 가 팔로우 기준으로 낸다.
+// 재생수와 팔로우는 260825 실측에서 정반대로 나왔다. 재생수 절은 참고용이다.
 //
 // 인스타 계정 @haruyaksa 하나에 두 채널 영상이 다 올라간다. 그래서 아카이브도
 // 양쪽을 다 읽는다. 유튜브 조회수와 인스타 재생수는 절대값 비교를 하지 않는다
@@ -20,14 +20,20 @@ const CHANNELS = ["하루건강약사", "건강장수비결"];
 // 게시 뒤 며칠은 계속 오른다. 이보다 어린 편은 "죽었다" 고 판정하지 않는다.
 const SETTLE_DAYS = 4;
 
-const tsvPath = process.argv[2];
-if (!tsvPath) {
-  console.error("실측 TSV 경로를 넘겨라. 예: node analyze-performance.mjs work/<taskId>/insta-plays.tsv");
+// 전략은 `follow-strategy.mjs` 가 팔로우 기준으로 낸다. 여기는 재고와 큐 위생을 본다.
+// 재생수 TSV 를 넘기면 참고로 같이 보여 주지만, **판정을 재생수로 하지 마라.**
+// 260825 에 두 축이 정반대로 나왔다. 안약 편은 재생수 2위, 팔로우 전환은 밑에서 3등이었다.
+const STOCK_ONLY = process.argv.includes("--stock-only");
+const tsvPath = STOCK_ONLY ? null : process.argv[2];
+if (!tsvPath && !STOCK_ONLY) {
+  console.error("실측 TSV 경로를 넘기거나 --stock-only 를 붙여라.");
+  console.error("  node analyze-performance.mjs --stock-only");
+  console.error("  node analyze-performance.mjs work/<taskId>/insta-plays.tsv");
   process.exit(1);
 }
 
 // ---------- 실측 읽기 ----------
-const reels = fs.readFileSync(tsvPath, "utf8").split(/\r?\n/)
+const reels = !tsvPath ? [] : fs.readFileSync(tsvPath, "utf8").split(/\r?\n/)
   .map((line) => line.trim()).filter(Boolean)
   .filter((line) => !line.startsWith("#"))
   .map((line) => {
@@ -36,9 +42,11 @@ const reels = fs.readFileSync(tsvPath, "utf8").split(/\r?\n/)
   })
   .filter((r) => Number.isFinite(r.plays));
 
-if (!reels.length) { console.error(`${tsvPath} 에 읽을 줄이 없다.`); process.exit(1); }
+if (!reels.length && !STOCK_ONLY) { console.error(`${tsvPath} 에 읽을 줄이 없다.`); process.exit(1); }
 
-const today = reels.reduce((max, r) => (r.date > max ? r.date : max), reels[0].date);
+const today = reels.length
+  ? reels.reduce((max, r) => (r.date > max ? r.date : max), reels[0].date)
+  : new Date().toISOString().slice(0, 10);
 const ageDays = (d) => Math.round((Date.parse(today) - Date.parse(d)) / 86400000);
 
 // ---------- 아카이브 읽기 ----------
@@ -160,6 +168,8 @@ const bottomLine = sorted[Math.max(0, Math.ceil(sorted.length * 0.75) - 1)]?.pla
 const fmt = (n) => n.toLocaleString("ko-KR");
 const row = (r) => `${String(fmt(r.plays)).padStart(9)}  ${r.date}(${String(ageDays(r.date)).padStart(2)}일)  ${r.pack ? r.pack.lane : "(레퍼런스/미상)"}\n            ${r.caption}`;
 
+// 재생수 절은 TSV 를 넘겼을 때만 낸다. 판정용이 아니라 참고용이다.
+if (!STOCK_ONLY) {
 console.log(`# 인스타 @haruyaksa 실측 ${reels.length}편 (기준일 ${today})`);
 console.log(`  아카이브에 붙은 것 ${matched.length}편, 안 붙은 것 ${reels.length - matched.length}편(레퍼런스 카드나 옛 편)`);
 console.log(`  ${SETTLE_DAYS}일 미만이라 판정 보류 ${reels.length - settled.length}편`);
@@ -173,6 +183,7 @@ for (const r of sorted.filter((r) => r.plays <= bottomLine)) console.log(row(r))
 
 console.log(`\n## 아직 판정 못 하는 것 (${SETTLE_DAYS}일 미만)`);
 for (const r of reels.filter((r) => ageDays(r.date) < SETTLE_DAYS).sort((a, b) => b.plays - a.plays)) console.log(row(r));
+}
 
 // ---------- 영역 쏠림 ----------
 function tally(list, key) {
@@ -181,7 +192,8 @@ function tally(list, key) {
   return Object.entries(c).sort((a, b) => b[1] - a[1]);
 }
 
-const recent = [...matched].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12).map((r) => r.pack);
+// 최근 발행 영역은 아카이브 날짜로 센다. 릴스 실측이 없어도 나와야 하는 값이다.
+const recent = [...published].filter((p) => p.date).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12);
 console.log(`\n## 최근 발행 12편의 영역 (여기 있는 영역은 이번 배치에서 피한다)`);
 for (const [lane, n] of tally(recent, "lane")) console.log(`  ${String(n).padStart(2)}  ${lane}`);
 
@@ -189,12 +201,12 @@ if (staleQueue.length) {
   console.log(`
 ## 먼저 치울 것: research/queue 에 발행된 팩이 ${staleQueue.length}건 남아 있다`);
   console.log(`   두면 npm test 의 verify-stockpile-titles-unpublished 가 상시 실패한다. 지우고 시작한다.`);
-  for (const q of staleQueue) console.log(`      · research/queue/${q.channel}/${q.file}  (${q.title})`);
+  for (const q of staleQueue) console.log(`     , research/queue/${q.channel}/${q.file}  (${q.title})`);
 }
 
 console.log(`\n## 지금 재고의 영역 (${stockUnique.length}건)`);
 for (const [lane, n] of tally(stockUnique, "lane")) console.log(`  ${String(n).padStart(2)}  ${lane}`);
-for (const s of stockUnique) console.log(`      · [${s.channel}] ${s.title}`);
+for (const s of stockUnique) console.log(`      - [${s.channel}] ${s.title}`);
 
 // 이긴 편이 어느 영역이었나. 소재를 새로 뽑을 때 여기서 고른다.
 const winners = sorted.filter((r) => r.plays >= topLine && r.pack).map((r) => r.pack);
