@@ -3,10 +3,17 @@
 //
 //   node follow-strategy.mjs [--account haruyaksa] [--json <내려받은 파일>] [--out 전략.md]
 //
-// **재생수로 판정하면 틀린다.** 260825 실측에서 두 축이 정반대로 나왔다.
-//   안약 넣는 법   62.8만 조회 → 팔로우 86명   (0.014%)
-//   무릎 허리 습관 21.6만 조회 → 팔로우 115명  (0.053%)
-// 조회수 3분의 1인 편이 팔로우는 더 많이 데려왔다. 채널을 키우는 것은 팔로우다.
+// **목표는 팔로우 전환율이 아니라 팔로우 수다.** 전환율이 낮아도 조회수가 크면 그만이다.
+//
+//   팔로우 수 = 조회수 × 전환율
+//
+// 260825 실측(51편)에서 조회수가 훨씬 크게 흔들린다. 로그 표준편차가 조회수 1.29,
+// 전환율 0.59 로 2.2배다. 팔로우 수와의 상관도 조회수 0.92, 전환율 0.52 다.
+// **조회수가 지배한다.** 안약 편은 전환율이 0.014% 로 바닥인데 62.9만 조회로
+// 팔로우 86명을 데려와 전체 5위다. 전환율만 보면 이 편을 버리는 판단을 하게 된다.
+//
+// **다만 둘은 서로 무관하다(상관 0.15). 트레이드오프가 아니라 둘 다 챙기는 것이다.**
+// 조회수를 깎아가며 전환율을 올리면 손해고, 전환율이 바닥인 결을 그냥 두면 남는 걸 흘린다.
 //
 // 자료는 릴스 인사이트 랩이 화면 녹화를 OCR 로 데이터화해 둔 것이다.
 // 로그인이 필요 없어서 L1 으로 그냥 받는다. 화면을 긁을 일이 없다.
@@ -125,7 +132,7 @@ say("");
 say(`자료 ${SOURCE}`);
 say(`뽑은 날 ${stamp}, 편 수 ${mine.length}, 총 조회 ${kn(sum(mine, "views"))}, 총 팔로우 ${kn(sum(mine, "follows"))}`);
 say("");
-say("**판정은 팔로우로 한다. 재생수로 고르면 정반대 결론이 나온다.**");
+say("**목표는 전환율이 아니라 팔로우 수다.** 전환율이 낮아도 조회수가 크면 그만이다.");
 say("");
 
 // 계정 비교는 기본으로 안 낸다. 아래 이유를 보라.
@@ -151,25 +158,73 @@ if (argv.includes("--compare-accounts")) {
   say("");
 }
 
-// 대상 계정 상하위
-const sorted = [...mine].sort((a, b) => rate(b) - rate(a));
-const top = sorted.slice(0, 10);
-const bottom = sorted.slice(-10).reverse();
+// 목표는 팔로우 수다. 그래서 줄 세우기도 수로 한다.
+const byFollows = [...mine].sort((a, b) => b.follows - a.follows);
+const rates = mine.map(rate).sort((a, b) => a - b);
+const midRate = rates[Math.floor(rates.length / 2)];
 
-say("## 이 계정에서 팔로우를 데려온 편");
+// 조회수와 전환율 가운데 무엇이 팔로우 수를 흔들었는지. 로그로 봐야 배수가 보인다.
+const ln = Math.log;
+const sd = (arr) => {
+  const mu = arr.reduce((s, x) => s + x, 0) / arr.length;
+  return Math.sqrt(arr.reduce((s, x) => s + (x - mu) ** 2, 0) / arr.length);
+};
+const corr = (a, b) => {
+  const n = a.length;
+  const ma = a.reduce((s, x) => s + x, 0) / n, mb = b.reduce((s, x) => s + x, 0) / n;
+  let sa = 0, sb = 0, sab = 0;
+  for (let i = 0; i < n; i++) { const da = a[i] - ma, db = b[i] - mb; sa += da * da; sb += db * db; sab += da * db; }
+  return sab / Math.sqrt(sa * sb);
+};
+const lf = mine.map((r) => ln(r.follows));
+const lv = mine.map((r) => ln(r.views));
+const lr = mine.map((r) => ln(r.follows / r.views));
+const totalF = sum(mine, "follows");
+const top10F = byFollows.slice(0, 10).reduce((s, r) => s + r.follows, 0);
+
+say("## 무엇이 팔로우 수를 흔드는가");
 say("");
-say("| 전환 | 팔로우 | 조회 | 회로 | 제목 |");
-say("| --- | --- | --- | --- | --- |");
-for (const r of top) {
-  say(`| ${pct(rate(r))} | ${kn(r.follows)} | ${kn(r.views)} | ${isMainline(r) ? "본편" : "그 외"} | ${r.title.slice(0, 40)} |`);
+say("| 견줄 것 | 로그 표준편차 | 팔로우 수와 상관 |");
+say("| --- | --- | --- |");
+say(`| 조회수 | ${sd(lv).toFixed(2)} | ${corr(lf, lv).toFixed(2)} |`);
+say(`| 전환율 | ${sd(lr).toFixed(2)} | ${corr(lf, lr).toFixed(2)} |`);
+say("");
+say(`조회수가 ${(sd(lv) / sd(lr)).toFixed(1)}배 더 크게 흔들리고 팔로우 수와도 훨씬 붙어 있다. **조회수가 지배한다.**`);
+say(`조회수와 전환율은 서로 상관 ${corr(lv, lr).toFixed(2)} 로 거의 무관하다. **트레이드오프가 아니라 둘 다 챙기는 것이다.**`);
+say(`상위 10편이 전체 팔로우의 ${Math.round((top10F / totalF) * 100)}% 를 만들었다(${kn(top10F)}/${kn(totalF)}). 소수 히트 게임이다.`);
+say("");
+
+say("## 팔로우를 많이 데려온 편");
+say("");
+say("| 팔로우 | 조회 | 전환 | 시청 | 회로 | 제목 |");
+say("| --- | --- | --- | --- | --- | --- |");
+for (const r of byFollows.slice(0, 15)) {
+  say(`| ${kn(r.follows)} | ${kn(r.views)} | ${pct(rate(r))} | ${r.watch || "?"}초 | ${isMainline(r) ? "본편" : "그 외"} | ${r.title.slice(0, 36)} |`);
 }
 say("");
-say("## 조회수는 나왔는데 팔로우가 안 붙은 편");
+
+// 조회수는 벌어 놓고 전환에서 흘린 편. 중앙 전환율만 됐어도 몇 명 더 벌었는지로 센다.
+const spilled = mine
+  .map((r) => ({ ...r, lost: Math.round(r.views * midRate / 100) - r.follows }))
+  .filter((r) => r.lost > 15)
+  .sort((a, b) => b.lost - a.lost);
+say("## 조회수는 벌어 놓고 전환에서 흘린 편");
 say("");
-say("| 전환 | 팔로우 | 조회 | 회로 | 제목 |");
+say(`중앙 전환율 ${pct(midRate)} 만 됐어도 몇 명을 더 데려왔을지로 센다. 여기가 제일 아까운 자리다.`);
+say("");
+say("| 놓친 수 | 실제 팔로우 | 조회 | 전환 | 제목 |");
 say("| --- | --- | --- | --- | --- |");
-for (const r of bottom) {
-  say(`| ${pct(rate(r))} | ${kn(r.follows)} | ${kn(r.views)} | ${isMainline(r) ? "본편" : "그 외"} | ${r.title.slice(0, 40)} |`);
+for (const r of spilled.slice(0, 10)) {
+  say(`| ${kn(r.lost)} | ${kn(r.follows)} | ${kn(r.views)} | ${pct(rate(r))} | ${r.title.slice(0, 36)} |`);
+}
+say("");
+
+say("## 조회수도 전환도 낮아 아무것도 못 벌어온 편");
+say("");
+say("| 팔로우 | 조회 | 전환 | 시청 | 제목 |");
+say("| --- | --- | --- | --- | --- |");
+for (const r of byFollows.slice(-10)) {
+  say(`| ${kn(r.follows)} | ${kn(r.views)} | ${pct(rate(r))} | ${r.watch || "?"}초 | ${r.title.slice(0, 36)} |`);
 }
 say("");
 
