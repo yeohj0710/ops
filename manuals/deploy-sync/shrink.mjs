@@ -165,9 +165,12 @@ for (const f of files) {
     continue;
   }
 
+  // 같은 날 두 번 돌리면 백업 자리에 이미 원본이 있다. 그것을 덮으면
+  // 한 번 줄인 것이 원본 행세를 하게 되고, 되돌릴 자리가 사라진다.
   const 백업자리 = path.join(백업, path.relative(뿌리, f.path));
   fs.mkdirSync(path.dirname(백업자리), { recursive: true });
-  fs.renameSync(f.path, 백업자리);
+  if (fs.existsSync(백업자리)) fs.unlinkSync(f.path);
+  else fs.renameSync(f.path, 백업자리);
   fs.renameSync(tmp, f.path);
   줄인수 += 1;
   아낀바이트 += f.size - 새크기;
