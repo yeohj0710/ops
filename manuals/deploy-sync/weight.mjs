@@ -134,8 +134,10 @@ for (const [name, spec] of Object.entries(REG.프로젝트)) {
           .filter((l) => l && !l.startsWith("#"))
           .map((l) => l.replace(/^\/+|\/+$/g, "").replace(/\//g, path.sep))
       : [];
+    // .vercelignore 의 경로는 저장소 뿌리 기준이다. 대상 폴더 기준으로 비교하면
+    // public/inbox/ 같은 줄이 영영 안 맞는다. 260825 에 실제로 안 맞았다.
     const files = walk(대상).filter((f) => {
-      const rel = path.relative(대상, f.path);
+      const rel = path.relative(dir, f.path);
       return !무시.some((g) => rel === g || rel.startsWith(g + path.sep));
     });
     const total = files.reduce((s, f) => s + f.size, 0);
