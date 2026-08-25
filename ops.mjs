@@ -18,6 +18,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
+import { callPhrase, readPreauth } from "./lib/call-phrase.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIR = {
@@ -155,6 +156,7 @@ function manualList() {
         trigger: (text.match(/^-\s*\*\*부르는 말\*\*:\s*(.+)$/m) || [, ""])[1].trim(),
         runner: (text.match(/^-\s*\*\*런너\*\*:\s*(.+)$/m) || [, "either"])[1].trim(),
         surfaces: (text.match(/^-\s*\*\*제어층\*\*:\s*(.+)$/m) || [, "L1"])[1].trim(),
+        preauth: readPreauth(text),
         hidden: id.startsWith("_"),
       };
     })
@@ -178,6 +180,8 @@ function cmdManuals(argv) {
     console.log(`  ${m.id}`);
     console.log(`    ${m.title}`);
     if (m.trigger) console.log(`    부르는 말: ${m.trigger}`);
+    // 짧은 호출만 주면 Codex 가 승인 게이트를 한 번 더 건다. lib/call-phrase.mjs 를 보라.
+    if (!m.hidden) console.log(`    붙여넣을 말: ${callPhrase(m.title, m.preauth)}`);
     console.log(`    런너 ${m.runner}, 제어층 ${m.surfaces}`);
     console.log(`    ${m.file}`);
     console.log("");
@@ -247,8 +251,10 @@ function writeDriveGuide() {
   }
   const dir = path.join(me.drive_root, "에이전트");
   const list = manualList().filter((m) => !m.hidden);
+  // 표에 짧은 부르는 말만 두면 Codex 가 승인 게이트에서 멈춘다(260825 실측).
+  // 폰에서 그대로 복사해 붙일 문장을 싣는다. lib/call-phrase.mjs 에 이유를 적어 뒀다.
   const rows = list.length
-    ? list.map((m) => `| ${m.title} | ${m.trigger || "(없음)"} |`).join("\n")
+    ? list.map((m) => `| ${m.title} | ${callPhrase(m.title, m.preauth)} |`).join("\n")
     : "| (아직 없다) | |";
 
   const text = `# 에이전트 업무 시스템
@@ -357,13 +363,17 @@ node "<이 폴더>/설치.mjs"
 
 | 하고 싶은 것 | 세션에 하는 말 |
 | --- | --- |
-| 등록된 업무 시키기 | 아래 표의 "부르는 말" 을 그대로 |
+| 등록된 업무 시키기 | 아래 표의 "붙여넣을 말" 을 **통째로** |
 | 새 업무 등록하기 | "○○ 업무로 등록해줘", "방금 한 거 등록해줘" |
 | 큐에서 뽑아 돌리기 | "일감 뽑아서 해줘" |
 
 ## 지금 등록된 업무 ${list.length}개
 
-| 업무 | 부르는 말 |
+문장이 긴 이유가 있다. 업로드나 게시가 들어 있는 업무는 **그것까지 미리 허가한다는 말**이 뒤에 붙어 있다.
+그 말을 빼면 Codex 가 절차를 다 읽고도 마지막에 "실행해도 될까요" 하고 멈춰 선다.
+폰으로 시켜 놓고 자리를 비우면 거기서 일이 끝난다. **뒤를 자르지 말고 통째로 붙여넣어라.**
+
+| 업무 | 붙여넣을 말 |
 | --- | --- |
 ${rows}
 
@@ -451,9 +461,11 @@ ${rows}
       "저장소가 없는 컴에서도 이 폴더만 보고 업무를 할 수 있게 두었다.",
       "일감 큐를 쓰려면 저장소가 있어야 한다(겹침을 git push 경쟁으로 판정한다).",
       "",
-      "| 업무 | 부르는 말 |",
+      "붙여넣을 말은 뒤를 자르지 말고 통째로 쓴다. 미리 허가가 빠지면 세션이 게시 직전에 멈춰 선다.",
+      "",
+      "| 업무 | 붙여넣을 말 |",
       "| --- | --- |",
-      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${m.trigger || "(없음)"} |`),
+      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${callPhrase(m.title, m.preauth)} |`),
     ].join("\n") + "\n",
     "utf8"
   );
@@ -537,7 +549,8 @@ function cmdNew(argv) {
   console.log("만들었다: " + path.join(dest, "MANUAL.md"));
   console.log("");
   console.log("이제 할 일:");
-  console.log("  1. 머리말 네 줄(부르는 말, 런너, 제어층, 시간)을 채운다");
+  console.log("  1. 머리말 다섯 줄(부르는 말, 미리 허가, 런너, 제어층, 시간)을 채운다");
+  console.log("     미리 허가에 업로드, 게시, 주문 같은 밖으로 나가는 행동을 적어야 호출문이 완성된다");
   console.log("  2. 절차, 알려진 함정, 완료 검사를 채운다. 방금 한 일이 있으면 그대로 옮긴다");
   console.log("  3. node ops.mjs sync 로 스킬 설명줄에 이 업무를 올린다 (부르는 말을 채운 뒤에 돌려라)");
   console.log("  4. 커밋하고 push 한다 (git add -A && git commit && git push)");
