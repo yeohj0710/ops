@@ -42,6 +42,21 @@ const wrap = (cmd) => (process.platform === "win32" ? ["/d", "/s", "/c", cmd + "
 const MB = (n) => (n / 1024 / 1024).toFixed(1) + "MB";
 const KB = (n) => Math.round(n / 1024) + "KB";
 
+// 이름에 내용 해시가 박혀 있으면 캐시가 오래 살아도 안전하다. 내용이 바뀌면 이름이 바뀌니까.
+// 해시 모양은 도구마다 다르다. vite 는 index-DrGG__SU.js, 다른 데는 accounts.db5a869b8d.json 이다.
+// 16진수만 찾으면 대소문자 섞인 것을 전부 "해시 없음" 으로 잘못 잡는다. 실제로 잘못 잡았다.
+function 해시있음(파일이름) {
+  // 이름 끝 여덟 글자만 본다. 구분자가 무엇이든(-, ., _) 걸리지 않는다.
+  // vite 의 index-7BafNAB-.js 는 해시가 하이픈으로 끝나서, 구분자로 자르면 놓친다.
+  const 몸통 = 파일이름.replace(/\.[a-z0-9]+$/i, "");
+  if (몸통.length < 8) return false;
+  const 끝 = 몸통.slice(-8);
+  const 숫자 = /[0-9]/.test(끝);
+  const 대문자 = /[A-Z]/.test(끝);
+  const 소문자 = /[a-z]/.test(끝);
+  return (숫자 && (대문자 || 소문자)) || (대문자 && 소문자);
+}
+
 const 이미지확장자 = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".bmp", ".tiff"]);
 const 미디어확장자 = new Set([".mp4", ".mov", ".webm", ".mp3", ".wav", ".m4a"]);
 
@@ -163,7 +178,7 @@ for (const [name, spec] of Object.entries(REG.프로젝트)) {
     row.swr = headers.includes("stale-while-revalidate");
     if (row.swr && 대상) {
       const 해시없는자산 = walk(대상, 3).filter(
-        (f) => /\.(css|js)$/i.test(f.path) && !/[.-][0-9a-f]{6,}\.(css|js)$/i.test(f.path)
+        (f) => /\.(css|js)$/i.test(f.path) && !해시있음(path.basename(f.path))
       );
       if (해시없는자산.length) {
         적는다(
@@ -172,6 +187,29 @@ for (const [name, spec] of Object.entries(REG.프로젝트)) {
           `파일 이름에 해시가 없는데 stale-while-revalidate 를 걸어 뒀다 (${해시없는자산.length}개)`,
           "다시 배포해도 브라우저가 최대 하루 동안 옛 파일을 쓴다. 화면이 깨진 채로 남는다",
           "주소에 내용 해시를 붙이거나 max-age=0, must-revalidate 로 바꾼다"
+        );
+      }
+    }
+    // 이름이 안 바뀌는 자료에 immutable 을 걸면 새 자료가 영영 안 간다.
+    // 동기화하고 배포해도 한 번 열어 본 사람 화면은 그대로다. 260825 에 실제로 그랬다.
+    // 다만 그 폴더의 파일 이름에 해시가 박혀 있으면 문제가 아니다. 그건 확인하고 판정한다.
+    for (const rule of vjson.headers ?? []) {
+      const 값 = (rule.headers ?? []).find((h) => /cache-control/i.test(h.key))?.value ?? "";
+      const 오래 = /immutable/i.test(값) || Number((값.match(/max-age=(\d+)/) || [])[1] ?? 0) >= 86400;
+      if (!오래 || !대상) continue;
+      const 앞자리 = String(rule.source ?? "").replace(/^\//, "").split(/[(*]/)[0].replace(/\/$/, "");
+      if (!앞자리) continue;
+      const 폴더 = path.join(대상, 앞자리.replace(/\//g, path.sep));
+      const 안의파일 = fs.existsSync(폴더) && fs.statSync(폴더).isDirectory() ? walk(폴더, 3) : [];
+      if (!안의파일.length) continue;
+      const 이름없는것 = 안의파일.filter((f) => !해시있음(path.basename(f.path)));
+      if (이름없는것.length / 안의파일.length > 0.3) {
+        적는다(
+          "높음",
+          name,
+          `${rule.source} 에 오래 가는 캐시를 걸었는데 그 안 파일 이름에 해시가 없다 (${이름없는것.length}/${안의파일.length}개)`,
+          "주소가 늘 같으니 새로 배포해도 브라우저가 옛것을 계속 쓴다. 동기화한 자료가 화면에 안 나타난다",
+          "이름에 내용 해시를 박거나, 그 자리를 max-age=0, must-revalidate 로 바꾼다. 304 라 싸다"
         );
       }
     }
