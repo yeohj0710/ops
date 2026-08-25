@@ -19,3 +19,6 @@ Thumbs.db
 
 etc/instagram-upload/
 etc/*.bak-*
+
+# 카드 그림은 받아 쓰는 것이라 안 올린다. 옮겨 적은 이긴카드.md 만 올린다
+manuals/shorts-refill/references/이긴카드/
