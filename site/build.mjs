@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { callPhrase, approvalPhrase, readPreauth } from "../lib/call-phrase.mjs";
+import { callPhrase, APPROVAL } from "../lib/call-phrase.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROOT, "site", "dist");
@@ -193,7 +193,6 @@ function manuals() {
         id: d.name,
         title: (t.match(/^#\s+(.+)$/m) || [, d.name])[1].trim(),
         triggers: grab("부르는 말").split(",").map((s) => s.trim()).filter(Boolean),
-        preauth: readPreauth(t),
         runner: grab("런너", "either"),
         surfaces: grab("제어층", "L1"),
         minutes: grab("한 번에 걸리는 시간"),
@@ -265,6 +264,26 @@ const LAYER_WHY = {
 };
 
 // 목록은 접힌 줄 하나다. 눌러서 펼치고, 손잡이를 끌어 순서를 바꾸거나 보관함에 넣는다.
+// 보내는 말 두 개와 대기열 흐름을 한 덩어리로 그린다.
+// 1번은 보내고, 2번은 큐에 걸어 두고, 세션이 멈추는 순간 그 말이 꺼내진다.
+function sayBlock(one, opt = {}) {
+  const cls = opt.compact ? "say say-c" : "say";
+  return [
+    '<div class="' + cls + '">',
+    '<div class="step"><span class="n">1</span>',
+    '<button class="chip" data-copy="' + esc(one) + '">' + esc(one) + "</button></div>",
+    '<div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div>',
+    '<div class="step q"><span class="n">2</span>',
+    '<button class="chip" data-copy="' + esc(APPROVAL) + '">' + esc(APPROVAL) + "</button>",
+    '<span class="qtag">대기열에 걸립니다</span></div>',
+    '<div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, ',
+    "걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div>",
+    "</div>",
+  ].join("");
+}
+
+const SAY_SAMPLE = "G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.";
+
 const cards = M.map((m) => {
   const runnerTip = m.runner.includes("codex")
     ? "길게 도는 작업이라 Codex 가 맡습니다"
@@ -282,19 +301,9 @@ const cards = M.map((m) => {
     // 부르는 말을 여러 개 늘어놓으면 위 원리에 적어 둔 한 가지 형식과 어긋나 헷갈린다.
     // 카드에는 그 형식 그대로 만든 문장만 둔다.
     //
-    // 문장이 둘인 이유는 lib/call-phrase.mjs 에 적어 뒀다. 1번은 담백하게 시키기만 하고,
-    // 2번은 답을 기다리지 말고 바로 보내 대기 큐에 재워 둔다. 세션이 도중에 멈춰
-    // "실행해도 될까요" 하고 물으면 그 순간 2번을 읽고 이어서 간다.
-    (() => {
-      const one = callPhrase(m.title);
-      const two = approvalPhrase(m.preauth);
-      const step = (n, s) =>
-        '<div class="step"><span class="n">' + n + '</span>' +
-        '<button class="chip" data-copy="' + esc(s) + '">' + esc(s) + "</button></div>";
-      return '<div class="say">' + step(1, one) + step(2, two) +
-        '<p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. ' +
-        '대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>';
-    })(),
+    // 문장이 둘인 이유는 lib/call-phrase.mjs 에 적어 뒀다. 2번이 대기열에 걸린다는 것이
+    // 말로만 적혀 있으면 안 읽힌다. 그래서 흐름을 그대로 그림으로 그린다.
+    sayBlock(callPhrase(m.title)),
     '<ul class="meta">',
     '<li data-tip="' + esc(runnerTip) + '">' + esc(m.runner) + " 가 맡습니다</li>",
     m.minutes ? '<li data-tip="한 번 돌릴 때 걸리는 시간입니다">' + esc(m.minutes) + "</li>" : "",
@@ -468,13 +477,38 @@ body.dnd{cursor:grabbing;user-select:none;-webkit-user-select:none}
 body.dnd .boxed{border-color:var(--acc);background:var(--accBg)}
 .what{margin:0 0 18px;color:var(--ink2);font-size:15px}
 .say{margin:0 0 16px}
-.say .step{display:flex;align-items:flex-start;gap:9px;margin:0 0 7px}
+.say .step{display:flex;align-items:flex-start;gap:9px;flex-wrap:nowrap}
 .say .n{flex:none;width:20px;height:20px;margin-top:10px;border-radius:50%;
   background:var(--accBg);color:var(--acc);font-size:11.5px;font-weight:700;
   display:flex;align-items:center;justify-content:center}
-.sayhint{margin:9px 0 0 29px;font-size:13px;color:var(--dim);line-height:1.6}
-.sayhint b{color:var(--ink2)}
-.saypair{display:flex;flex-direction:column;gap:7px;margin:2px 0 0}
+.say .step .chip{flex:1 1 auto;min-width:0}
+/* 1번과 2번 사이. 점선이 아래로 이어져 큐에 걸린다는 걸 보인다. */
+.say .flow{position:relative;margin:0;padding:7px 0 7px 29px;
+  font-size:12.5px;color:var(--dim);line-height:1.4}
+.say .flow::before{content:"";position:absolute;left:9px;top:0;bottom:0;
+  border-left:2px dotted var(--line2)}
+.say .fdot{position:absolute;left:5.5px;bottom:-1px;width:0;height:0;
+  border-left:4.5px solid transparent;border-right:4.5px solid transparent;
+  border-top:6px solid var(--line2)}
+/* 큐에 걸린 말은 테두리를 끊어 그린다. 아직 안 쓰인 상태라는 표시다. */
+.say .step.q{align-items:center}
+.say .step.q .chip{flex:0 0 auto;width:auto;border-style:dashed;
+  border-color:var(--line2);background:transparent}
+.say .qtag{flex:none;white-space:nowrap;font-size:11.5px;font-weight:600;
+  padding:4px 9px;border-radius:99px;background:rgba(148,163,184,.16);color:var(--dim)}
+.say .qwhy{position:relative;margin:9px 0 0;padding:0 0 0 29px;
+  font-size:13px;color:var(--dim);line-height:1.65}
+.say .qwhy::before{content:"";position:absolute;left:9px;top:2px;bottom:2px;
+  border-left:2px solid var(--accBg)}
+.say .qwhy b{color:var(--ink2)}
+/* 머리말 원리 목록 안에 넣을 때. 바깥 목록도 1,2,3,4 라 숫자가 겹쳐 헷갈린다.
+   여기서는 번호를 지우고 점만 남겨 흐름선의 기준으로 쓴다. */
+.say-c{margin:10px 0 4px}
+.say-c .n{width:9px;height:9px;margin-top:16px;font-size:0;opacity:.5;background:var(--acc)}
+.say-c .step.q .n{margin-top:0}
+.say-c .flow,.say-c .qwhy{padding-left:24px}
+.say-c .flow::before,.say-c .qwhy::before{left:4px}
+.say-c .fdot{left:0}
 /* 호출문이 미리 허가까지 담아 길어졌다. 알약 모양으로 두면 세 줄이 말려 안 읽힌다. */
 .say .chip{display:block;width:100%;text-align:left;padding:12px 15px;border-radius:12px;line-height:1.55}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
@@ -652,11 +686,8 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
       <li><span><b>매뉴얼을 구글 드라이브에 미리 깔아 뒀습니다.</b>
         절차, 회사 정보, 로그인 계정이 에이전트 폴더 하나에 들어 있습니다.</span></li>
       <li><span><b>Claude 나 Codex 새 세션에 두 줄만 보내면 끝까지 합니다.</b>
-        시키는 말을 보내고, 답을 기다리지 말고 허가문을 바로 이어서 보냅니다.
-        도중에 멈춰 물어보면 그 허가문을 읽고 이어서 갑니다.
-        <span class="saypair">
-        <button class="chip say2" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button>
-        <button class="chip say2" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></span></span></li>
+        시키는 말을 보내고, 답을 기다리지 말고 <b>허가합니다</b> 를 바로 이어서 보냅니다.
+        ${sayBlock(SAY_SAMPLE, { compact: true })}</span></li>
       <li><span><b>원리는 CUA, 컴퓨터를 직접 조작하는 것입니다.</b>
         명령어(L1)부터 컴퓨터 전체 제어(L4)까지 써서, 계정으로 하는 일도 사람 손을 안 거칩니다.</span></li>
       <li><span><b>쓸수록 매뉴얼이 두꺼워집니다.</b>
@@ -749,16 +780,15 @@ ${BIZ.map(
     <details class="hsec" open>
       <summary>시키는 법 <span class="caret"></span></summary>
       <div class="in">
-        <p><b>두 줄을 차례로 보냅니다.</b> 첫 줄은 <b>업무 이름</b>만 갈아 끼우면 됩니다.</p>
-        <button class="chip quote" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button>
-        <p><b>답을 기다리지 말고 바로 이어서</b> 이 줄을 보냅니다. 대기 큐에 쌓입니다.</p>
-        <button class="chip quote" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button>
+        <p><b>두 줄을 차례로 보냅니다.</b> 첫 줄은 <b>업무 이름</b>만 갈아 끼웁니다.
+        둘째 줄은 업무를 안 가리고 늘 같습니다.</p>
+        ${sayBlock(SAY_SAMPLE)}
         <p>업무 카드를 펼치면 그 업무 이름을 넣어 만든 두 문장이 나옵니다.
         눌러서 복사한 뒤 Claude 나 Codex 새 세션에 차례로 붙여넣으면 됩니다.</p>
         <p><b>2번을 빼면 도중에 멈춰 섭니다.</b> 업로드나 게시가 들어 있는 업무는
         세션이 절차를 다 읽고도 마지막에 "실행해도 될까요" 하고 사람을 기다립니다.
-        폰으로 시켜 놓고 자리를 비우면 거기서 일이 끝납니다. 허가문을 미리 재워 두면
-        그 질문이 뜨는 순간 바로 읽고 이어서 갑니다. 무엇을 물어볼지 몰라도 됩니다.</p>
+        폰으로 시켜 놓고 자리를 비우면 거기서 일이 끝납니다. 허가문을 미리 걸어 두면
+        그 질문이 뜨는 순간 꺼내 읽고 이어서 갑니다. 무엇을 물어볼지 몰라도 됩니다.</p>
         <p>줄여서 "캡션 써줘" 처럼 말해도 알아듣습니다. 매뉴얼마다 줄임말을 적어 뒀습니다.
         다만 <b>처음 켠 컴퓨터에서는 위 형식을 그대로 쓰세요.</b> 그래야 에이전트가
         드라이브에서 매뉴얼을 먼저 찾습니다.</p>

@@ -18,7 +18,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { callPhrase, approvalPhrase, readPreauth } from "./lib/call-phrase.mjs";
+import { callPhrase, APPROVAL } from "./lib/call-phrase.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIR = {
@@ -156,7 +156,6 @@ function manualList() {
         trigger: (text.match(/^-\s*\*\*부르는 말\*\*:\s*(.+)$/m) || [, ""])[1].trim(),
         runner: (text.match(/^-\s*\*\*런너\*\*:\s*(.+)$/m) || [, "either"])[1].trim(),
         surfaces: (text.match(/^-\s*\*\*제어층\*\*:\s*(.+)$/m) || [, "L1"])[1].trim(),
-        preauth: readPreauth(text),
         hidden: id.startsWith("_"),
       };
     })
@@ -184,7 +183,7 @@ function cmdManuals(argv) {
     // 2번을 바로 보낸다. 세션이 도중에 멈춰 물으면 대기 큐에 있던 2번을 읽고 이어서 간다.
     if (!m.hidden) {
       console.log(`    1) 새 세션에: ${callPhrase(m.title)}`);
-      console.log(`    2) 바로 이어서: ${approvalPhrase(m.preauth)}`);
+      console.log(`    2) 바로 이어서(대기열): ${APPROVAL}`);
     }
     console.log(`    런너 ${m.runner}, 제어층 ${m.surfaces}`);
     console.log(`    ${m.file}`);
@@ -257,7 +256,7 @@ function writeDriveGuide() {
   const list = manualList().filter((m) => !m.hidden);
   // 폰에서 그대로 복사해 붙일 문장을 싣는다. 두 개인 이유는 lib/call-phrase.mjs 에 적어 뒀다.
   const rows = list.length
-    ? list.map((m) => `| ${m.title} | ${callPhrase(m.title)} | ${approvalPhrase(m.preauth)} |`).join("\n")
+    ? list.map((m) => `| ${m.title} | ${callPhrase(m.title)} | ${APPROVAL} |`).join("\n")
     : "| (아직 없다) | | |";
 
   const text = `# 에이전트 업무 시스템
@@ -366,18 +365,19 @@ node "<이 폴더>/설치.mjs"
 
 | 하고 싶은 것 | 세션에 하는 말 |
 | --- | --- |
-| 등록된 업무 시키기 | 아래 표의 두 문장을 **차례로**. 답을 기다리지 말고 2번을 바로 보낸다 |
+| 등록된 업무 시키기 | 아래 표의 1번을 보내고, 답을 기다리지 말고 \`허가합니다.\` 를 바로 보낸다 |
 | 새 업무 등록하기 | "○○ 업무로 등록해줘", "방금 한 거 등록해줘" |
 | 큐에서 뽑아 돌리기 | "일감 뽑아서 해줘" |
 
 ## 지금 등록된 업무 ${list.length}개
 
 **두 개를 차례로 보낸다. 답을 기다리지 마라.**
-1번을 보내고 곧바로 2번을 보내면 대기 큐에 쌓인다.
-세션이 도중에 "실행해도 될까요" 하고 멈추는 순간 그 허가문을 읽고 이어서 간다.
+1번을 보내고 곧바로 \`허가합니다.\` 를 보내면 대기열에 걸린다.
+세션이 도중에 "실행해도 될까요" 하고 멈추는 순간 그 말을 꺼내 읽고 이어서 간다.
 2번을 안 보내면 폰으로 시켜 놓고 자리를 비웠을 때 거기서 일이 끝난다.
+2번은 업무를 안 가리고 늘 \`허가합니다.\` 다. 외울 것이 없다.
 
-| 업무 | 1) 새 세션에 | 2) 바로 이어서 |
+| 업무 | 1) 새 세션에 | 2) 바로 이어서(대기열) |
 | --- | --- | --- |
 ${rows}
 
@@ -465,12 +465,12 @@ ${rows}
       "저장소가 없는 컴에서도 이 폴더만 보고 업무를 할 수 있게 두었다.",
       "일감 큐를 쓰려면 저장소가 있어야 한다(겹침을 git push 경쟁으로 판정한다).",
       "",
-      "두 문장을 차례로 보낸다. 답을 기다리지 말고 2번을 바로 보내면 대기 큐에 쌓였다가,",
-      "세션이 멈춰 물어보는 순간 소비된다. 2번이 빠지면 세션이 게시 직전에 멈춰 선다.",
+      "1번을 보내고 답을 기다리지 말고 `허가합니다.` 를 바로 보낸다. 대기열에 걸렸다가,",
+      "세션이 멈춰 물어보는 순간 꺼내 쓰인다. 2번이 빠지면 세션이 게시 직전에 멈춰 선다.",
       "",
-      "| 업무 | 1) 새 세션에 | 2) 바로 이어서 |",
+      "| 업무 | 1) 새 세션에 | 2) 바로 이어서(대기열) |",
       "| --- | --- | --- |",
-      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${callPhrase(m.title)} | ${approvalPhrase(m.preauth)} |`),
+      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${callPhrase(m.title)} | ${APPROVAL} |`),
     ].join("\n") + "\n",
     "utf8"
   );

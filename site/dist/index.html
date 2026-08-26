@@ -144,13 +144,38 @@ body.dnd{cursor:grabbing;user-select:none;-webkit-user-select:none}
 body.dnd .boxed{border-color:var(--acc);background:var(--accBg)}
 .what{margin:0 0 18px;color:var(--ink2);font-size:15px}
 .say{margin:0 0 16px}
-.say .step{display:flex;align-items:flex-start;gap:9px;margin:0 0 7px}
+.say .step{display:flex;align-items:flex-start;gap:9px;flex-wrap:nowrap}
 .say .n{flex:none;width:20px;height:20px;margin-top:10px;border-radius:50%;
   background:var(--accBg);color:var(--acc);font-size:11.5px;font-weight:700;
   display:flex;align-items:center;justify-content:center}
-.sayhint{margin:9px 0 0 29px;font-size:13px;color:var(--dim);line-height:1.6}
-.sayhint b{color:var(--ink2)}
-.saypair{display:flex;flex-direction:column;gap:7px;margin:2px 0 0}
+.say .step .chip{flex:1 1 auto;min-width:0}
+/* 1번과 2번 사이. 점선이 아래로 이어져 큐에 걸린다는 걸 보인다. */
+.say .flow{position:relative;margin:0;padding:7px 0 7px 29px;
+  font-size:12.5px;color:var(--dim);line-height:1.4}
+.say .flow::before{content:"";position:absolute;left:9px;top:0;bottom:0;
+  border-left:2px dotted var(--line2)}
+.say .fdot{position:absolute;left:5.5px;bottom:-1px;width:0;height:0;
+  border-left:4.5px solid transparent;border-right:4.5px solid transparent;
+  border-top:6px solid var(--line2)}
+/* 큐에 걸린 말은 테두리를 끊어 그린다. 아직 안 쓰인 상태라는 표시다. */
+.say .step.q{align-items:center}
+.say .step.q .chip{flex:0 0 auto;width:auto;border-style:dashed;
+  border-color:var(--line2);background:transparent}
+.say .qtag{flex:none;white-space:nowrap;font-size:11.5px;font-weight:600;
+  padding:4px 9px;border-radius:99px;background:rgba(148,163,184,.16);color:var(--dim)}
+.say .qwhy{position:relative;margin:9px 0 0;padding:0 0 0 29px;
+  font-size:13px;color:var(--dim);line-height:1.65}
+.say .qwhy::before{content:"";position:absolute;left:9px;top:2px;bottom:2px;
+  border-left:2px solid var(--accBg)}
+.say .qwhy b{color:var(--ink2)}
+/* 머리말 원리 목록 안에 넣을 때. 바깥 목록도 1,2,3,4 라 숫자가 겹쳐 헷갈린다.
+   여기서는 번호를 지우고 점만 남겨 흐름선의 기준으로 쓴다. */
+.say-c{margin:10px 0 4px}
+.say-c .n{width:9px;height:9px;margin-top:16px;font-size:0;opacity:.5;background:var(--acc)}
+.say-c .step.q .n{margin-top:0}
+.say-c .flow,.say-c .qwhy{padding-left:24px}
+.say-c .flow::before,.say-c .qwhy::before{left:4px}
+.say-c .fdot{left:0}
 /* 호출문이 미리 허가까지 담아 길어졌다. 알약 모양으로 두면 세 줄이 말려 안 읽힌다. */
 .say .chip{display:block;width:100%;text-align:left;padding:12px 15px;border-radius:12px;line-height:1.55}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
@@ -328,11 +353,8 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
       <li><span><b>매뉴얼을 구글 드라이브에 미리 깔아 뒀습니다.</b>
         절차, 회사 정보, 로그인 계정이 에이전트 폴더 하나에 들어 있습니다.</span></li>
       <li><span><b>Claude 나 Codex 새 세션에 두 줄만 보내면 끝까지 합니다.</b>
-        시키는 말을 보내고, 답을 기다리지 말고 허가문을 바로 이어서 보냅니다.
-        도중에 멈춰 물어보면 그 허가문을 읽고 이어서 갑니다.
-        <span class="saypair">
-        <button class="chip say2" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button>
-        <button class="chip say2" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></span></span></li>
+        시키는 말을 보내고, 답을 기다리지 말고 <b>허가합니다</b> 를 바로 이어서 보냅니다.
+        <div class="say say-c"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div></span></li>
       <li><span><b>원리는 CUA, 컴퓨터를 직접 조작하는 것입니다.</b>
         명령어(L1)부터 컴퓨터 전체 제어(L4)까지 써서, 계정으로 하는 일도 사람 손을 안 거칩니다.</span></li>
       <li><span><b>쓸수록 매뉴얼이 두꺼워집니다.</b>
@@ -356,7 +378,7 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 편집 끝난 영상에 인스타 캡션 달기 업무 해줘.">G드라이브 에이전트 폴더 참고해서 편집 끝난 영상에 인스타 캡션 달기 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 편집 끝난 영상에 인스타 캡션 달기 업무 해줘.">G드라이브 에이전트 폴더 참고해서 편집 끝난 영상에 인스타 캡션 달기 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">영상 하나에 10~15분</li>
@@ -395,7 +417,7 @@ ffmpeg -i &quot;&lt;영상&gt;&quot; -vf fps=1 -q:v 3 &quot;&lt;임시폴더&gt;
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 배포 사이트 최신화 업무 해줘.">G드라이브 에이전트 폴더 참고해서 배포 사이트 최신화 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="등록된 사이트 빌드와 Vercel 배포, 커밋과 push 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">등록된 사이트 빌드와 Vercel 배포, 커밋과 push 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 배포 사이트 최신화 업무 해줘.">G드라이브 에이전트 폴더 참고해서 배포 사이트 최신화 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">either 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">밀 것이 없으면 5분, 대여섯 개 밀면 20분에서 40분</li>
@@ -463,7 +485,7 @@ node &quot;&lt;OPS&gt;/manuals/deploy-sync/prune.mjs&quot; --apply   # 실제로
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 인포크링크 DM 자동화 세팅 업무 해줘.">G드라이브 에이전트 폴더 참고해서 인포크링크 DM 자동화 세팅 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="인포크링크 자동화 규칙 저장과 켜기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">인포크링크 자동화 규칙 저장과 켜기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 인포크링크 DM 자동화 세팅 업무 해줘.">G드라이브 에이전트 폴더 참고해서 인포크링크 DM 자동화 세팅 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">15~25분</li>
@@ -501,7 +523,7 @@ node &quot;&lt;OPS&gt;/manuals/deploy-sync/prune.mjs&quot; --apply   # 실제로
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 인스타 계정 지표 실측 업무 해줘.">G드라이브 에이전트 폴더 참고해서 인스타 계정 지표 실측 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="인스타 지표 읽기와 대상 시트 쓰기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">인스타 지표 읽기와 대상 시트 쓰기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 인스타 계정 지표 실측 업무 해줘.">G드라이브 에이전트 폴더 참고해서 인스타 계정 지표 실측 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="길게 도는 작업이라 Codex 가 맡습니다">codex (계정이 수백 개라 길게 돈다. 수십 개면 claude 도 된다) 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">계정 100개당 약 10분 (요청 2초 간격 + 100개마다 5분 휴식)</li>
@@ -558,7 +580,7 @@ res</code></pre><p><code>이게 보이면 성공</code>: 첫 계정에서 <code>
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 카톡 확인하고 할 일 뽑기 업무 해줘.">G드라이브 에이전트 폴더 참고해서 카톡 확인하고 할 일 뽑기 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 카톡 확인하고 할 일 뽑기 업무 해줘.">G드라이브 에이전트 폴더 참고해서 카톡 확인하고 할 일 뽑기 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">5~10분</li>
@@ -602,7 +624,7 @@ for f in *.txt; do echo &quot;--- $f ($(wc -l &lt; &quot;$f&quot;) 줄)&quot;; g
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 김제조 시스템 동기화 업무 해줘.">G드라이브 에이전트 폴더 참고해서 김제조 시스템 동기화 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="노션 카드 갱신, 김제조 보드 단계 옮기기, 마이박스 업로드 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">노션 카드 갱신, 김제조 보드 단계 옮기기, 마이박스 업로드 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 김제조 시스템 동기화 업무 해줘.">G드라이브 에이전트 폴더 참고해서 김제조 시스템 동기화 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">20~40분</li>
@@ -650,7 +672,7 @@ for f in *.txt; do echo &quot;--- $f ($(wc -l &lt; &quot;$f&quot;) 줄)&quot;; g
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 미모미 시딩 진행표 단가 사다리 개정 업무 해줘.">G드라이브 에이전트 폴더 참고해서 미모미 시딩 진행표 단가 사다리 개정 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="진행표 시트 다섯 탭의 금액과 진행 상태 쓰기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">진행표 시트 다섯 탭의 금액과 진행 상태 쓰기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 미모미 시딩 진행표 단가 사다리 개정 업무 해줘.">G드라이브 에이전트 폴더 참고해서 미모미 시딩 진행표 단가 사다리 개정 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="길게 도는 작업이라 Codex 가 맡습니다">codex 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">20~40분</li>
@@ -678,7 +700,7 @@ for f in *.txt; do echo &quot;--- $f ($(wc -l &lt; &quot;$f&quot;) 줄)&quot;; g
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 미모미약국 인스타 시딩 상황 파악 업무 해줘.">G드라이브 에이전트 폴더 참고해서 미모미약국 인스타 시딩 상황 파악 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="인스타 DM 읽기와 시딩 진행표 시트 쓰기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">인스타 DM 읽기와 시딩 진행표 시트 쓰기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 미모미약국 인스타 시딩 상황 파악 업무 해줘.">G드라이브 에이전트 폴더 참고해서 미모미약국 인스타 시딩 상황 파악 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">20~40분 (새 DM 개수에 따라)</li>
@@ -721,7 +743,7 @@ R ④합의 단가 · S ⑤확정 · AE 품질·운영 메모</code></pre><p><st
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 PDRN 리퀴드샷 발송 처리 업무 해줘.">G드라이브 에이전트 폴더 참고해서 PDRN 리퀴드샷 발송 처리 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="발송 엑셀 만들기와 카톡 나와의 채팅으로 파일 보내기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">발송 엑셀 만들기와 카톡 나와의 채팅으로 파일 보내기 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 PDRN 리퀴드샷 발송 처리 업무 해줘.">G드라이브 에이전트 폴더 참고해서 PDRN 리퀴드샷 발송 처리 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">20~40분</li>
@@ -756,7 +778,7 @@ R ④합의 단가 · S ⑤확정 · AE 품질·운영 메모</code></pre><p><st
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 약사님들 유튜브·틱톡 영상 업로드 업무 해줘.">G드라이브 에이전트 폴더 참고해서 약사님들 유튜브·틱톡 영상 업로드 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="유튜브와 틱톡 업로드, 플랫폼 예약 저장 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">유튜브와 틱톡 업로드, 플랫폼 예약 저장 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 약사님들 유튜브·틱톡 영상 업로드 업무 해줘.">G드라이브 에이전트 폴더 참고해서 약사님들 유튜브·틱톡 영상 업로드 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">either 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">영상 1편당 5~10분, 대량 예약은 영상 수와 처리 시간에 따라 30분 이상</li>
@@ -799,7 +821,7 @@ R ④합의 단가 · S ⑤확정 · AE 품질·운영 메모</code></pre><p><st
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 쇼츠 생성부터 인스타 업로드까지 업무 해줘.">G드라이브 에이전트 폴더 참고해서 쇼츠 생성부터 인스타 업로드까지 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="유튜브 두 채널 공개 업로드, 인스타 릴스 게시, 조회수 2,000회 주문 200원, 계정 세 개의 좋아요와 저장과 리포스트와 공유 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">유튜브 두 채널 공개 업로드, 인스타 릴스 게시, 조회수 2,000회 주문 200원, 계정 세 개의 좋아요와 저장과 리포스트와 공유 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 쇼츠 생성부터 인스타 업로드까지 업무 해줘.">G드라이브 에이전트 폴더 참고해서 쇼츠 생성부터 인스타 업로드까지 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="매뉴얼에 적힌 단계 수입니다">8단계</li>
@@ -952,7 +974,7 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 쇼츠 소재 리필 업무 해줘.">G드라이브 에이전트 폴더 참고해서 쇼츠 소재 리필 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 쇼츠 소재 리필 업무 해줘.">G드라이브 에이전트 폴더 참고해서 쇼츠 소재 리필 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">전략 뽑기 2분, 이긴 카드 읽기 5분, 팩 쓰기 채널당 25분 안팎</li>
@@ -1039,7 +1061,7 @@ node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/compare-with-winners.mjs&qu
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 클로드 구독 결제분 RCMS 사용등록 업무 해줘.">G드라이브 에이전트 폴더 참고해서 클로드 구독 결제분 RCMS 사용등록 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="RCMS 사용등록 제출 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">RCMS 사용등록 제출 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 클로드 구독 결제분 RCMS 사용등록 업무 해줘.">G드라이브 에이전트 폴더 참고해서 클로드 구독 결제분 RCMS 사용등록 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">15~20분</li>
@@ -1064,7 +1086,7 @@ node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/compare-with-winners.mjs&qu
 <span class="caret"></span>
 </summary>
 <div class="body">
-<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 참여연구원 인건비 RCMS 처리 업무 해줘.">G드라이브 에이전트 폴더 참고해서 참여연구원 인건비 RCMS 처리 업무 해줘.</button></div><div class="step"><span class="n">2</span><button class="chip" data-copy="RCMS 인건비 등록 제출 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">RCMS 인건비 등록 제출 전부 허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div><p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. 대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 참여연구원 인건비 RCMS 처리 업무 해줘.">G드라이브 에이전트 폴더 참고해서 참여연구원 인건비 RCMS 처리 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
 <li data-tip="한 번 돌릴 때 걸리는 시간입니다">40~60분</li>
@@ -1110,7 +1132,7 @@ node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/compare-with-winners.mjs&qu
           <a href="https://wellnessbox.kr/about/privacy">개인정보처리방침</a>
           <a href="https://wellnessbox.kr/about/contact">문의하기</a>
         </div>
-        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-26 10:30</span></p>
+        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-26 10:32</span></p>
       </div>
 
       <div class="fcol">
@@ -1159,16 +1181,15 @@ node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/compare-with-winners.mjs&qu
     <details class="hsec" open>
       <summary>시키는 법 <span class="caret"></span></summary>
       <div class="in">
-        <p><b>두 줄을 차례로 보냅니다.</b> 첫 줄은 <b>업무 이름</b>만 갈아 끼우면 됩니다.</p>
-        <button class="chip quote" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button>
-        <p><b>답을 기다리지 말고 바로 이어서</b> 이 줄을 보냅니다. 대기 큐에 쌓입니다.</p>
-        <button class="chip quote" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button>
+        <p><b>두 줄을 차례로 보냅니다.</b> 첫 줄은 <b>업무 이름</b>만 갈아 끼웁니다.
+        둘째 줄은 업무를 안 가리고 늘 같습니다.</p>
+        <div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
         <p>업무 카드를 펼치면 그 업무 이름을 넣어 만든 두 문장이 나옵니다.
         눌러서 복사한 뒤 Claude 나 Codex 새 세션에 차례로 붙여넣으면 됩니다.</p>
         <p><b>2번을 빼면 도중에 멈춰 섭니다.</b> 업로드나 게시가 들어 있는 업무는
         세션이 절차를 다 읽고도 마지막에 "실행해도 될까요" 하고 사람을 기다립니다.
-        폰으로 시켜 놓고 자리를 비우면 거기서 일이 끝납니다. 허가문을 미리 재워 두면
-        그 질문이 뜨는 순간 바로 읽고 이어서 갑니다. 무엇을 물어볼지 몰라도 됩니다.</p>
+        폰으로 시켜 놓고 자리를 비우면 거기서 일이 끝납니다. 허가문을 미리 걸어 두면
+        그 질문이 뜨는 순간 꺼내 읽고 이어서 갑니다. 무엇을 물어볼지 몰라도 됩니다.</p>
         <p>줄여서 "캡션 써줘" 처럼 말해도 알아듣습니다. 매뉴얼마다 줄임말을 적어 뒀습니다.
         다만 <b>처음 켠 컴퓨터에서는 위 형식을 그대로 쓰세요.</b> 그래야 에이전트가
         드라이브에서 매뉴얼을 먼저 찾습니다.</p>
