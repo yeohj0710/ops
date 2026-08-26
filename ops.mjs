@@ -100,6 +100,78 @@ function removeTreeSafe(p) {
 const isRepo = () => git(["rev-parse", "--git-dir"]).ok;
 const hasRemote = () => isRepo() && git(["remote"]).out.length > 0;
 
+function hasCodexPlugin(name, marker) {
+  const root = path.join(os.homedir(), ".codex", "plugins", "cache", "openai-bundled", name);
+  if (!fs.existsSync(root)) return false;
+  try {
+    return fs
+      .readdirSync(root, { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .some((e) => fs.existsSync(path.join(root, e.name, ...marker)));
+  } catch {
+    return false;
+  }
+}
+
+function codexPluginEnabled(pluginId) {
+  const config = path.join(os.homedir(), ".codex", "config.toml");
+  if (!fs.existsSync(config)) return false;
+  try {
+    const section = `[plugins."${pluginId}"]`;
+    let inPlugin = false;
+    for (const line of fs.readFileSync(config, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+        inPlugin = trimmed === section;
+        continue;
+      }
+      if (!inPlugin) continue;
+      const enabled = trimmed.match(/^enabled\s*=\s*(true|false)(?:\s*#.*)?$/i);
+      if (enabled) return enabled[1].toLowerCase() === "true";
+    }
+  } catch {}
+  return false;
+}
+
+function codexPluginReady(name, marker, pluginId) {
+  return hasCodexPlugin(name, marker) && codexPluginEnabled(pluginId);
+}
+
+function hasChrome() {
+  const candidates =
+    process.platform === "win32"
+      ? [
+          process.env.ProgramFiles && path.join(process.env.ProgramFiles, "Google", "Chrome", "Application", "chrome.exe"),
+          process.env["ProgramFiles(x86)"] && path.join(process.env["ProgramFiles(x86)"], "Google", "Chrome", "Application", "chrome.exe"),
+          process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
+        ]
+      : process.platform === "darwin"
+        ? ["/Applications/Google Chrome.app", path.join(os.homedir(), "Applications", "Google Chrome.app")]
+        : [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/snap/bin/chromium",
+          ];
+  return candidates.filter(Boolean).some((p) => fs.existsSync(p));
+}
+
+function authReadiness(me) {
+  const agentRoot = me.drive_root ? path.join(me.drive_root, "에이전트") : null;
+  return {
+    credentialFile: agentRoot ? path.join(agentRoot, "자격증명", "계정.md") : null,
+    browserPlugin: codexPluginReady("browser", ["scripts", "browser-client.mjs"], "browser@openai-bundled"),
+    chromePlugin: codexPluginReady("chrome", ["skills", "control-chrome", "SKILL.md"], "chrome@openai-bundled"),
+    computerUsePlugin: codexPluginReady(
+      "computer-use",
+      ["skills", "computer-use", "SKILL.md"],
+      "computer-use@openai-bundled"
+    ),
+    chrome: hasChrome(),
+  };
+}
+
 // 커밋하고 올린다. 올리기 실패는 치명이 아니다(원격이 없거나 경쟁에서 밀린 경우).
 function sync(message) {
   if (!isRepo()) return { pushed: false, reason: "저장소 아님" };
@@ -281,7 +353,7 @@ function writeDriveGuide() {
 | 사업자등록증, 인감, 도장, 로고, 명함, 사업계획서 파일 | \`정보/핵심자료.md\` |
 | 회의록, 기획, 진행 상황, 제품별 논의 | \`정보/노션.md\` |
 | 코드 폴더, 배포 주소, 카톡 대화 읽는 법 | \`정보/프로젝트.md\` |
-| 로그인 ID, 비밀번호 | \`자격증명/계정.md\` |
+| 로그인에 쓸 서비스와 계정 (비밀번호는 사람 입력용) | \`자격증명/계정.md\` |
 | API 키 | \`자격증명/.env\` |
 | 이 컴에 설치하기 | 아래 "한 줄 설치" |
 
@@ -295,6 +367,16 @@ function writeDriveGuide() {
 3. 목록에 없는 일이면 \`능력/화면과로그인.md\` 의 사다리(L1에서 L4)로 길이 있는지 보고 **일단 해본다**
 
 **"매뉴얼이 없어서 못 합니다" 는 답이 아니다.** 능력이 있으면 하고, 하고 나서 적어두면 된다.
+
+## 사이트 로그인
+
+Codex 인앱 브라우저(L2)와 일반 크롬(L3)은 서로 다른 프로필이다. 이미 로그인된 세션을 먼저 찾고,
+SSO와 크롬 비밀번호 관리자 자동완성을 순서대로 쓴다. 둘 다 세션이 없으면 어느 서비스에 어느 계정인지
+적고 사람이 정확한 브라우저에 한 번 로그인한다.
+
+\`자격증명/계정.md\` 는 대상 서비스와 계정 판정용이다. 에이전트가 파일에서 비밀번호를 읽어
+페이지에 자동 입력하는 통로가 아니다. 웹·모바일 ChatGPT Work의 보안 로그인 폼도 사용자가 직접 입력하며,
+로컬 Codex와 별도인 클라우드 브라우저다. 한 번 인증한 뒤에는 각 브라우저의 세션이 만료될 때까지 재사용한다.
 
 ## 사람이 "○○ 업무 해줘" 라고 하면 (등록된 업무)
 
@@ -350,8 +432,10 @@ node "<이 폴더>/설치.mjs"
 \`정보/핵심자료.md\` 는 사업자등록증, 인감증명서, 도장, 로고, 명함, 사업계획서가 **어느 파일인지** 알려준다
 (원본은 \`내 드라이브/여형준님/00 핵심 자료/\`. 사본을 만들지 마라).
 
-로그인 정보는 \`자격증명/계정.md\`, API 키는 \`자격증명/.env\` 에 있고
+로그인할 서비스와 계정 정보는 \`자격증명/계정.md\`, API 키는 \`자격증명/.env\` 에 있고
 \`설치.mjs\` 가 \`.env\` 를 새 컴의 \`<프로젝트폴더>/ops/.env\` 로도 놓는다.
+
+계정 파일의 비밀번호는 사람의 일회성 로그인 확인용이다. 에이전트가 값을 출력하거나 웹페이지에 직접 넣지 않는다.
 
 **주민등록번호와 공동인증서는 열지 않는다. 결제 정보는 입력창에 넣지 않는다.**
 도장을 찍는 자리는 사람이 정한다. 자세한 건 \`자격증명/읽어라.md\`.
@@ -768,6 +852,20 @@ function cmdDoctor() {
   console.log("매뉴얼 " + manualList().filter((m) => !m.hidden).length + "개");
   if (me.setup && me.dev_root)
     console.log(ok(fs.existsSync(me.dev_root)) + " 프로젝트 폴더 " + me.dev_root);
+  const auth = authReadiness(me);
+  console.log("\n로그인 하네스");
+  console.log(
+    ok(auth.credentialFile && fs.existsSync(auth.credentialFile)) +
+      " 계정 목록 " +
+      (auth.credentialFile || "→ machine.json의 drive_root가 필요하다") +
+      " (값은 읽거나 출력하지 않음)"
+  );
+  console.log(ok(auth.browserPlugin) + " Codex 인앱 브라우저 플러그인");
+  console.log(ok(auth.chromePlugin) + " Chrome 제어 플러그인");
+  console.log(ok(auth.computerUsePlugin) + " 컴퓨터 제어 플러그인");
+  console.log(ok(auth.chrome) + " Google Chrome");
+  console.log("안내 ChatGPT Work 보안 로그인은 웹·모바일의 별도 클라우드 브라우저에서 사용자가 직접 입력한다.");
+  console.log("     이 Codex 세션은 자격증명/계정.md의 비밀번호를 자동 입력하지 않는다.");
 }
 
 // ---------- 진입 ----------
