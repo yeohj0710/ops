@@ -89,22 +89,38 @@ function profiles() {
     }));
 }
 
+// 크롬은 비밀번호를 두 군데에 나눠 담는다.
+//   Login Data              이 기기에만 저장 (구글 로그인 안 한 프로필)
+//   Login Data For Account  구글 계정에 저장 (로그인한 프로필은 여기로 간다)
+// 한쪽만 보면 멀쩡히 들어 있는 프로필이 0건으로 보인다.
+const STORES = ["Login Data", "Login Data For Account"];
+
 function savedLogins(dir) {
-  const db = path.join(USER_DATA, dir, "Login Data");
-  if (!fs.existsSync(db)) return { count: 0, hosts: [] };
-  const out = sqlite(db, "select origin_url from logins;");
-  if (out === BUSY) return { count: BUSY, hosts: [] };
-  if (out === null) return { count: null, hosts: [] };
-  const hosts = out
-    .split("\n")
-    .filter(Boolean)
-    .map((u) => {
+  const hosts = [];
+  let busy = false;
+  let found = false;
+
+  for (const store of STORES) {
+    const db = path.join(USER_DATA, dir, store);
+    if (!fs.existsSync(db)) continue;
+    const out = sqlite(db, "select origin_url from logins;");
+    if (out === BUSY) {
+      busy = true;
+      continue;
+    }
+    if (out === null) continue;
+    found = true;
+    for (const u of out.split("\n").filter(Boolean)) {
       try {
-        return new URL(u).hostname;
+        hosts.push(new URL(u).hostname);
       } catch {
-        return u;
+        hosts.push(u);
       }
-    });
+    }
+  }
+
+  if (!found && busy) return { count: BUSY, hosts: [] };
+  if (!found) return { count: null, hosts: [] };
   return { count: hosts.length, hosts: [...new Set(hosts)] };
 }
 
