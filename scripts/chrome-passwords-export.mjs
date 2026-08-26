@@ -85,9 +85,21 @@ function splitPair(cell) {
   return { username: parts[parts.length - 2], password: parts[parts.length - 1] };
 }
 
+// 비번 칸 뒤에 "(둘 다 같음)" 같은 주석이 붙어 있는 경우가 있다. 그대로 넣으면 로그인이 안 된다.
+function stripNote(v) {
+  return v.replace(/\s*\([^)]*\)\s*$/, "").trim();
+}
+
+// 값이 아니라 설명문인 칸이 섞여 있다("사람이 로그인해야 함" 등).
+// 주석을 떼고도 공백이 남으면 비밀번호가 아니다.
+function looksLikeSecret(v) {
+  return v.length > 0 && !/\s/.test(v);
+}
+
 const lines = fs.readFileSync(SRC, "utf8").split(/\r?\n/);
 const rows = [];
 const unmapped = [];
+const notSecret = [];
 let header = null;
 
 for (const line of lines) {
@@ -105,11 +117,17 @@ for (const line of lines) {
 
   // 꼴 1: | 무엇 | ID | PW |
   if (header[1] === "ID" && header[2] === "PW") {
-    const [name, id, pw] = c;
-    if (!name || !id || !pw || id === "-" || pw === "-") continue;
+    const [name, rawId, rawPw] = c;
+    if (!name || !rawId || !rawPw || rawId === "-" || rawPw === "-") continue;
     const url = siteFor(name);
     if (!url) {
       unmapped.push(name);
+      continue;
+    }
+    const id = stripNote(rawId);
+    const pw = stripNote(rawPw);
+    if (!looksLikeSecret(id) || !looksLikeSecret(pw)) {
+      notSecret.push(name);
       continue;
     }
     rows.push({ name, url, username: id, password: pw });
@@ -124,7 +142,13 @@ for (const line of lines) {
       if (!url || !c[i] || c[i] === "-") continue;
       const pair = splitPair(c[i]);
       if (!pair) continue;
-      rows.push({ name: `${person} ${header[i]}`, url, ...pair });
+      const username = stripNote(pair.username);
+      const password = stripNote(pair.password);
+      if (!looksLikeSecret(username) || !looksLikeSecret(password)) {
+        notSecret.push(`${person} ${header[i]}`);
+        continue;
+      }
+      rows.push({ name: `${person} ${header[i]}`, url, username, password });
     }
   }
 }
@@ -151,6 +175,12 @@ console.log();
 const byUrl = {};
 for (const r of rows) byUrl[new URL(r.url).hostname] = (byUrl[new URL(r.url).hostname] || 0) + 1;
 console.log("사이트별:", Object.entries(byUrl).map(([h, n]) => `${h} ${n}`).join(", "));
+
+if (notSecret.length) {
+  console.log();
+  console.log(`비밀번호가 아니라 설명문이라 건너뛴 것 ${notSecret.length}건: ${notSecret.join(", ")}`);
+  console.log("이건 사람이 크롬에 직접 넣어야 한다.");
+}
 
 if (unmapped.length) {
   console.log();
