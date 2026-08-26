@@ -35,6 +35,9 @@ const WATCH = process.argv.slice(2).length
 
 const TMP = path.join(os.tmpdir(), "ops-login-preflight");
 
+// 크롬이 물고 있어 못 읽는 상태. null(파일 없음)과 구분한다.
+const BUSY = Symbol("busy");
+
 function sqlite(dbPath, query) {
   // 크롬이 파일을 물고 있어 원본은 못 읽는다. 복사해서 연다.
   fs.mkdirSync(TMP, { recursive: true });
@@ -46,8 +49,10 @@ function sqlite(dbPath, query) {
     for (const ext of sidecars.slice(1)) {
       if (fs.existsSync(dbPath + ext)) fs.copyFileSync(dbPath + ext, copy + ext);
     }
-  } catch {
-    return null;
+  } catch (e) {
+    // 크롬이 지금 쓰고 있는 프로필은 파일을 물고 있어 복사가 안 된다.
+    // 이건 실패가 아니라 신호다. 이 프로필이 활성 프로필이라는 뜻이다.
+    return e.code === "EBUSY" ? BUSY : null;
   }
   try {
     // sqlite3 가 윈도우 줄바꿈으로 뱉는다. \r 을 안 떼면 도메인 비교가 전부 빗나간다.
@@ -88,6 +93,7 @@ function savedLogins(dir) {
   const db = path.join(USER_DATA, dir, "Login Data");
   if (!fs.existsSync(db)) return { count: 0, hosts: [] };
   const out = sqlite(db, "select origin_url from logins;");
+  if (out === BUSY) return { count: BUSY, hosts: [] };
   if (out === null) return { count: null, hosts: [] };
   const hosts = out
     .split("\n")
@@ -106,6 +112,7 @@ function cookieHosts(dir) {
   const db = path.join(USER_DATA, dir, "Network/Cookies");
   if (!fs.existsSync(db)) return null;
   const out = sqlite(db, "select distinct host_key from cookies;");
+  if (out === BUSY) return BUSY;
   if (out === null) return null;
   return out.split("\n").filter(Boolean).map((h) => h.replace(/^\./, ""));
 }
@@ -122,42 +129,76 @@ if (!list.length) {
 
 console.log("크롬 프로필 상태\n");
 
-let best = null;
-for (const p of list) {
+const seen = list.map((p) => {
   const logins = savedLogins(p.dir);
   const cookies = cookieHosts(p.dir);
-  const live = cookies ? WATCH.filter((d) => has(cookies, d)) : [];
+  return {
+    ...p,
+    logins,
+    // 쿠키를 못 읽는다 = 크롬이 이 프로필로 떠 있다.
+    active: cookies === BUSY,
+    live: Array.isArray(cookies) ? WATCH.filter((d) => has(cookies, d)) : null,
+  };
+});
 
-  if (!best || live.length > best.live.length) best = { ...p, live, logins };
-
-  console.log(`[${p.dir}] ${p.name}`);
+for (const p of seen) {
+  console.log(`[${p.dir}] ${p.name}${p.active ? "   ← 지금 크롬이 이걸로 떠 있다" : ""}`);
   console.log(`  구글 로그인   : ${p.account ?? "안 되어 있음"}`);
+
+  const n = p.logins.count;
   console.log(
-    `  저장된 비밀번호: ${logins.count === null ? "못 읽음" : logins.count + "건"}` +
-      (logins.hosts.length ? ` (${logins.hosts.slice(0, 6).join(", ")})` : ""),
+    `  저장된 비밀번호: ${n === BUSY ? "크롬이 쓰는 중" : n === null ? "못 읽음" : n + "건"}` +
+      (p.logins.hosts.length ? ` (${p.logins.hosts.slice(0, 6).join(", ")})` : ""),
   );
+
   console.log(
-    `  세션 살아있음  : ${cookies === null ? "못 읽음" : live.length ? live.join(", ") : "없음"}`,
+    `  세션 살아있음  : ${
+      p.active
+        ? "크롬이 열어둬서 못 읽는다. 화면으로 확인해라"
+        : p.live === null
+          ? "못 읽음"
+          : p.live.length
+            ? p.live.join(", ")
+            : "없음"
+    }`,
   );
   console.log();
 }
 
 console.log("---");
-if (best && best.live.length) {
-  console.log(`세션이 가장 많이 살아있는 프로필: [${best.dir}] ${best.name}`);
-  console.log("크롬을 이 프로필로 띄우고 L3 을 붙여라:");
+
+// 떠 있는 프로필이 곧 업무 프로필이다. 그걸 두고 다른 프로필을 권하면 안 된다.
+const active = seen.find((p) => p.active);
+const richest = seen.filter((p) => p.live?.length).sort((a, b) => b.live.length - a.live.length)[0];
+
+if (active) {
+  console.log(`지금 쓰는 프로필: [${active.dir}] ${active.name}`);
+  console.log("L3(크롬 익스텐션)은 이 프로필에 붙는다. 여기 없는 계정은 여기서 로그인해야 한다.");
+  if (richest) {
+    console.log(
+      `참고로 안 떠 있는 프로필 중에는 [${richest.dir}] ${richest.name} 에 세션이 가장 많다 (${richest.live.join(", ")}).`,
+    );
+  }
+} else if (richest) {
+  console.log(`크롬이 안 떠 있다. 세션이 가장 많은 프로필: [${richest.dir}] ${richest.name}`);
   console.log(
-    `  "/c/Program Files/Google/Chrome/Application/chrome.exe" --profile-directory="${best.dir}" &`,
+    `  "/c/Program Files/Google/Chrome/Application/chrome.exe" --profile-directory="${richest.dir}" &`,
   );
 } else {
   console.log("어느 프로필에도 업무용 세션이 없다. 사람이 한 번 로그인해야 한다.");
 }
 
-const total = list.reduce((n, p) => n + (savedLogins(p.dir).count || 0), 0);
-if (total < 10) {
-  console.log();
+const counted = seen.filter((p) => typeof p.logins.count === "number");
+const total = counted.reduce((n, p) => n + p.logins.count, 0);
+const unknown = seen.length - counted.length;
+
+console.log();
+console.log(
+  `저장된 비밀번호 합계 ${total}건` + (unknown ? ` (못 읽은 프로필 ${unknown}개 제외)` : ""),
+);
+if (active && typeof active.logins.count === "number" && active.logins.count < 10) {
   console.log(
-    `저장된 비밀번호가 전부 합쳐 ${total}건뿐이다. 로그인 창을 만나면 자동완성이 안 뜬다.`,
+    `지금 쓰는 프로필에는 ${active.logins.count}건뿐이다. 로그인 창에서 자동완성이 안 뜬다.`,
   );
-  console.log("`scripts/chrome-passwords-export.mjs` 로 CSV 를 만들어 크롬에 가져와라.");
+  console.log("`scripts/chrome-passwords-export.mjs` 로 CSV 를 만들어 이 프로필에 가져와라.");
 }
