@@ -944,10 +944,10 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
 <div class="say"><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 쇼츠 소재 리필 업무 해줘. 물어보지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">G드라이브 에이전트 폴더 참고해서 쇼츠 소재 리필 업무 해줘. 물어보지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></div>
 <ul class="meta">
 <li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">claude 가 맡습니다</li>
-<li data-tip="한 번 돌릴 때 걸리는 시간입니다">전략 뽑기 2분, 팩 쓰기 채널당 25분 안팎</li>
+<li data-tip="한 번 돌릴 때 걸리는 시간입니다">전략 뽑기 2분, 이긴 카드 읽기 5분, 팩 쓰기 채널당 25분 안팎</li>
 <li data-tip="매뉴얼에 적힌 단계 수입니다">5단계</li>
-<li data-tip="실제로 겪고 적어 둔 실패 사례입니다. 같은 실수를 반복하지 않습니다">겪어 본 함정 10가지</li>
-<li data-tip="analyze-performance.mjs, check-claims.mjs, follow-strategy.mjs">전용 도구 3개</li>
+<li data-tip="실제로 겪고 적어 둔 실패 사례입니다. 같은 실수를 반복하지 않습니다">겪어 본 함정 17가지</li>
+<li data-tip="analyze-performance.mjs, check-claims.mjs, collect-winning-cards.mjs, compare-with-winners.mjs, follow-strategy.mjs">전용 도구 5개</li>
 <li data-tip="명령어와 스크립트로 처리합니다. 화면을 쓰지 않아 빠릅니다">L1 까지 씁니다</li>
 </ul>
 <div class="easy"><h4>쓰는 상황</h4>
@@ -955,7 +955,8 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
 <h4>시키는 말</h4>
 <p>&quot;소재 채워줘&quot; 한 마디면 됩니다. 채널을 정해 주려면 &quot;하루건강약사 소재 채워줘&quot; 라고 합니다. 재고만 궁금하면 &quot;재고 확인해줘&quot; 라고 하면 세기만 하고 멈춥니다.</p>
 <h4>진행 순서</h4>
-<p>재고를 세고, 어떤 영상이 팔로워를 데려왔는지 뽑고, 그 결대로 새 주제를 잡고, 이미 올린 것과 겹치는지 보고, 팩을 써서 넣고, 검사 다섯 개를 돌립니다.</p>
+<p>재고를 세고, 어떤 영상이 팔로워를 데려왔는지 뽑고, <strong>잘된 카드를 직접 열어 뭐라고 썼는지 읽고</strong>, 그 결대로 새 주제를 잡고, 이미 올린 것과 겹치는지 보고, 팩을 써서 넣고, 검사 다섯 개를 돌립니다.</p>
+<p>숫자만 보면 안 됩니다. 팔로워를 제일 많이 데려온 영상이 &quot;김치찌개에 케첩 넣기&quot; 같은 뜻밖의 내용이었는데, 숫자만 봐서는 그걸 알 수가 없습니다. 그래서 카드 그림을 받아서 읽습니다.</p>
 <h4>결과물</h4>
 <p><code>하루건강약사 소재/</code> <code>건강장수비결 소재/</code> 폴더에 새 소재 파일이 들어갑니다. 그리고 무엇이 팔로워를 데려왔는지 정리한 전략표가 작업 폴더에 남습니다.</p></div>
 <details class="more"><summary>매뉴얼 전문 (에이전트가 읽는 절차서) <span class="caret"></span></summary><div class="detail">
@@ -970,6 +971,16 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
 <p>읽을 것 다섯이다.</p>
 <div class="tw"><table><thead><tr><th>절</th><th>무엇에 쓰나</th></tr></thead><tbody><tr><td>무엇이 팔로우 수를 흔드는가</td><td>조회수와 전환율 중 어느 쪽이 지배하는지</td></tr><tr><td>팔로우를 많이 데려온 편</td><td><strong>여기 있는 결을 따라간다</strong></td></tr><tr><td>조회수는 벌어 놓고 전환에서 흘린 편</td><td>제일 아까운 자리. 같은 주제를 프레임만 바꿔 다시 쓴다</td></tr><tr><td>아무것도 못 벌어온 편</td><td>조회수도 전환도 낮았던 것</td></tr><tr><td>회로별과 항목 수별</td><td>얽혀 있으니 단정하지 마라</td></tr></tbody></table></div>
 <p><strong>다른 계정 표는 기본으로 안 나온다.</strong> 자료에 실제 약사 계정이 같이 들어 있지만 하루건강약사는 AI 크리에이터라 그쪽 소재가 옮겨지지 않는다. 아래 &quot;공략점&quot; 을 보라.</p>
+<p><strong>전략표는 숫자만 준다. 행은 P2.5 에서 본다.</strong> 여기서 멈추면 260825 처럼 된다.</p>
+<h4>P2.5. 이긴 카드의 행을 실물로 읽는다 (L1)</h4>
+<p><strong>이 단계를 건너뛰지 마라. 260825 에 팩 22장을 쓰고 통째로 반려된 자리가 여기다.</strong> 전략표는 &quot;무엇이 이겼나&quot; 를 제목과 숫자로만 준다. 이긴 카드가 <strong>행에 무엇을 썼는지</strong>는 어디에도 없어서, 대상 폭과 프레임을 다 맞추고도 행이 전부 뻔한 팩이 나왔다.</p>
+<pre><code>node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/collect-winning-cards.mjs&quot; --worst</code></pre>
+<p>팔로우 상위 12편과 바닥 4편의 <strong>카드 그림</strong>을 <code>references/이긴카드/</code> 에 받는다. 이 계정 릴스는 정지 카드 한 장이라 <strong>썸네일이 곧 카드 전체</strong>다. 행이 다 읽힌다.</p>
+<p><strong>그림을 직접 열어라.</strong> <code>references/수집목록.md</code> 에 순위와 숫자가 붙은 표가 있으니 위에서부터 열고, 바닥 4편도 같이 본다. 이긴 것만 보면 무엇이 없어서 졌는지를 못 본다.</p>
+<p><strong>그리고 이번 회차가 본 것을 <code>&lt;OPS&gt;/work/&lt;taskId&gt;/카드읽기.md</code> 에 네 말로 적는다.</strong> 옛 회차의 메모를 베끼지 마라. 무엇이 눈에 띄었고 이번 배치에 무엇을 가져갈지 적는다. 이게 P4 의 잣대가 된다.</p>
+<p><code>references/이긴카드.md</code> 는 그때 그림을 옮겨 적어 둔 <strong>사본</strong>이다. 그림을 못 받을 때 쓴다. 거기 달린 메모는 260825 회차가 본 것이지 규칙이 아니다. 그대로 따르면 그때와 같은 것만 나온다.</p>
+<p><strong>인스타를 직접 열지 마라.</strong> 인스타 화면에는 편별 팔로우 수가 안 나와서 어느 카드가 이겼는지로 줄을 못 세운다. 대시보드 지표와 붙여야 순위가 나오고, 이 스크립트가 그걸 한다. 로그인도 필요 없다.</p>
+<p><code>이긴카드.md</code> 가 한 달 넘게 낡았거나 상위 편이 바뀌었으면 그림을 다시 받아 옮겨 적고 그 파일을 고쳐 쓴다. 옮겨 적는 것은 에이전트가 한다. 스크립트는 무엇을 볼지만 정한다.</p>
 <h4>P3. 재고와 큐 위생을 본다 (L1)</h4>
 <pre><code>node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/analyze-performance.mjs&quot; &quot;&lt;OPS&gt;/work/&lt;taskId&gt;/insta-plays.tsv&quot;</code></pre>
 <p>실측 TSV 가 없으면 이 단계는 건너뛰어도 된다. <strong>다만 아래 하나는 반드시 확인한다.</strong></p>
@@ -977,13 +988,15 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
 <p><code>research/queue</code> 에 발행하고 안 지운 팩이 남아 있으면 지운다. 두면 <code>verify-stockpile-titles-unpublished</code> 가 상시 실패한다.</p>
 <h4>P4. 주제를 잡는다</h4>
 <p>순서를 지킨다. <strong>생활에서 주제를 먼저 잡고, 중복검사를 통과시키고, 그 다음에 내용을 채운다.</strong> 근거를 찾으러 논문에 가지 마라. 논문에서 주제가 나오면 접근성이 폭락한다. 근거는 주제를 고른 <strong>다음에</strong>, 위험한 행만 확인한다(P6).</p>
-<p>거르는 기준 넷이다. 아래 &quot;공략점&quot; 절이 이 기준의 지금 값이다.</p>
-<ol><li><p><strong>대상 폭을 먼저 본다.</strong> 조건이 붙을수록 조회수가 깎이고, 조회수가 팔로우 수를 지배한다</p></li><li><p><strong>얻는 프레임으로 쓴다.</strong> 잃는 프레임은 조회수만 오고 팔로우가 안 붙는다</p></li><li><p><strong>재고와 최근 발행에 있는 영역은 피한다.</strong> 한 영역에 두 개 이상 쏠리면 좁아진 것이다</p></li><li><p><strong>행마다 이름이 있어야 한다.</strong> 어디를 보라고만 하는 주제는 버린다. 55세가 읽고 &quot;그건 나도 알지&quot; 하거나 옆사람한테 옮겨 말할 게 없으면 그 주제는 버린다</p></li><li><p><strong>틀리면 사람이 다치는 주제는 교과서 표준만 쓴다.</strong> 확인이 안 되면 그 행을 버린다</p></li></ol>
+<p>거르는 기준 다섯이다. 아래 &quot;공략점&quot; 절이 이 기준의 지금 값이고, <code>references/이긴카드.md</code> 가 실물이다. <strong>둘 다 읽고 시작한다.</strong></p>
+<ol><li><p><strong>대상 폭을 먼저 본다.</strong> 조건이 붙을수록 조회수가 깎이고, 조회수가 팔로우 수를 지배한다</p></li><li><p><strong>얻는 프레임으로 쓴다.</strong> 잃는 프레임은 조회수만 오고 팔로우가 안 붙는다</p></li><li><p><strong>재고와 최근 발행에 있는 영역은 피한다.</strong> 한 영역에 두 개 이상 쏠리면 좁아진 것이다</p></li><li><p><strong>행마다 이름을 대고, 그 이름이 뻔하지 않아야 한다.</strong> 이름만으로는 모자라다. 진 카드에도 소금통, 밥공기, 국물이 다 나오는데 팔로우가 0명이다. 써 놓은 행을 소리 내 읽고 &quot;그건 나도 알지&quot; 가 나오면 그 행을 버린다</p></li><li><p><strong>틀리면 사람이 다치는 주제는 교과서 표준만 쓴다.</strong> 확인이 안 되면 그 행을 버린다</p></li></ol>
+<p><strong>팩을 다 쓰고 나서 마지막으로 이 검사를 한다.</strong> 내가 쓴 카드 한 장과 P2.5 에서 본 <strong>1위 카드 그림</strong>을 나란히 놓는다. 그 옆에서 내 카드가 읽을 만한가. 밀리면 검사를 다 통과했어도 그 팩은 버린다. <strong>기계 검사는 자수와 겹침만 본다. 뻔함은 어느 검사도 못 잡는다.</strong></p>
 <p><strong>&quot;이 결은 죽었다&quot; 고 단정하기 전에 같은 소재의 다른 편을 찾아본다.</strong> 결만 보고 가르면 틀린다. 같은 소재로 이긴 편과 진 편이 다 있고, 갈린 자리는 대개 대상 폭이나 프레임이지 소재가 아니다. 공략점 절의 짝 비교가 그 실측이다</p>
 <h4>P5. 제목 중복검사를 먼저 통과시킨다 (L1)</h4>
 <p>내용을 채우기 전에 제목만으로 먼저 건다.</p>
 <pre><code>node ./scripts/check-topic-title-availability.mjs &quot;제목 1&quot; &quot;제목 2&quot;</code></pre>
 <p><strong>걸렸다고 제목을 비틀어 통과시키지 마라.</strong> 제목은 항목 목록을 그대로 설명해야 한다. 검사에 걸리면 주제를 바꾼다.</p>
+<p><strong>통과한 제목을 소리 내 읽어 무슨 영상인지 바로 떠오르는지 본다.</strong> 검사는 겹침만 보지 알아듣기 쉬운지는 안 본다. 기준은 위 공략점의 &quot;제목은 한 번에 이해돼야 한다&quot; 절에 있다.</p>
 <p>이 검사는 제목만 본다. 같은 이야기를 다른 제목으로 쓰면 못 잡는다. 그건 P6 이 잡는다.</p>
 <h4>P6. 팩을 쓰고 검사 다섯 개를 통과시킨다 (L1)</h4>
 <p>규격은 <code>&lt;DEV&gt;/n8n-youtube-shorts-automation/AGENTS.md</code> 의 <code>New-Pack Staging Checklist</code> 를 <strong>그 자리에서 읽고</strong> 따른다. 자릿수와 문장꼴이 거기 있다.</p>
@@ -994,11 +1007,16 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
 <pre><code>node ./scripts/verify-stockpile-titles-unpublished.mjs</code></pre>
 <pre><code>node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/check-claims.mjs&quot;</code></pre>
 <p>앞 셋은 모양과 겹침을 본다. 넷째가 <strong>틀리면 사람이 다치는 주장</strong>을 골라 근거를 적었는지 본다. 약 이름, 병 이름, 용량, 응급, 기관 이름, 숫자가 붙은 행이 걸린다.</p>
+<p>마지막으로 P4 의 &quot;1위 카드 옆에 놓기&quot; 를 빈칸으로 강제한다. 팩마다 <strong>뜻밖인 행 하나</strong>를 그대로 옮겨 적어야 하고, 못 적으면 그 팩을 버린다. 260825 2차 회차부터 쓴다.</p>
+<pre><code>node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/compare-with-winners.mjs&quot; --out &quot;&lt;OPS&gt;/work/&lt;taskId&gt;/견주기.md&quot;
+node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/compare-with-winners.mjs&quot; --check &quot;&lt;OPS&gt;/work/&lt;taskId&gt;/견주기.md&quot;</code></pre>
 <p><strong>근거를 못 대면 그 행을 버린다.</strong> 숫자를 지어내지 마라. 항목이 모자라면 주제를 바꾼다. 이 검사는 근거를 적었는지만 본다. 내용이 맞는지는 마지막에 사람이 통독해서 본다.</p>
 <h4>P7. 공략점과 실측을 매뉴얼에 반영하고 커밋한다</h4>
-<p><code>전략.md</code> 가 지난 회차와 달라졌으면 아래 &quot;공략점&quot; 을 고쳐 쓴다. 그리고 커밋하고 push 한다. 소재 팩은 n8n 저장소, 매뉴얼은 ops 저장소다.</p>
-<h4 class="dh">산출물</h4><ul><li><code>&lt;OPS&gt;/work/&lt;taskId&gt;/전략.md</code> 이번 회차 팔로우 전환 성적표</li><li><code>&lt;DEV&gt;/n8n-youtube-shorts-automation/&lt;채널&gt; 소재/&lt;번호&gt;-&lt;영문키&gt;.json</code> 새 팩</li><li><code>&lt;DEV&gt;/n8n-youtube-shorts-automation/research/queue/&lt;채널&gt;/</code> 에 같은 파일 사본</li></ul>
-<h4 class="dh">겪어 본 함정</h4><ul><li><strong>다른 계정 표를 보고 전략을 세우면 못 지킬 약속을 하게 된다.</strong> 260825 에 한 번 그렇게 썼다가 되돌렸다. 자료에 실제 약사 계정 넷이 같이 들어 있고 전환율이 4배에서 11배 높은데, 그쪽이 이기는 소재는 &quot;내가 써봤다&quot;, &quot;우리 약국에서&quot; 처럼 <strong>사람이 있어야 성립하는 것</strong>이다. 하루건강약사는 AI 크리에이터라 그 말을 쓸 수 없다. <code>follow-strategy.mjs</code> 는 그래서 계정 표를 기본으로 안 낸다. 굳이 보려면 <code>--compare-accounts</code> 를 붙이되 전략에는 쓰지 마라</li><li><strong>전환율로 판정하면 틀린 결론이 나온다.</strong> 260825 에 전환율로 한 번 뽑았다가 두 번 고쳤다. 안약 편은 전환율 0.014% 로 밑에서 세 번째지만 62.9만 조회로 팔로우 86명, <strong>전체 5위</strong>다. 목표는 팔로우 수고 조회수가 그걸 지배한다(상관 0.92). 전환율만 보면 상위 편을 버린다</li><li><strong>&quot;이 결은 죽었다&quot; 를 상하위 목록만 보고 적지 마라.</strong> 같은 소재가 양쪽에 다 있다. 자기 전 습관은 팔로우 164명과 2명이 같이 있고, 신호형도 130명과 1명이 같이 있다. 갈린 자리는 대개 대상 폭이나 프레임이지 소재가 아니다. <strong>짝을 지어 무엇이 달랐는지 봐야 한다</strong></li><li><strong>지표는 화면 녹화를 데이터화한 것이라 새 편이 바로 안 들어온다.</strong> 최근에 올린 편은 전략표에 없다. 없다고 성적이 나쁜 게 아니다. 자료를 다시 만들어야 들어온다</li><li><strong>한 릴스가 두 화면으로 두 번 잡힌다.</strong> 릴스 인사이트와 게시물 인사이트다. 합칠 때 팔로우가 큰 쪽을 남긴다. 작은 쪽은 화면을 덜 내린 컷이다</li><li><strong><code>research/queue</code> 를 재고로 세지 마라.</strong> 거기는 사본이고, 발행하고 안 지운 팩이 쌓인다. 260825 에 실제 재고 15건이 26건으로 부풀어 보였다. 원장은 <code>&lt;채널&gt; 소재/</code> 폴더다</li><li><strong>게이트가 <code>사이</code> 를 주격조사로 읽는다.</strong> <code>card_name</code> 이 <code>사이</code> 로 이어지고 <code>기</code> 로 끝나면 <code>broken_nominalization</code> 으로 반려한다. 검사식이 <code><a href="이|가">가-힣</a> ... 기$</code> 라 <code>사이 </code> 의 <code>이</code> 가 걸리는데, 예외 목록에 <code>없이 같이 높이 많이 깊이</code> 만 있고 <code>사이</code> 가 없다. <code>나이</code> <code>차이</code> <code>아이</code> 도 같은 꼴이다. <strong>문장이 멀쩡하면 게이트 탓이니 말을 바꿔 우회한다.</strong> 예외 목록을 고치려면 <code>install-shared-content-quality-gate.mjs</code> 세 군데를 같이 고치고 <code>simplify-legacy-editorial-flow.mjs</code> 를 반드시 뒤에 다시 돌려야 한다. 리필하다 하지 마라</li><li><strong>다른 세션이 같은 시간에 파이프라인을 돌린다.</strong> 260825 에 검사 도중 에어컨 편이 발행돼 큐 사본이 새로 고아가 됐다. <strong>검사가 갑자기 걸리면 P3 을 다시 돌려 치울 것을 다시 본다</strong></li><li><strong>조건을 다 맞춰도 실용이 없으면 반려된다.</strong> 260825 에 견본 6편이 대상 폭, 프레임, 중복, 게이트 다섯 개를 전부 통과하고 반려됐다. 행이 &quot;라벨 뒷면을 보세요&quot;, &quot;다리를 꼬지 마세요&quot; 처럼 <strong>시킴만 있고 명단이 없었다.</strong> 검사 항목을 통과하는 것과 볼 만한 것은 다른 문제다. 공략점의 &quot;위 조건을 다 맞춰도 실용이 없으면 안 된다&quot; 절을 팩 쓰기 직전에 다시 읽어라</li><li><strong>거부된 팩을 <code>사용완료</code> 로 옮기지 마라.</strong> 중복검사가 발행된 것으로 보고 제목을 영영 막는다. <code>보류</code> 폴더로 옮긴다</li></ul>
+<p><code>전략.md</code> 가 지난 회차와 달라졌으면 아래 &quot;공략점&quot; 을 고쳐 쓴다. <strong>상위 편이 바뀌었으면 <code>references/이긴카드.md</code> 도 새 그림을 보고 다시 쓴다.</strong> 표만 갈아 끼우고 옛 메모를 그대로 두지 마라. 그러면 다음 회차가 옛 결론을 읽는다.</p>
+<p>그리고 커밋하고 push 한다. 소재 팩은 n8n 저장소, 매뉴얼은 ops 저장소다. 카드 그림은 git 에 안 올라간다. 다음 세션은 스크립트로 다시 받는다.</p>
+<p><strong>push 뒤에 <code>node &quot;&lt;OPS&gt;/ops.mjs&quot; sync</code> 를 돌린다.</strong> 드라이브 매뉴얼 사본이 그때 갱신된다. 안 돌리면 드라이브만 보고 일하는 세션이 낡은 절차를 읽는다. 260825 에 실제로 7줄이 뒤처져 있었다. sync 는 카드 그림도 같이 옮겨서, 저장소가 없는 컴에서도 P2.5 를 할 수 있게 해 준다.</p>
+<h4 class="dh">산출물</h4><ul><li><code>&lt;OPS&gt;/work/&lt;taskId&gt;/전략.md</code> 이번 회차 팔로우 전환 성적표</li><li><code>&lt;OPS&gt;/work/&lt;taskId&gt;/카드읽기.md</code> 이번 회차가 이긴 카드에서 본 것. <strong>회차마다 새로 쓴다</strong></li><li><code>&lt;OPS&gt;/work/&lt;taskId&gt;/견주기.md</code> 팩마다 뜻밖인 행 하나와 견준 카드. 빈칸이면 그 팩은 버린다</li><li><code>&lt;OPS&gt;/manuals/shorts-refill/references/이긴카드/</code> 카드 그림 (git 에 안 올라간다)</li><li><code>&lt;DEV&gt;/n8n-youtube-shorts-automation/&lt;채널&gt; 소재/&lt;번호&gt;-&lt;영문키&gt;.json</code> 새 팩</li><li><code>&lt;DEV&gt;/n8n-youtube-shorts-automation/research/queue/&lt;채널&gt;/</code> 에 같은 파일 사본</li></ul>
+<h4 class="dh">겪어 본 함정</h4><ul><li><strong>전략표의 숫자만 보고 팩을 쓰면 뻔한 카드가 나온다. 260825 에 22장이 통째로 반려됐다.</strong> 대상 폭, 얻는 프레임, 중복, 게이트 다섯 개, 근거 검사를 전부 통과했는데도 그랬다. 이유는 하나다. 이긴 편이 <strong>행에 무엇을 썼는지</strong>를 안 보고 공략점의 요약 문장 (&quot;넓음, 얻음, 내 삶&quot;)만 보고 썼다. 요약을 잣대로 쓰면 요약을 만족하는 뻔한 행이 나온다. <strong>그래서 P2.5 를 만들었다. 카드 그림을 받아 직접 읽고 시작해라</strong></li><li><strong>이 매뉴얼의 관찰을 규칙으로 읽지 마라.</strong> 공략점 절과 <code>이긴카드.md</code> 의 메모는 그 회차가 본 것이다. 그대로 따르면 회차마다 비슷한 것만 나오고 소재가 굳는다. <strong>매번 그림을 다시 보고 이번 회차가 본 것을 <code>work/&lt;taskId&gt;/카드읽기.md</code> 에 새로 적는다</strong></li><li><strong>&quot;행마다 이름을 댔다&quot; 는 통과 기준이 아니다.</strong> 진 카드에도 이름은 다 있다. 꼴찌 저녁 식탁 편에 밥공기, 국물, 소금통이 다 나오는데 팔로우 0명이다. 이름은 최소 조건이고 기준은 <strong>뜻밖인가</strong>다. 260825 에 이 둘을 헷갈려서 &quot;이름을 다 댔으니 통과&quot; 라고 보고했다</li><li><strong>1위와 꼴찌가 같은 소재다.</strong> 집밥 살리는 한 끗(391명)과 저녁 식탁 순서(0명)는 둘 다 저녁 밥상 이야기다. 391 대 0 을 가른 것은 소재가 아니라 행이다. <strong>소재로 판단하지 말고 행으로 판단해라</strong></li><li><strong>다른 계정 표를 보고 전략을 세우면 못 지킬 약속을 하게 된다.</strong> 260825 에 한 번 그렇게 썼다가 되돌렸다. 자료에 실제 약사 계정 넷이 같이 들어 있고 전환율이 4배에서 11배 높은데, 그쪽이 이기는 소재는 &quot;내가 써봤다&quot;, &quot;우리 약국에서&quot; 처럼 <strong>사람이 있어야 성립하는 것</strong>이다. 하루건강약사는 AI 크리에이터라 그 말을 쓸 수 없다. <code>follow-strategy.mjs</code> 는 그래서 계정 표를 기본으로 안 낸다. 굳이 보려면 <code>--compare-accounts</code> 를 붙이되 전략에는 쓰지 마라</li><li><strong>전환율로 판정하면 틀린 결론이 나온다.</strong> 260825 에 전환율로 한 번 뽑았다가 두 번 고쳤다. 안약 편은 전환율 0.014% 로 밑에서 세 번째지만 62.9만 조회로 팔로우 86명, <strong>전체 5위</strong>다. 목표는 팔로우 수고 조회수가 그걸 지배한다(상관 0.92). 전환율만 보면 상위 편을 버린다</li><li><strong>&quot;이 결은 죽었다&quot; 를 상하위 목록만 보고 적지 마라.</strong> 같은 소재가 양쪽에 다 있다. 자기 전 습관은 팔로우 164명과 2명이 같이 있고, 신호형도 130명과 1명이 같이 있다. 갈린 자리는 대개 대상 폭이나 프레임이지 소재가 아니다. <strong>짝을 지어 무엇이 달랐는지 봐야 한다</strong></li><li><strong>지표는 화면 녹화를 데이터화한 것이라 새 편이 바로 안 들어온다.</strong> 최근에 올린 편은 전략표에 없다. 없다고 성적이 나쁜 게 아니다. 자료를 다시 만들어야 들어온다</li><li><strong>한 릴스가 두 화면으로 두 번 잡힌다.</strong> 릴스 인사이트와 게시물 인사이트다. 합칠 때 팔로우가 큰 쪽을 남긴다. 작은 쪽은 화면을 덜 내린 컷이다</li><li><strong><code>research/queue</code> 를 재고로 세지 마라.</strong> 거기는 사본이고, 발행하고 안 지운 팩이 쌓인다. 260825 에 실제 재고 15건이 26건으로 부풀어 보였다. 원장은 <code>&lt;채널&gt; 소재/</code> 폴더다</li><li><strong>P5 의 제목 검사는 이번 배치 후보끼리는 비교하지 않는다.</strong> 원장과 기존 큐만 본다. 후보 여럿을 같은 배치로 넣으면 <code>verify-stockpile-titles-unpublished</code> 에서야 후보끼리 충돌이 드러나고, 검사 순서상 뒤 번호 파일이 걸린 것으로 나온다. 260825 에 &quot;빨리 ~하는 순서&quot; 와 &quot;이렇게 ~요&quot; 꼬리가 배치 안에서 부딪혀 세 번 고쳤다. 흔한 동사 하나로도 걸린다. &quot;잠 잘 오는 방 만드는 법&quot; 이 원장의 &quot;더부룩 만드는 식사 습관&quot; 과 <code>만드는</code> 세 글자 조각으로 걸렸다. 배치 제목들은 꼬리말과 흔한 동사를 서로 다르게 쓰고, 다 넣은 뒤 이 verify 를 돌려 후보끼리 충돌까지 확인하고 끝내라</li><li><strong>게이트가 <code>사이</code> 를 주격조사로 읽는다.</strong> <code>card_name</code> 이 <code>사이</code> 로 이어지고 <code>기</code> 로 끝나면 <code>broken_nominalization</code> 으로 반려한다. 검사식이 <code><a href="이|가">가-힣</a> ... 기$</code> 라 <code>사이 </code> 의 <code>이</code> 가 걸리는데, 예외 목록에 <code>없이 같이 높이 많이 깊이</code> 만 있고 <code>사이</code> 가 없다. <code>나이</code> <code>차이</code> <code>아이</code> 도 같은 꼴이다. <strong>문장이 멀쩡하면 게이트 탓이니 말을 바꿔 우회한다.</strong> 예외 목록을 고치려면 <code>install-shared-content-quality-gate.mjs</code> 세 군데를 같이 고치고 <code>simplify-legacy-editorial-flow.mjs</code> 를 반드시 뒤에 다시 돌려야 한다. 리필하다 하지 마라</li><li><strong>다른 세션이 같은 시간에 파이프라인을 돌린다.</strong> 260825 에 검사 도중 에어컨 편이 발행돼 큐 사본이 새로 고아가 됐다. <strong>검사가 갑자기 걸리면 P3 을 다시 돌려 치울 것을 다시 본다</strong></li><li><strong>조건을 다 맞춰도 실용이 없으면 반려된다.</strong> 260825 에 견본 6편이 대상 폭, 프레임, 중복, 게이트 다섯 개를 전부 통과하고 반려됐다. 행이 &quot;라벨 뒷면을 보세요&quot;, &quot;다리를 꼬지 마세요&quot; 처럼 <strong>시킴만 있고 명단이 없었다.</strong> 검사 항목을 통과하는 것과 볼 만한 것은 다른 문제다. 공략점의 &quot;위 조건을 다 맞춰도 실용이 없으면 안 된다&quot; 절을 팩 쓰기 직전에 다시 읽어라</li><li><strong>거부된 팩을 <code>사용완료</code> 로 옮기지 마라.</strong> 중복검사가 발행된 것으로 보고 제목을 영영 막는다. <code>보류</code> 폴더로 옮긴다</li><li>**<code>보류</code> 의 <code>재발행예정-*</code> 팩은 어느 기계 검사도 안 본다.<strong> 신선도 검사는 큐와 <code>사용완료</code> 만 견주기 때문에, 새 팩이 재발행 예정 팩과 같은 행(우유·자몽과 약 같은 것)을 써도 통과한다. 나중에 그 팩을 재발행할 때 이쪽이 막힌다. </strong>주제를 잡기 전에 두 채널 <code>보류</code> 폴더에서 <code>재발행예정</code> 파일 제목을 눈으로 훑어라.** 260825 2차에서 약+음료 팩과 겹칠 뻔했다</li><li><strong>제목 검사가 통과여도 <code>nearest_published</code> 를 읽어라.</strong> 260825 2차에서 소비기한 주제가 검사는 통과했는데 nearest 에 <code>유통기한 지났다고 바로 버리면 손해 보는 것 7</code> 이 떠서 이미 발행된 주제임을 알았다. 통과 여부만 보면 같은 주제를 다시 쓴다</li></ul>
 <p class="src"><a href="https://github.com/yeohj0710/ops/blob/main/manuals/shorts-refill/MANUAL.md">매뉴얼 원문 보기</a></p>
 </div></details>
 </div></details>
@@ -1081,7 +1099,7 @@ a.rel = 'opener';          // 이 줄이 없으면 opener 가 끊긴다</code></
           <a href="https://wellnessbox.kr/about/privacy">개인정보처리방침</a>
           <a href="https://wellnessbox.kr/about/contact">문의하기</a>
         </div>
-        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-25 18:38</span></p>
+        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-25 22:25</span></p>
       </div>
 
       <div class="fcol">
