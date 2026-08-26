@@ -18,7 +18,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { callPhrase, readPreauth } from "./lib/call-phrase.mjs";
+import { callPhrase, approvalPhrase, readPreauth } from "./lib/call-phrase.mjs";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const DIR = {
@@ -180,8 +180,12 @@ function cmdManuals(argv) {
     console.log(`  ${m.id}`);
     console.log(`    ${m.title}`);
     if (m.trigger) console.log(`    부르는 말: ${m.trigger}`);
-    // 짧은 호출만 주면 Codex 가 승인 게이트를 한 번 더 건다. lib/call-phrase.mjs 를 보라.
-    if (!m.hidden) console.log(`    붙여넣을 말: ${callPhrase(m.title, m.preauth)}`);
+    // 문장이 둘인 이유는 lib/call-phrase.mjs 에 적어 뒀다. 1번을 보내고 답을 기다리지 말고
+    // 2번을 바로 보낸다. 세션이 도중에 멈춰 물으면 대기 큐에 있던 2번을 읽고 이어서 간다.
+    if (!m.hidden) {
+      console.log(`    1) 새 세션에: ${callPhrase(m.title)}`);
+      console.log(`    2) 바로 이어서: ${approvalPhrase(m.preauth)}`);
+    }
     console.log(`    런너 ${m.runner}, 제어층 ${m.surfaces}`);
     console.log(`    ${m.file}`);
     console.log("");
@@ -251,11 +255,10 @@ function writeDriveGuide() {
   }
   const dir = path.join(me.drive_root, "에이전트");
   const list = manualList().filter((m) => !m.hidden);
-  // 표에 짧은 부르는 말만 두면 Codex 가 승인 게이트에서 멈춘다(260825 실측).
-  // 폰에서 그대로 복사해 붙일 문장을 싣는다. lib/call-phrase.mjs 에 이유를 적어 뒀다.
+  // 폰에서 그대로 복사해 붙일 문장을 싣는다. 두 개인 이유는 lib/call-phrase.mjs 에 적어 뒀다.
   const rows = list.length
-    ? list.map((m) => `| ${m.title} | ${callPhrase(m.title, m.preauth)} |`).join("\n")
-    : "| (아직 없다) | |";
+    ? list.map((m) => `| ${m.title} | ${callPhrase(m.title)} | ${approvalPhrase(m.preauth)} |`).join("\n")
+    : "| (아직 없다) | | |";
 
   const text = `# 에이전트 업무 시스템
 
@@ -305,19 +308,19 @@ function writeDriveGuide() {
 
 ## 매뉴얼 업무 완주 원칙
 
-업무를 한 문장으로 호출하면 매뉴얼의 절차·후속 작업·완료 검사를 한 번에 실행한다.
-중간 산출물만 남기고 멈추거나, 게시·전송·주문 버튼을 사람에게 넘기지 않는다.
+업무를 한 문장으로 호출하면 매뉴얼의 절차와 후속 작업과 완료 검사를 한 번에 실행한다.
+중간 산출물만 남기고 멈추거나, 게시와 전송과 주문 버튼을 사람에게 넘기지 않는다.
 한 단계가 막혀도 독립적으로 할 수 있는 나머지 단계는 계속하고, 의존 단계만 정확한 사유를
-남긴다. 매뉴얼 밖의 대상, 비밀번호·CAPTCHA, 매뉴얼 밖 결제, 되살릴 수 없는 삭제만 사람을 부른다.
+남긴다. 매뉴얼 밖의 대상, 비밀번호와 CAPTCHA, 매뉴얼 밖 결제, 되살릴 수 없는 삭제만 사람을 부른다.
 
 ## 멈추고 사람을 부르는 곳
 
-- **매뉴얼 밖의 결제.** 매뉴얼에 금액과 대상이 적힌 주문은 금액·대상을 보고하고 그대로 실행한다.
-  등록된 결제수단이 없거나 충전·구독 변경이 필요한 경우에만 멈춘다. 카드번호를 손으로 치지 않는다
+- **매뉴얼 밖의 결제.** 매뉴얼에 금액과 대상이 적힌 주문은 금액과 대상을 보고하고 그대로 실행한다.
+  등록된 결제수단이 없거나 충전이나 구독 변경이 필요한 경우에만 멈춘다. 카드번호를 손으로 치지 않는다
 - **주민등록번호와 공동인증서(NPKI)**: 열지도 옮기지도 않는다
 - **도장 찍는 자리**, 인감증명서와 통장사본을 바깥으로 보내기
 - 매뉴얼 밖의 메시지, 메일, DM 보내기
-- 매뉴얼 밖의 공개 게시·삭제
+- 매뉴얼 밖의 공개 게시와 삭제
 
 ## 그 컴을 계속 쓸 거면 (한 줄 설치)
 
@@ -363,18 +366,19 @@ node "<이 폴더>/설치.mjs"
 
 | 하고 싶은 것 | 세션에 하는 말 |
 | --- | --- |
-| 등록된 업무 시키기 | 아래 표의 "붙여넣을 말" 을 **통째로** |
+| 등록된 업무 시키기 | 아래 표의 두 문장을 **차례로**. 답을 기다리지 말고 2번을 바로 보낸다 |
 | 새 업무 등록하기 | "○○ 업무로 등록해줘", "방금 한 거 등록해줘" |
 | 큐에서 뽑아 돌리기 | "일감 뽑아서 해줘" |
 
 ## 지금 등록된 업무 ${list.length}개
 
-문장이 긴 이유가 있다. 업로드나 게시가 들어 있는 업무는 **그것까지 미리 허가한다는 말**이 뒤에 붙어 있다.
-그 말을 빼면 Codex 가 절차를 다 읽고도 마지막에 "실행해도 될까요" 하고 멈춰 선다.
-폰으로 시켜 놓고 자리를 비우면 거기서 일이 끝난다. **뒤를 자르지 말고 통째로 붙여넣어라.**
+**두 개를 차례로 보낸다. 답을 기다리지 마라.**
+1번을 보내고 곧바로 2번을 보내면 대기 큐에 쌓인다.
+세션이 도중에 "실행해도 될까요" 하고 멈추는 순간 그 허가문을 읽고 이어서 간다.
+2번을 안 보내면 폰으로 시켜 놓고 자리를 비웠을 때 거기서 일이 끝난다.
 
-| 업무 | 붙여넣을 말 |
-| --- | --- |
+| 업무 | 1) 새 세션에 | 2) 바로 이어서 |
+| --- | --- | --- |
 ${rows}
 
 ## 왜 드라이브가 아니라 git 인가
@@ -461,11 +465,12 @@ ${rows}
       "저장소가 없는 컴에서도 이 폴더만 보고 업무를 할 수 있게 두었다.",
       "일감 큐를 쓰려면 저장소가 있어야 한다(겹침을 git push 경쟁으로 판정한다).",
       "",
-      "붙여넣을 말은 뒤를 자르지 말고 통째로 쓴다. 미리 허가가 빠지면 세션이 게시 직전에 멈춰 선다.",
+      "두 문장을 차례로 보낸다. 답을 기다리지 말고 2번을 바로 보내면 대기 큐에 쌓였다가,",
+      "세션이 멈춰 물어보는 순간 소비된다. 2번이 빠지면 세션이 게시 직전에 멈춰 선다.",
       "",
-      "| 업무 | 붙여넣을 말 |",
-      "| --- | --- |",
-      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${callPhrase(m.title, m.preauth)} |`),
+      "| 업무 | 1) 새 세션에 | 2) 바로 이어서 |",
+      "| --- | --- | --- |",
+      ...list.map((m) => `| [${m.title}](${m.id}/MANUAL.md) | ${callPhrase(m.title)} | ${approvalPhrase(m.preauth)} |`),
     ].join("\n") + "\n",
     "utf8"
   );

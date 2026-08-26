@@ -9,7 +9,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
-import { callPhrase, readPreauth } from "../lib/call-phrase.mjs";
+import { callPhrase, approvalPhrase, readPreauth } from "../lib/call-phrase.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = path.join(ROOT, "site", "dist");
@@ -280,14 +280,20 @@ const cards = M.map((m) => {
     "</summary>",
     '<div class="body">',
     // 부르는 말을 여러 개 늘어놓으면 위 원리에 적어 둔 한 가지 형식과 어긋나 헷갈린다.
-    // 카드에는 그 형식 그대로 만든 문장 하나만 둔다.
+    // 카드에는 그 형식 그대로 만든 문장만 둔다.
     //
-    // 짧게 "○○ 업무 해줘" 만 두면 안 된다. Codex 가 매뉴얼의 실행 계약을 읽고도
-    // 자기 승인 게이트를 한 번 더 걸고 멈춘다(260825 실측). 그 게이트가 물어볼 것을
-    // 미리 허가해서 같이 넘겨야 완주한다. 자세한 것은 lib/call-phrase.mjs 에 적어 뒀다.
+    // 문장이 둘인 이유는 lib/call-phrase.mjs 에 적어 뒀다. 1번은 담백하게 시키기만 하고,
+    // 2번은 답을 기다리지 말고 바로 보내 대기 큐에 재워 둔다. 세션이 도중에 멈춰
+    // "실행해도 될까요" 하고 물으면 그 순간 2번을 읽고 이어서 간다.
     (() => {
-      const say = callPhrase(m.title, m.preauth);
-      return '<div class="say"><button class="chip" data-copy="' + esc(say) + '">' + esc(say) + "</button></div>";
+      const one = callPhrase(m.title);
+      const two = approvalPhrase(m.preauth);
+      const step = (n, s) =>
+        '<div class="step"><span class="n">' + n + '</span>' +
+        '<button class="chip" data-copy="' + esc(s) + '">' + esc(s) + "</button></div>";
+      return '<div class="say">' + step(1, one) + step(2, two) +
+        '<p class="sayhint">답을 기다리지 말고 <b>2번을 바로 이어서</b> 보냅니다. ' +
+        '대기 큐에 있다가 세션이 도중에 멈춰 물어보면 그때 읽고 이어서 합니다.</p></div>';
     })(),
     '<ul class="meta">',
     '<li data-tip="' + esc(runnerTip) + '">' + esc(m.runner) + " 가 맡습니다</li>",
@@ -462,6 +468,13 @@ body.dnd{cursor:grabbing;user-select:none;-webkit-user-select:none}
 body.dnd .boxed{border-color:var(--acc);background:var(--accBg)}
 .what{margin:0 0 18px;color:var(--ink2);font-size:15px}
 .say{margin:0 0 16px}
+.say .step{display:flex;align-items:flex-start;gap:9px;margin:0 0 7px}
+.say .n{flex:none;width:20px;height:20px;margin-top:10px;border-radius:50%;
+  background:var(--accBg);color:var(--acc);font-size:11.5px;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.sayhint{margin:9px 0 0 29px;font-size:13px;color:var(--dim);line-height:1.6}
+.sayhint b{color:var(--ink2)}
+.saypair{display:flex;flex-direction:column;gap:7px;margin:2px 0 0}
 /* 호출문이 미리 허가까지 담아 길어졌다. 알약 모양으로 두면 세 줄이 말려 안 읽힌다. */
 .say .chip{display:block;width:100%;text-align:left;padding:12px 15px;border-radius:12px;line-height:1.55}
 .chips{display:flex;flex-wrap:wrap;gap:7px}
@@ -638,8 +651,12 @@ footer.site::before{content:"";position:absolute;left:0;right:0;top:0;height:1px
     <ol>
       <li><span><b>매뉴얼을 구글 드라이브에 미리 깔아 뒀습니다.</b>
         절차, 회사 정보, 로그인 계정이 에이전트 폴더 하나에 들어 있습니다.</span></li>
-      <li><span><b>Claude 나 Codex 새 세션에 한 줄만 말하면 끝까지 합니다.</b>
-        <button class="chip say2" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘. 물어보지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘. 물어보지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></span></li>
+      <li><span><b>Claude 나 Codex 새 세션에 두 줄만 보내면 끝까지 합니다.</b>
+        시키는 말을 보내고, 답을 기다리지 말고 허가문을 바로 이어서 보냅니다.
+        도중에 멈춰 물어보면 그 허가문을 읽고 이어서 갑니다.
+        <span class="saypair">
+        <button class="chip say2" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button>
+        <button class="chip say2" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button></span></span></li>
       <li><span><b>원리는 CUA, 컴퓨터를 직접 조작하는 것입니다.</b>
         명령어(L1)부터 컴퓨터 전체 제어(L4)까지 써서, 계정으로 하는 일도 사람 손을 안 거칩니다.</span></li>
       <li><span><b>쓸수록 매뉴얼이 두꺼워집니다.</b>
@@ -732,14 +749,16 @@ ${BIZ.map(
     <details class="hsec" open>
       <summary>시키는 법 <span class="caret"></span></summary>
       <div class="in">
-        <p>형식은 하나뿐입니다. <b>업무 이름</b>만 갈아 끼우면 됩니다.</p>
-        <button class="chip quote" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘. 물어보지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘. 물어보지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button>
-        <p>업무 카드를 펼치면 그 업무 이름을 넣어 만든 문장이 나옵니다.
-        눌러서 복사한 뒤 Claude 나 Codex 새 세션에 그대로 붙여넣으면 됩니다.</p>
-        <p><b>뒤에 붙은 허가 문장을 지우지 마세요.</b> 업로드나 게시가 들어 있는 업무는
-        카드의 문장에 그것까지 미리 허가한다고 적혀 있습니다. 그 문장이 없으면 Codex 가
-        절차를 다 읽고도 마지막에 "실행해도 될까요" 하고 멈춰 섭니다. 폰으로 시켜 놓고
-        자리를 비우면 거기서 일이 끝납니다.</p>
+        <p><b>두 줄을 차례로 보냅니다.</b> 첫 줄은 <b>업무 이름</b>만 갈아 끼우면 됩니다.</p>
+        <button class="chip quote" data-copy="G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.">G드라이브 에이전트 폴더 참고해서 ○○ 업무 해줘.</button>
+        <p><b>답을 기다리지 말고 바로 이어서</b> 이 줄을 보냅니다. 대기 큐에 쌓입니다.</p>
+        <button class="chip quote" data-copy="허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.">허가합니다. 묻지 말고 끝까지 진행하고, 다 끝나면 결과만 알려줘.</button>
+        <p>업무 카드를 펼치면 그 업무 이름을 넣어 만든 두 문장이 나옵니다.
+        눌러서 복사한 뒤 Claude 나 Codex 새 세션에 차례로 붙여넣으면 됩니다.</p>
+        <p><b>2번을 빼면 도중에 멈춰 섭니다.</b> 업로드나 게시가 들어 있는 업무는
+        세션이 절차를 다 읽고도 마지막에 "실행해도 될까요" 하고 사람을 기다립니다.
+        폰으로 시켜 놓고 자리를 비우면 거기서 일이 끝납니다. 허가문을 미리 재워 두면
+        그 질문이 뜨는 순간 바로 읽고 이어서 갑니다. 무엇을 물어볼지 몰라도 됩니다.</p>
         <p>줄여서 "캡션 써줘" 처럼 말해도 알아듣습니다. 매뉴얼마다 줄임말을 적어 뒀습니다.
         다만 <b>처음 켠 컴퓨터에서는 위 형식을 그대로 쓰세요.</b> 그래야 에이전트가
         드라이브에서 매뉴얼을 먼저 찾습니다.</p>
