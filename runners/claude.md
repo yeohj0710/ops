@@ -48,6 +48,30 @@ ToolSearch: select:mcp__claude-in-chrome__tabs_context_mcp,mcp__claude-in-chrome
 - 카페24 관리자, 인스타그램, Figma, 노션처럼 로그인 세션이 필요한 곳은 전부 여기.
 - 파일 업로드는 `file_upload` 가 있는지 먼저 확인한다. 없으면 사람이 해야 한다.
 
+### "확장이 연결 안 됨" 이 떠도 확장은 살아 있다. 다시 고르면 된다
+
+**260827 실측.** 크롬은 46개 프로세스로 멀쩡히 떠 있는데 페이지를 만지는 도구만 전부 죽었다.
+
+- `navigate` `javascript_tool` `get_page_text` → "Claude in Chrome is not connected" 또는 중간 끊김
+- `tabs_context_mcp` `tabs_create_mcp` `tabs_close_mcp` → **정상**
+
+**이 갈림이 곧 신호다.** 탭 관리는 되는데 페이지 조작만 죽었으면 확장이 빠진 게 아니라
+**세션이 붙잡고 있던 브라우저 핸들이 끊긴 것**이다. 20초, 30초, 60초, 90초를 기다려도 안 낫는다.
+"확장을 다시 설치하세요" 안내가 같이 오는데 **그 말을 따르지 마라. 설치는 멀쩡하다.**
+
+**한 줄로 되살린다.**
+
+```
+mcp__claude-in-chrome__list_connected_browsers      → deviceId 를 받는다
+mcp__claude-in-chrome__select_browser {deviceId}    → "Connected to browser" 가 오면 끝
+```
+
+붙고 나면 탭 그룹이 새로 생기니 `tabs_context_mcp` 로 탭을 다시 받아 이어서 한다.
+`switch_browser` 는 쓰지 마라. 사람이 크롬에서 직접 눌러야 하는 것이라 원격이면 2분 기다리다 끝난다.
+
+**예약 작업에서 특히 이걸 먼저 본다.** 사람이 없는 시간에 도는 작업이 "확장이 죽었다" 로
+빈손 보고를 내는 원인이 이것이다. 재시도로는 절대 안 풀린다.
+
 ### 화면이 멀쩡해 보이는데 아무 일도 안 일어날 때, 이 다섯부터 본다
 
 다섯 다 **엉뚱한 얼굴로 돌아온다.** 오류가 안 나거나, 나더라도 원인과 상관없는 말이라
@@ -316,6 +340,7 @@ ToolSearch: { query: "computer-use", max_results: 30 }
 | 크롬이 안 떠 있다 | 직접 띄운다 (아래 명령). 3~5초 기다렸다가 다시 붙는다 |
 | 탭이 없다 | `tabs_create_mcp` 로 만들고 `navigate` |
 | 확장이 아직 안 붙었다 | 크롬을 띄운 뒤 `tabs_context_mcp` 로 몇 초 간격 두 번까지 다시 확인 |
+| 확장이 "연결 안 됨" 이라고 한다 | `list_connected_browsers` → `select_browser`. 위 L3 절을 보라. 기다려도 안 낫는다 |
 | 개발 서버가 안 돈다 | `preview_start` 로 띄운다. Bash 로 띄우지 마라 |
 | 폴더가 없다 | 만든다 |
 | 저장소가 최신이 아니다 | `git pull` 한다 |
