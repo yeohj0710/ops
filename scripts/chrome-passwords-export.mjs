@@ -52,6 +52,7 @@ const SITES = [
   [/^X$/i, "https://x.com/"],
   [/아임웹/i, "https://imweb.me/"],
   [/RCMS/i, "https://www.rcms.go.kr/"],
+  [/알프레드|alfred/i, "https://alfred.kr/"],
   [/IRIS/i, "https://www.iris.go.kr/"],
   [/청년창업사관학교/i, "https://start.kosmes.or.kr/"],
   [/SNS서포터/i, "https://snssupporter.com/"],
