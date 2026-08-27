@@ -274,6 +274,18 @@ pm.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, 
 
 넣고 나서 `computer` 의 `key: Return` 으로 보낸다. 스크립트로 버튼을 찾아 누르지 않는다.
 
+**전송이 안 된 것처럼 보여도 실제로는 갔을 때가 많다.** 탭을 닫기 전에 왼쪽 대화 목록을 본다.
+260827 에 이미 보낸 걸 모르고 탭을 닫아 같은 요청을 세 번 돌렸다.
+확실하게 보내려면 `Return` 말고 **전송 버튼 좌표를 재서 클릭한다.**
+
+```js
+const btn=[...document.querySelectorAll('button')].find(b=>/보내|Send/.test(b.getAttribute('aria-label')||''));
+const r=btn.getBoundingClientRect(), sc=1568/innerWidth;
+// {x:(r.x+r.width/2)*sc, y:(r.y+r.height/2)*sc} 를 computer 의 left_click 에 넣는다
+```
+
+**한 메시지에 한 장씩 시킨다.** 네 장을 한 번에 달라고 하면 오류로 끝난다.
+
 **탭이 얼면 되살리려 하지 말고 닫고 새로 연다.** 이미지를 서너 장 뽑고 나면
 `Runtime.evaluate` 가 45초 타임아웃으로 죽는다. 대화는 서버에 남으니 새 탭에서 이어가면 된다.
 한 대화에 이미지를 세 장까지만 뽑고 새 채팅으로 넘어가는 편이 빠르다.
