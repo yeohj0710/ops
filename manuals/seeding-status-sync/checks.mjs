@@ -2,9 +2,10 @@
 
 // 시딩 상황 파악과 진행표 갱신 — 완료 검사
 //
-// 이 검사가 잡는 것은 둘이다.
-//   1. 안 읽음 복원 누락. 이 업무에서 제일 잘 나는 사고다
-//   2. 시트가 의도 없이 바뀐 것 (행 수, 합의 단가, 수식 오류)
+// 이 검사가 잡는 것은 셋이다.
+//   1. 허용 범위 밖 시트 변경. 엉뚱한 열, 지워진 칸, 사라진 행 (diff.json)
+//   2. 안 읽음 복원 누락. 이 업무에서 제일 잘 나는 사고다
+//   3. 시트가 의도 없이 바뀐 것 (행 수, 합의 단가, 수식 오류)
 //
 // 쓰는 법
 //   node manuals/seeding-status-sync/checks.mjs <진행 중인 task JSON 경로>
@@ -13,6 +14,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -67,6 +69,9 @@ if (!taskFile || !fs.existsSync(taskFile)) {
 }
 
 selfTest();
+execFileSync(process.execPath, [path.join(HERE, "scripts", "sheet-diff.mjs"), "--self-test"], {
+  stdio: "inherit",
+});
 
 const task = JSON.parse(fs.readFileSync(taskFile, "utf8"));
 const work = path.join(ROOT, "work", task.id);
@@ -79,7 +84,34 @@ const read = (name) => {
   return JSON.parse(fs.readFileSync(p, "utf8"));
 };
 
-// 1. 안 읽음 복원
+// 1. 허용 범위 밖 시트 변경
+const diff = read("diff.json");
+assert.ok(Array.isArray(diff.tabs), "diff.tabs 배열이 필요하다. sheet-diff.mjs 를 돌려라");
+let sheetProblems = 0;
+for (const d of diff.tabs) {
+  const buckets = {
+    "허용 범위 밖 변경": d.outOfScope,
+    "값이 있던 칸을 비움": d.emptiedCells,
+    "사라진 행": d.disappearedKeys,
+    "예상 못 한 새 행": d.unexpectedNewKeys,
+    "열쇠 중복": d.duplicateKeys,
+    "머리글 변경": d.headerChanged,
+  };
+  for (const [label, list] of Object.entries(buckets)) {
+    const n = (list || []).length;
+    if (!n) continue;
+    sheetProblems += n;
+    console.error(`${d.tab}: ${label} ${n}건`);
+  }
+}
+assert.equal(
+  sheetProblems,
+  0,
+  "시트가 허용 범위 밖에서 바뀌었다. 버전 기록으로 복원하고 1단계부터 다시 해라"
+);
+assert.notEqual(diff.clean, false, "diff.clean 이 false 다");
+
+// 2. 안 읽음 복원
 const before = read("unread-before.json");
 const after = read("unread-after.json");
 const channels = new Set([
@@ -97,7 +129,7 @@ for (const ch of channels) {
 }
 assert.equal(restoreProblems, 0, "안 읽음 복원이 빠졌다. 되돌리고 다시 검사해라");
 
-// 2. 시트
+// 3. 시트 총량
 const result = read("result.json");
 assert.ok(Array.isArray(result.sheets), "result.sheets 배열이 필요하다");
 assert.ok(result.sheets.length > 0, "검사한 탭이 없다");
@@ -127,5 +159,6 @@ const newRows = result.sheets.reduce(
 );
 
 console.log(
-  `seeding-status-sync checks: 탭 ${result.sheets.length}개, 고친 행 ${touched}개, 새 줄 ${newRows}개, 안 읽음 복원 누락 0건`
+  `seeding-status-sync checks: 탭 ${result.sheets.length}개, 고친 행 ${touched}개, 새 줄 ${newRows}개, ` +
+    `허용 범위 밖 변경 0건, 안 읽음 복원 누락 0건`
 );
