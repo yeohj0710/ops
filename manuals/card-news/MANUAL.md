@@ -67,15 +67,23 @@ const r = await fetch(`/api/v1/feed/user/${userId}/?count=33`, {headers:{'x-ig-a
 cat C:/dev/cardnews-refs/designs.md
 ```
 
-지금 일곱 판이다. 정보 밀도판, 노트판, 표판, 매거진판, 실사판, 인물 누끼판, 자막판.
-**기본은 정보 밀도판이다.** 사진이 필요 없고 저장을 제일 많이 받는다.
+지금 여덟 판이다. 정보 밀도판, 노트판, 표판, 매거진판, 실사판, 인물 누끼판, 자막판,
+제품 실사 오픈판. **기본은 정보 밀도판이다.** 사진이 필요 없고 저장을 제일 많이 받는다.
+260827 에 여덟 판을 한 벌씩 다 지어 뒀으니 새로 지을 때 그 파일을 열어 보고 시작한다.
 
 실측 원본 이미지는 두 곳에 있다.
 
 - `<DEV>/cardnews-refs/shots/<계정>/<코드>/`
 - `<드라이브>/여형준님/29 카드뉴스/etc/2608270900 공동구매 캐러셀 레퍼런스/` (82장)
 
-**실사판과 인물 누끼판은 그 약사 본인 사진이 있어야 한다.** 없으면 다른 판으로 간다.
+**사진이 필요한 판도 사진이 없다고 건너뛰지 않는다.** 실사판, 인물 누끼판, 자막판,
+제품 실사 오픈판은 원래 그 약사 본인 촬영분이나 제품 실물이 필요한 판이다.
+그 자리에 **생성 사진을 넣어 판을 완성해 두고**, 나중에 진짜 사진이 오면 한 장만 갈아 끼운다.
+어느 자리가 교체 자리인지는 카드 밖 레퍼런스판에 적는다.
+
+**사람 얼굴은 생성하지 않는다.** 약사 계정에 가짜 사람이 올라가면 안 된다.
+인물 누끼판은 인물 자리를 대형 제품 누끼로 대신 채운다.
+공구 알림 포맷(실사판, 제품 실사 오픈판)은 행사 문구를 빼고 정보형으로 돌려 쓴다.
 
 ### 2-1. 왜 정보 밀도판이 기본인가
 
@@ -218,14 +226,31 @@ function hi(t, words, color, style='Black'){
 
 > 창을 통과한 부드러운 자연광, 길게 드리운 그림자, 은은한 역광, 따뜻한 금빛 색보정, 빛망울
 
-프롬프트 입력은 `computer` 의 `type` 말고 **스크립트로 넣는다.** 긴 한국어는 타이핑하면 깨진다.
+프롬프트 입력은 `computer` 의 `type` 도, `execCommand('insertText')` 도 쓰지 않는다.
+`type` 은 긴 한국어에서 **공백이 전부 사라지고**, `insertText` 는 글자는 들어가는데
+리액트가 빈 칸으로 알고 있어서 **전송 버튼이 안 켜진다.**
+붙여넣기 이벤트로 넣어야 프로즈미러와 리액트 상태가 같이 갱신된다.
 
 ```js
-const ed = document.querySelector('#prompt-textarea') || document.querySelector('[contenteditable="true"]');
-ed.focus();
-document.execCommand('selectAll', false, null);
-document.execCommand('delete', false, null);
-document.execCommand('insertText', false, "프롬프트 전문");
+const pm = document.querySelector('#prompt-textarea');
+pm.focus();
+document.execCommand('selectAll'); document.execCommand('delete');
+const dt = new DataTransfer(); dt.setData('text/plain', "프롬프트 전문");
+pm.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true}));
+```
+
+넣고 나서 `computer` 의 `key: Return` 으로 보낸다. 스크립트로 버튼을 찾아 누르지 않는다.
+
+**탭이 얼면 되살리려 하지 말고 닫고 새로 연다.** 이미지를 서너 장 뽑고 나면
+`Runtime.evaluate` 가 45초 타임아웃으로 죽는다. 대화는 서버에 남으니 새 탭에서 이어가면 된다.
+한 대화에 이미지를 세 장까지만 뽑고 새 채팅으로 넘어가는 편이 빠르다.
+
+받는 것은 `fetch` 로 바로 blob 을 받아 떨구는 게 캔버스보다 확실하다.
+
+```js
+const r = await fetch(im.src); const b = await r.blob();
+const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'shot.png';
+document.body.appendChild(a); a.click(); a.remove();
 ```
 
 받는 것은 페이지 안에서 캔버스에 그려 다운로드 폴더로 떨군다.
@@ -321,6 +346,16 @@ curl -s -X POST "<submitUrl>" -F "file=@shot.png;type=image/png"
 - **네이버 블로그는 브라우저 도구로 못 연다.** `curl` 로 `PostView.naver?blogId=..&logNo=..` 를 받는다
 - **인앱 브라우저 패널은 이 기계에서 앱을 죽인다.** 크롬 익스텐션이나 `curl` 로 간다
 - **구글 드라이브(G:) 위에서 `mv` 로 한글 파일명을 바꾸지 마라.** 새 이름으로 `cp` 하고 확인한 뒤 지운다
+- **`upload_assets` 로 올린 그림은 캔버스에 빈 프레임으로 남는다.** 해시만 쓰고 프레임은 지운다.
+  다 짓고 나서 카드(1080x1350)와 레퍼런스판(1560x1350)이 아닌 것을 전부 지우면 깔끔하다
+- **`curl -F "file=@/c/..."` 는 깃배시에서 파일을 못 연다.** 그 폴더로 `cd` 해서 파일명만 쓴다.
+  실패해도 출력이 안 나올 때가 있으니 `-sS -w "HTTP=%{http_code}"` 를 붙인다
+- **키워드 강조 배열에 그 노드에 없는 말을 넣으면 조용히 아무 일도 안 일어난다.**
+  제목에 없는 말을 제목 배열에 넣어 놓고 강조가 됐다고 착각하기 쉽다. 뽑아서 눈으로 본다
+- **마지막 행이 하단 핸들 배지를 덮는다.** 행 시작 y + 행간 x (행 수 - 1) + 소제목 두 줄까지
+  더해서 1230 을 넘는지 계산하고 짓는다. 넘으면 행간을 줄이거나 문장을 한 줄로 줄인다
+- **자막체(흰 글자 검정 두꺼운 테두리)는 텍스트 노드의 `strokes` 로 만든다.**
+  `strokeWeight` 14~20, `strokeAlign='OUTSIDE'`. 그림자를 하나 더 얹으면 사진 위에서도 뜬다
 
 ## 사람에게 물어야 하는 지점
 
