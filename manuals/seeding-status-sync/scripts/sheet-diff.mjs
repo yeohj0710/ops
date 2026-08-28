@@ -24,16 +24,22 @@
 //       "keyColumn": "계정",
 //       "columns": ["진행 상태", "②응답", "③협상 관련 메모", "④합의 단가", "⑤확정", "배정 건"],
 //       "keys": ["@shihyan.s", "@yfh_0822"],
-//       "newKeys": ["@newperson"]
+//       "newKeys": ["@newperson"],
+//       "deletedKeys": ["@remove-after-user-approval"],
+//       "emptyCells": [{"key":"@a","column":"③협상 관련 메모"}],
+//       "protectedColumns": ["④합의 단가", "⑥방문 예정일"]
 //     }
 //   }
 //
 // `columns` 는 이번에 고쳐도 되는 열, `keys` 는 고쳐도 되는 행,
-// `newKeys` 는 이번에 새로 만든 행이다. 셋 다 없으면 그 탭은 읽기 전용으로 본다.
+// `newKeys` 는 이번에 새로 만든 행, `deletedKeys` 는 사용자가 승인한 삭제 행이다.
+// `emptyCells` 에 없는 기존 값 삭제는 실패한다. `protectedColumns` 는 다른 허용보다 우선한다.
+// 허용값이 없으면 그 탭은 읽기 전용으로 본다.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 // ── CSV 파싱 ────────────────────────────────────────────────────────────────
 // 따옴표 안의 쉼표와 줄바꿈을 살린다. 직접 split(",") 하면 메모 칸에서 깨진다.
@@ -63,6 +69,8 @@ export function parseCsv(text) {
 }
 
 const norm = (v) => String(v ?? "").trim();
+const normKey = (v) => norm(v).toLowerCase().replace(/^@/, "");
+const cellId = (key, column) => `${normKey(key)}\u0000${norm(column)}`;
 
 // 머리글 → 열 번호. 같은 이름이 여러 개면 첫 번째를 쓴다.
 export function headerIndex(header) {
@@ -96,6 +104,7 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
     emptiedCells: [],
     outOfScope: [],
     allowedChanges: [],
+    allowedDeletedKeys: [],
     rowCountBefore: 0,
     rowCountAfter: 0,
   };
@@ -137,13 +146,20 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
   }
   const allowedKeys = new Set((allow.keys || []).map(norm));
   const newKeys = new Set((allow.newKeys || []).map(norm));
+  const deletedKeys = new Set((allow.deletedKeys || []).map(norm));
+  const emptyCells = new Set((allow.emptyCells || []).map((x) => cellId(x.key, x.column)));
+  const protectedCols = new Set((allow.protectedColumns || []).map(norm));
 
   const bIdx = indexByKey(bRows, keyIdx);
   const aIdx = indexByKey(aRows, keyIdx);
 
   for (const [k, list] of aIdx) if (list.length > 1) out.duplicateKeys.push({ key: k, count: list.length });
 
-  for (const [k] of bIdx) if (!aIdx.has(k)) out.disappearedKeys.push(k);
+  for (const [k] of bIdx) {
+    if (aIdx.has(k)) continue;
+    if (deletedKeys.has(k)) out.allowedDeletedKeys.push(k);
+    else out.disappearedKeys.push(k);
+  }
   for (const [k] of aIdx) if (!bIdx.has(k) && !newKeys.has(k)) out.unexpectedNewKeys.push(k);
 
   for (const [k, bList] of bIdx) {
@@ -159,7 +175,13 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
       const colName = norm(bHead[c]) || `col${c}`;
       const hit = { key: k, col: c, colName, before: bv, after: av };
 
-      if (bv !== "" && av === "") { out.emptiedCells.push(hit); continue; }
+      if (protectedCols.has(colName)) { out.outOfScope.push({ ...hit, why: "보호 열" }); continue; }
+      if (bv !== "" && av === "") {
+        if (allowedCols.has(c) && allowedKeys.has(k) && emptyCells.has(cellId(k, colName))) {
+          out.allowedChanges.push(hit);
+        } else out.emptiedCells.push(hit);
+        continue;
+      }
       if (!allowedCols.has(c)) { out.outOfScope.push({ ...hit, why: "허용하지 않은 열" }); continue; }
       if (!allowedKeys.has(k)) { out.outOfScope.push({ ...hit, why: "허용하지 않은 행" }); continue; }
       out.allowedChanges.push(hit);
@@ -207,6 +229,20 @@ function selfTest() {
   // 행이 사라짐
   d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n", allow);
   assert.deepEqual(d.disappearedKeys, ["@b"], "사라진 행을 잡아야 한다");
+  d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n", { ...allow, deletedKeys: ["@b"] });
+  assert.ok(isClean(d), "승인 목록의 행 삭제는 통과해야 한다");
+
+  // 기존 값을 비우려면 셀 단위 승인 필요
+  d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n2,미접촉,@b,2000,,70000\n", {
+    ...allow, keys: ["@a", "@b"], emptyCells: [{ key: "@b", column: "③협상 관련 메모" }],
+  });
+  assert.ok(isClean(d), "승인 목록의 셀 비우기는 통과해야 한다");
+
+  // 보호 열은 일반 허용보다 우선
+  d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,99999\n2,미접촉,@b,2000,메모유지,70000\n", {
+    ...allow, columns: [...allow.columns, "④합의 단가"], protectedColumns: ["④합의 단가"],
+  });
+  assert.equal(d.outOfScope[0].why, "보호 열");
 
   // 정렬만 바뀐 것은 헛경보가 아니다
   d = diffSheet("t", before, head + "2,미접촉,@b,2000,메모유지,70000\n1,1차 발송,@a,1000,,\n", allow);
@@ -235,64 +271,63 @@ function arg(name) {
   return i === -1 ? undefined : process.argv[i + 1];
 }
 
-if (process.argv.includes("--self-test")) {
-  selfTest();
-  process.exit(0);
-}
+function main() {
+  if (process.argv.includes("--self-test")) return selfTest();
 
-const beforeDir = arg("--before");
-const afterDir = arg("--after");
-const allowPath = arg("--allow");
-const outPath = arg("--out");
+  const beforeDir = arg("--before");
+  const afterDir = arg("--after");
+  const allowPath = arg("--allow");
+  const outPath = arg("--out");
 
-if (!beforeDir || !afterDir || !allowPath) {
-  console.error("쓰는 법: sheet-diff.mjs --before <폴더> --after <폴더> --allow <allow.json> [--out <diff.json>]");
-  process.exit(1);
-}
-
-selfTest();
-
-const allowAll = JSON.parse(fs.readFileSync(allowPath, "utf8"));
-const tabs = fs.readdirSync(beforeDir).filter((f) => f.endsWith(".csv")).map((f) => f.slice(0, -4));
-
-const report = { tabs: [], clean: true };
-for (const tab of tabs) {
-  const bPath = path.join(beforeDir, `${tab}.csv`);
-  const aPath = path.join(afterDir, `${tab}.csv`);
-  if (!fs.existsSync(aPath)) {
-    report.tabs.push({ tab, outOfScope: [{ why: "고친 뒤 CSV 가 없다" }] });
-    report.clean = false;
-    continue;
+  if (!beforeDir || !afterDir || !allowPath) {
+    console.error("쓰는 법: sheet-diff.mjs --before <폴더> --after <폴더> --allow <allow.json> [--out <diff.json>]");
+    process.exit(1);
   }
-  const d = diffSheet(
-    tab,
-    fs.readFileSync(bPath, "utf8"),
-    fs.readFileSync(aPath, "utf8"),
-    allowAll[tab] || {}
-  );
-  report.tabs.push(d);
-  if (!isClean(d)) report.clean = false;
+
+  selfTest();
+  const allowAll = JSON.parse(fs.readFileSync(allowPath, "utf8"));
+  const tabs = fs.readdirSync(beforeDir).filter((f) => f.endsWith(".csv")).map((f) => f.slice(0, -4));
+  const report = { tabs: [], clean: true };
+
+  for (const tab of tabs) {
+    const bPath = path.join(beforeDir, `${tab}.csv`);
+    const aPath = path.join(afterDir, `${tab}.csv`);
+    if (!fs.existsSync(aPath)) {
+      report.tabs.push({ tab, outOfScope: [{ why: "고친 뒤 CSV 가 없다" }] });
+      report.clean = false;
+      continue;
+    }
+    const d = diffSheet(
+      tab,
+      fs.readFileSync(bPath, "utf8"),
+      fs.readFileSync(aPath, "utf8"),
+      allowAll[tab] || {}
+    );
+    report.tabs.push(d);
+    if (!isClean(d)) report.clean = false;
+  }
+
+  if (outPath) fs.writeFileSync(outPath, JSON.stringify(report, null, 2), "utf8");
+
+  for (const d of report.tabs) {
+    const bad =
+      d.headerChanged.length + d.disappearedKeys.length + d.unexpectedNewKeys.length +
+      d.duplicateKeys.length + d.emptiedCells.length + d.outOfScope.length;
+    const mark = bad ? "✗" : "✓";
+    console.log(`${mark} ${d.tab}: 허용 변경 ${d.allowedChanges?.length ?? 0}건, 문제 ${bad}건`);
+    for (const h of d.headerChanged) console.log(`    머리글 ${h.col}: "${h.before}" → "${h.after}"`);
+    for (const k of d.disappearedKeys) console.log(`    행이 사라짐: ${k}`);
+    for (const k of d.unexpectedNewKeys) console.log(`    예상 못 한 새 행: ${k}`);
+    for (const k of d.duplicateKeys) console.log(`    열쇠 중복: ${k.key} ${k.count}줄`);
+    for (const c of d.emptiedCells) console.log(`    칸을 비움: ${c.key} / ${c.colName} = "${c.before}"`);
+    for (const c of d.outOfScope) console.log(`    범위 밖: ${c.key ?? ""} / ${c.colName ?? ""} "${c.before}" → "${c.after}" (${c.why})`);
+  }
+
+  if (!report.clean) {
+    console.error("\n시트가 허용 범위 밖에서 바뀌었다. 자동 복원하지 말고 전후 값을 보고한다.");
+    process.exit(1);
+  }
+  console.log("\nsheet-diff: 허용 범위 밖 변경 0건");
 }
 
-if (outPath) fs.writeFileSync(outPath, JSON.stringify(report, null, 2), "utf8");
-
-for (const d of report.tabs) {
-  const bad =
-    d.headerChanged.length + d.disappearedKeys.length + d.unexpectedNewKeys.length +
-    d.duplicateKeys.length + d.emptiedCells.length + d.outOfScope.length;
-  const mark = bad ? "✗" : "✓";
-  console.log(`${mark} ${d.tab}: 허용 변경 ${d.allowedChanges?.length ?? 0}건, 문제 ${bad}건`);
-  for (const h of d.headerChanged) console.log(`    머리글 ${h.col}: "${h.before}" → "${h.after}"`);
-  for (const k of d.disappearedKeys) console.log(`    행이 사라짐: ${k}`);
-  for (const k of d.unexpectedNewKeys) console.log(`    예상 못 한 새 행: ${k}`);
-  for (const k of d.duplicateKeys) console.log(`    열쇠 중복: ${k.key} ${k.count}줄`);
-  for (const c of d.emptiedCells) console.log(`    칸을 비움: ${c.key} / ${c.colName} = "${c.before}"`);
-  for (const c of d.outOfScope) console.log(`    범위 밖: ${c.key ?? ""} / ${c.colName ?? ""} "${c.before}" → "${c.after}" (${c.why})`);
-}
-
-if (!report.clean) {
-  console.error("\n시트가 허용 범위 밖에서 바뀌었다. 되돌리고 다시 해라.");
-  console.error("되돌리는 법: 시트 파일 → 버전 기록 → 이 실행 직전 버전으로 복원");
-  process.exit(1);
-}
-console.log("\nsheet-diff: 허용 범위 밖 변경 0건");
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

@@ -52,6 +52,11 @@ node "<OPS>/ops.mjs" manuals "말한 업무"
 맞는 매뉴얼이 나오면 그 `MANUAL.md` 를 **끝까지 읽고** 시작한다. 요약해서 읽지 마라.
 매뉴얼이 없으면 `manuals/_new-manual/MANUAL.md` 를 펴고 **기록 모드**로 진행한다.
 
+Google Sheets 쓰기 업무는 `abilities/구글시트.md`의 쓰기 안전 게이트도 적용한다. 특히
+`influencer-sheet-maintenance`는 `write-plan.json` 검사와 작업 전·후 CSV 대조 없이 쓰지 않는다.
+`updateCells`의 빈 객체 `{}`는 셀 건너뛰기가 아니라 값 삭제가 될 수 있으므로 떨어진 셀을 별도
+요청으로 나눈다.
+
 **2. 사람이 "○○ 업무로 등록해줘" 라고 한 경우**
 
 ("매뉴얼로 만들어", "시스템에 반영해", "다음에도 이렇게 해줘" 도 같은 뜻이다.)

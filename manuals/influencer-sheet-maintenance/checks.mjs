@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
@@ -17,9 +18,34 @@ if (!taskFile || !fs.existsSync(taskFile)) {
 
 const task = JSON.parse(fs.readFileSync(taskFile, "utf8"));
 const resultPath = path.join(ROOT, "work", task.id, "result.json");
+const taskDir = path.join(ROOT, "work", task.id);
 const rankScript = path.join(HERE, "scripts", "progress-rank.mjs");
+const planScript = path.join(HERE, "scripts", "validate-write-plan.mjs");
+const backupScript = path.join(HERE, "scripts", "backup-sheet.mjs");
+const diffScript = path.join(ROOT, "manuals", "seeding-status-sync", "scripts", "sheet-diff.mjs");
 
 execFileSync(process.execPath, [rankScript, "--self-test"], { stdio: "inherit" });
+execFileSync(process.execPath, [planScript, "--self-test"], { stdio: "inherit" });
+execFileSync(process.execPath, [backupScript, "--self-test"], { stdio: "inherit" });
+execFileSync(process.execPath, [diffScript, "--self-test"], { stdio: "inherit" });
+
+const mustExist = ["before", "after", "write-plan.json", "write-plan.validated.json", "diff.json"];
+for (const name of mustExist) assert.ok(fs.existsSync(path.join(taskDir, name)), `안전 산출물이 없다: ${name}`);
+
+const writePlanPath = path.join(taskDir, "write-plan.json");
+const validated = JSON.parse(fs.readFileSync(path.join(taskDir, "write-plan.validated.json"), "utf8"));
+const writePlanHash = crypto.createHash("sha256").update(fs.readFileSync(writePlanPath)).digest("hex");
+assert.equal(validated.ok, true, "쓰기 계획 검사가 통과하지 않았다");
+assert.equal(validated.inputSha256, writePlanHash, "검사 뒤 쓰기 계획이 바뀌었다");
+
+const diff = JSON.parse(fs.readFileSync(path.join(taskDir, "diff.json"), "utf8"));
+assert.equal(diff.clean, true, "CSV 전후 대조에 허용 범위 밖 변경이 있다");
+
+const latestPath = path.join(ROOT, "work", "_sheet-backups", "influencer-seeding", "latest.json");
+assert.ok(fs.existsSync(latestPath), "일일 전체 백업 기록이 없다");
+const latest = JSON.parse(fs.readFileSync(latestPath, "utf8"));
+assert.equal(latest.status, "ok", "최근 전체 백업이 실패했다");
+assert.ok(Date.now() - Date.parse(latest.createdAt) < 30 * 3_600_000, "전체 백업이 30시간보다 오래됐다");
 
 if (!fs.existsSync(resultPath)) {
   console.error(`검사 결과가 없다: ${resultPath}`);
