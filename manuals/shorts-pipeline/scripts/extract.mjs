@@ -126,7 +126,7 @@ function grab(id) {
     caption_html: "캡션.html",
     metadata_path: `${name} metadata.json`,
     target_account: "@haruyaksa",
-    target_aspect_ratio: "original",
+    target_aspect_ratio: "9:16",
     source_ownership: {
       status: "confirmed",
       uploader: meta.uploader,

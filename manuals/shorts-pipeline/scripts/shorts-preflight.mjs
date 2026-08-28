@@ -3,6 +3,7 @@
 // 네트워크·브라우저를 건드리지 않으므로 탐색용으로 반복 실행해도 안전하다.
 //
 //   node shorts-preflight.mjs
+//   node shorts-preflight.mjs --dir "<준비 폴더>"   게시 전 9:16 강제 게이트
 
 import fs from "node:fs";
 import path from "node:path";
@@ -27,6 +28,11 @@ const IGNORED = new Set([
   "used.jsonl", "upload-log.jsonl", "사용기록.jsonl", "업로드기록.jsonl",
 ]);
 const LOCKED = /(?:^|\s)LOCKED_SOURCE_PACK=1(?:\s|$)/;
+const EXPECTED_ASPECT = 9 / 16;
+const ASPECT_TOLERANCE = 0.01;
+const CLI_ARGS = process.argv.slice(2);
+const STRICT_DIR_INDEX = CLI_ARGS.indexOf("--dir");
+const STRICT_DIR = STRICT_DIR_INDEX >= 0 ? CLI_ARGS[STRICT_DIR_INDEX + 1] : null;
 
 const exists = (p) => fs.existsSync(p);
 const readText = (p) => fs.readFileSync(p, "utf8");
@@ -67,6 +73,73 @@ function latestUploads() {
   }
 }
 
+function probeMedia(file) {
+  const raw = execFileSync("ffprobe", [
+    "-v", "error", "-select_streams", "v:0",
+    "-show_entries", "stream=width,height,duration",
+    "-of", "json", file,
+  ], { encoding: "utf8" });
+  const stream = JSON.parse(raw).streams?.[0] || {};
+  const width = Number(stream.width);
+  const height = Number(stream.height);
+  const duration = Number(stream.duration);
+  return {
+    width,
+    height,
+    duration,
+    ratio: width > 0 && height > 0 ? width / height : NaN,
+  };
+}
+
+function mediaText(media) {
+  if (!media || !Number.isFinite(media.width) || !Number.isFinite(media.height)) return "ffprobe 실패";
+  const ratio = Number.isFinite(media.ratio) ? ` (${media.ratio.toFixed(4)})` : "";
+  const duration = Number.isFinite(media.duration) ? `, ${media.duration.toFixed(3)}초` : "";
+  return `${media.width}x${media.height}${ratio}${duration}`;
+}
+
+function inspectPreparedDir(dir) {
+  const prepPath = path.join(dir, "업로드 준비.json");
+  if (!exists(prepPath)) return { ok: false, errors: ["업로드 준비.json 없음"] };
+
+  let prep;
+  try {
+    prep = JSON.parse(readText(prepPath));
+  } catch (error) {
+    return { ok: false, errors: [`업로드 준비.json 읽기 실패: ${error.message}`] };
+  }
+
+  const mp4 = prep.video_path && exists(path.join(dir, prep.video_path))
+    ? prep.video_path
+    : fs.readdirSync(dir).find((name) => name.toLowerCase().endsWith(".mp4"));
+  const errors = [];
+  if (prep.target_aspect_ratio !== "9:16") {
+    errors.push(`target_aspect_ratio=${prep.target_aspect_ratio || "없음"} (9:16 필요)`);
+  }
+  if (!mp4) {
+    errors.push("MP4 없음");
+    return { ok: false, prep, mp4: null, media: null, mediaText: "mp4 없음", errors };
+  }
+
+  let media = null;
+  try {
+    media = probeMedia(path.join(dir, mp4));
+  } catch (error) {
+    errors.push(`ffprobe 실패: ${error.message}`);
+  }
+  if (!media || !Number.isFinite(media.ratio) || Math.abs(media.ratio - EXPECTED_ASPECT) > ASPECT_TOLERANCE) {
+    errors.push(`MP4 비율=${media?.width || "?"}x${media?.height || "?"} (9:16 필요)`);
+  }
+  return {
+    ok: errors.length === 0,
+    prep,
+    mp4,
+    media,
+    mediaText: mediaText(media),
+    errors,
+  };
+}
+
 function preparedFolders() {
   if (!exists(DEST)) {
     console.log("  업로드 준비 폴더 없음");
@@ -83,25 +156,15 @@ function preparedFolders() {
     const prepPath = path.join(dir, "업로드 준비.json");
     if (!exists(prepPath)) continue;
     try {
-      const prep = JSON.parse(readText(prepPath));
-      const mp4 = fs.readdirSync(dir).find((name) => name.toLowerCase().endsWith(".mp4"));
-      let media = "mp4 없음";
-      if (mp4) {
-        try {
-          media = execFileSync("ffprobe", [
-            "-v", "error", "-select_streams", "v:0",
-            "-show_entries", "stream=width,height,duration",
-            "-of", "csv=p=0", path.join(dir, mp4),
-          ], { encoding: "utf8" }).trim().replace(/\n/g, " ");
-        } catch { media = "ffprobe 실패"; }
-      }
+      const check = inspectPreparedDir(dir);
       rows.push({
         dir: entry.name,
-        prepared: prep.prepared_at || fs.statSync(prepPath).mtime.toISOString(),
-        source: prep.source_url || "소스 없음",
-        target: prep.target_account || "계정 없음",
-        aspect: prep.target_aspect_ratio || "비율 없음",
-        media,
+        prepared: check.prep?.prepared_at || fs.statSync(prepPath).mtime.toISOString(),
+        source: check.prep?.source_url || "소스 없음",
+        target: check.prep?.target_account || "계정 없음",
+        aspect: check.prep?.target_aspect_ratio || "비율 없음",
+        media: check.mediaText,
+        gate: check.ok,
       });
     } catch {}
   }
@@ -111,9 +174,26 @@ function preparedFolders() {
     return;
   }
   for (const row of rows.slice(0, 5)) {
-    console.log(`  ${row.dir} | ${row.aspect} | ${row.media} | ${row.target}`);
+    const state = row.gate ? "PASS" : "WARN";
+    console.log(`  [${state}] ${row.dir} | ${row.aspect} | ${row.media} | ${row.target}`);
   }
-  console.log("  주의: 업로드 준비.json의 status는 게시 완료 여부가 아니므로 폴더만 보고 재업로드하지 않는다.");
+  console.log("  주의: 게시 직전에는 선택한 폴더를 --dir로 다시 검사한다. 실패하면 업로드하지 않는다.");
+}
+
+function strictUploadGate(dirArg) {
+  const dir = path.resolve(dirArg);
+  console.log("인스타 업로드 9:16 강제 게이트 (게시 전)");
+  console.log(`  대상: ${dir}`);
+  const check = inspectPreparedDir(dir);
+  console.log(`  target_aspect_ratio: ${check.prep?.target_aspect_ratio || "없음"}`);
+  console.log(`  영상: ${check.mediaText || "확인 불가"}`);
+  if (!check.ok) {
+    console.error("  결과: FAIL — 업로드 금지");
+    for (const error of check.errors) console.error(`    - ${error}`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log("  결과: PASS — 업로드 가능");
 }
 
 async function executions() {
@@ -142,15 +222,19 @@ function loadSQLite(modulePath) {
   return require(modulePath);
 }
 
-console.log("쇼츠 빠른 사전 점검 (로컬·읽기 전용)");
-console.log("[1] n8n 최근 실행");
-await executions();
-console.log("[2] 유튜브 업로드 기록 마지막 항목");
-latestUploads();
-console.log("[3] 본편 소재 재고");
-countTopics();
-console.log("[4] 인스타 업로드 준비 파일·원본 비율");
-preparedFolders();
-console.log("[5] 브라우저 고정 규칙");
-console.log("  기존 Chrome 프로필만 선택: 새 Chrome 프로필 우선, 사용 중이면 내 Chrome");
-console.log("  업로드 직전 계정명 haruyaksa 확인 → 자르기 메뉴 원본 → 9:16 미리보기 확인");
+if (STRICT_DIR) {
+  strictUploadGate(STRICT_DIR);
+} else {
+  console.log("쇼츠 빠른 사전 점검 (로컬·읽기 전용)");
+  console.log("[1] n8n 최근 실행");
+  await executions();
+  console.log("[2] 유튜브 업로드 기록 마지막 항목");
+  latestUploads();
+  console.log("[3] 본편 소재 재고");
+  countTopics();
+  console.log("[4] 인스타 업로드 준비 파일·원본 비율");
+  preparedFolders();
+  console.log("[5] 브라우저 고정 규칙");
+  console.log("  기존 Chrome 프로필만 선택: 새 Chrome 프로필 우선, 사용 중이면 내 Chrome");
+  console.log("  게시 전 --dir 강제 게이트 통과 → 자르기 메뉴 9:16 선택 → 게시 후 릴스 video 비율 확인");
+}
