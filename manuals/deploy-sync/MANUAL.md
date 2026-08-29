@@ -173,7 +173,7 @@ node "<OPS>/manuals/deploy-sync/prune.mjs" --apply   # 실제로 지운다
 
 ### 5. 링크판도 같이 굽는다 (L1)
 
-노션과 공개 링크판은 같은 원장(`links.json`)을 본다. 한쪽만 고치면 서로 다른 말을 한다.
+노션과 공개 링크판은 같은 원본(`links.json`)을 본다. 한쪽만 고치면 서로 다른 말을 한다.
 
 ```bash
 cd <DEV>/dev-hub && npm run deploy
@@ -252,7 +252,7 @@ node "<OPS>/manuals/deploy-sync/scan.mjs" --fast    # 안 해도 된다. 그냥 
   자료(`data/`, `state/`, `work/`)가 미커밋인 것은 루프가 도는 중이라 정상이다
 - **동기화 명령이 자료를 새로 만들어 내는 것이면 절대 넣지 마라.**
   `zipgap-exchange` 의 `npm run build:data` 는 시드 추정치로 `listings.json` 을 다시 만든다.
-  루프가 몇 주 동안 채운 실거래가 통째로 덮인다. 동기화 칸에는 **원장을 읽어 오는 것만** 적는다
+  루프가 몇 주 동안 채운 실거래가 통째로 덮인다. 동기화 칸에는 **원본을 읽어 오는 것만** 적는다
 - **`cd` 뒤에 `vercel` 을 이어 붙이면 엉뚱한 폴더에서 돈다.** `cd 어디 && ... && npx vercel --prod`
   로 한 줄에 이으면 vercel 이 그 폴더를 새 프로젝트로 잡아 만들어 버린다.
   260805 에 검증용 폴더가 통째로 공개 배포됐다. `run.mjs` 는 명령마다 cwd 를 따로 넘긴다.

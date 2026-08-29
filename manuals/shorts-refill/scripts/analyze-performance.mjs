@@ -84,7 +84,7 @@ for (const ch of CHANNELS) {
       if (p) published.push({ ...p, channel: ch, date: stamp });
     }
   }
-  // 재고는 `<채널> 소재` 폴더가 원장이다. 회로가 읽는 곳이 거기다.
+  // 재고는 `<채널> 소재` 폴더가 원본이다. 회로가 읽는 곳이 거기다.
   // research/queue 는 사본이라 여기서 세면 안 된다. 발행하고 안 지운 팩이 남아 있어서
   // 260825 실측에서 실제 15건이 26건으로 부풀었다.
   const stockDir = path.join(ROOT, `${ch} 소재`);
