@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCsv } from "../../seeding-status-sync/scripts/sheet-diff.mjs";
+import { parseCsv } from "./sheet-diff.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MANUAL_DIR = path.resolve(HERE, "..");

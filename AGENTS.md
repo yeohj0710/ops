@@ -53,7 +53,7 @@ node "<OPS>/ops.mjs" manuals "말한 업무"
 매뉴얼이 없으면 `manuals/_new-manual/MANUAL.md` 를 펴고 **기록 모드**로 진행한다.
 
 Google Sheets 쓰기 업무는 `abilities/구글시트.md`의 쓰기 안전 게이트도 적용한다. 특히
-`influencer-sheet-maintenance`는 `write-plan.json` 검사와 작업 전·후 CSV 대조 없이 쓰지 않는다.
+`influencer-seeding`은 `write-plan.json` 검사와 작업 전·후 CSV 대조 없이 쓰지 않는다.
 `updateCells`의 빈 객체 `{}`는 셀 건너뛰기가 아니라 값 삭제가 될 수 있으므로 떨어진 셀을 별도
 요청으로 나눈다.
 
