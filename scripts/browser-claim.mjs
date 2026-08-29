@@ -63,13 +63,24 @@ function isRunning(dir) {
   }
 }
 
+// 폴더 이름과 사람이 화면에서 보는 이름은 다르다. 260829 실측이 이랬다.
+//   Profile -> "프로필 2",  Profile 5 -> "프로필 1",  Profile 9 -> "프로필 3"
+// 숫자가 서로 밀려 있어서 폴더 이름으로 짐작하면 반드시 틀린다.
+// 진짜 이름표는 프로필마다 있는 Preferences 가 아니라 User Data/Local State 에 있다.
+let INFO = {};
+try {
+  const ls = JSON.parse(fs.readFileSync(path.join(CHROME_DIR, "Local State"), "utf8"));
+  INFO = ls?.profile?.info_cache || {};
+} catch {
+  INFO = {};
+}
+
 function displayName(dir) {
-  try {
-    const p = JSON.parse(fs.readFileSync(path.join(CHROME_DIR, dir, "Preferences"), "utf8"));
-    return p?.profile?.name || "";
-  } catch {
-    return ""; // 실행 중이면 못 읽는다. 문제가 아니다
-  }
+  return INFO[dir]?.name || "";
+}
+
+function account(dir) {
+  return INFO[dir]?.user_name || "";
 }
 
 function hasClaudeExt(dir) {
@@ -86,27 +97,42 @@ function profiles() {
     .map((dir) => ({
       dir,
       name: displayName(dir),
+      account: account(dir),
       running: isRunning(dir),
       ext: hasClaudeExt(dir),
     }));
 }
 
 function table(rows, claims) {
-  const line = (a, b, c, d, e) =>
-    `  ${String(a).padEnd(11)} ${String(b).padEnd(18)} ${String(c).padEnd(8)} ${String(d).padEnd(8)} ${e}`;
-  console.log(line("프로필", "이름", "실행중", "확장", "잡은 업무"));
+  const pad = (v, n) => {
+    const s = String(v ?? "");
+    // 한글은 두 칸을 먹는다. 그대로 padEnd 하면 표가 어긋난다
+    const w = [...s].reduce((a, c) => a + (c.charCodeAt(0) > 0x1100 ? 2 : 1), 0);
+    return s + " ".repeat(Math.max(1, n - w));
+  };
+  const line = (a, b, c, d, e, f) =>
+    `  ${pad(a, 12)}${pad(b, 12)}${pad(c, 30)}${pad(d, 9)}${pad(e, 7)}${f}`;
+  console.log(line("폴더", "화면 이름", "구글 계정", "실행중", "확장", "잡은 업무"));
   for (const p of rows) {
     const who = Object.entries(claims).find(([, v]) => v.dir === p.dir);
     console.log(
       line(
         p.dir,
-        p.name || "(실행 중이라 못 읽음)",
+        p.name || "?",
+        p.account || "(로그인 안 됨)",
         p.running ? "예" : "아니오",
         p.ext ? "있다" : "없다",
         who ? `${who[0]} (${who[1].at.slice(11, 16)})` : "-"
       )
     );
   }
+  console.log(
+    [
+      "",
+      "  폴더 이름과 화면 이름은 서로 밀려 있다. 사람에게 부탁할 때는 화면 이름으로,",
+      "  크롬을 띄울 때는 폴더 이름으로 말해라. --profile-directory 에 넣는 것이 폴더 이름이다.",
+    ].join("\n")
+  );
 }
 
 const [cmd, jobId] = process.argv.slice(2);
@@ -158,7 +184,7 @@ if (cmd === "claim") {
   }
   claims[jobId] = { dir: free.dir, name: free.name, at: nowIso() };
   writeClaims(claims);
-  console.log(`잡았다: ${free.dir}${free.name ? ` (${free.name})` : ""}`);
+  console.log(`잡았다: 폴더 ${free.dir} = 화면 이름 "${free.name || "?"}"${free.account ? ` / ${free.account}` : ""}`);
   if (!free.running) {
     console.log(
       `\n안 떠 있다. 먼저 띄워라.\n  "/c/Program Files/Google/Chrome/Application/chrome.exe" --profile-directory="${free.dir}" about:blank &`
