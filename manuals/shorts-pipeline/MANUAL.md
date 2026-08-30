@@ -68,6 +68,12 @@ node "<OPS>/manuals/shorts-pipeline/scripts/shorts-preflight.mjs"
 - `LOCKED_SOURCE_PACK=1`을 제외한 본편 소재 재고
 - 최신 인스타 준비 폴더의 MP4 해상도와 `target_aspect_ratio`
 
+P2 를 돌 차례가 되면 잔액도 명령으로 잰다. **화면으로 재지 마라. 계정이 갈린다(아래 P2 절).**
+
+```bash
+node "<OPS>/manuals/shorts-pipeline/scripts/kie-balance.mjs"
+```
+
    사전 점검에서 `success`, 최근 업로드 기록, `1080x1920`, `9:16`이 확인되면 같은 정보를 다시 찾지 않는다.
 P3는 기록과 채널 화면으로 바로 확인하고, P4는 `extract.mjs --list`를 한 번만 실행한다.
 `업로드 준비.json`의 `ready_for_manual_upload`는 게시 여부가 아니므로 재추출·재업로드 근거로 쓰지 않는다.
@@ -252,10 +258,44 @@ Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.
 
 ### KIE 크레딧
 
+**잔액은 화면으로 재지 마라. 이 명령 하나로 끝난다 (L1).**
+
+```bash
+node "<OPS>/manuals/shorts-pipeline/scripts/kie-balance.mjs"
+```
+
+n8n 자격증명에 든 키를 그대로 써서 KIE 에 물어본다. 잔액, 회로 1회 비용, 두 채널 소요,
+남은 회차, `PASS`/`BLOCK` 까지 찍는다. 키 값은 화면에 안 나온다.
+
 | 무엇 | 어디 |
 | --- | --- |
+| 잔액 판정 | 위 명령 (**이것만 근거로 쓴다**) |
 | API 키 확인하고 복사 | https://kie.ai/api-key |
-| 잔액 보고 충전 | https://kie.ai/billing |
+| 충전 (사람이 한다) | https://kie.ai/billing |
+
+### `kie.ai/billing` 화면은 n8n 이 쓰는 계정이 아니다 (260830 실측)
+
+**이 함정으로 이틀 연속 P2 를 통째로 건너뛰었다.** 260829 는 건강장수비결 한 편,
+260830 은 두 채널 두 편이 날아갈 뻔했다. 260829 보고서에 "KIE 잔액 0 크레딧,
+카운트업 24회 재서 확인" 이라고 적혀 있는데 **재는 방법 자체가 틀렸다.**
+
+크롬에 로그인된 KIE 계정은 `wellnessbox.me@gmail.com` 이고 그 계정 잔액은 진짜로 0 이다.
+그런데 **n8n 회로가 쓰는 API 키는 다른 계정 것이고 거기엔 잔액이 남아 있다.**
+그래서 화면은 0, 회로는 정상이라는 상태가 된다.
+
+| 무엇으로 쟀나 | 260830 18:53 에 나온 값 |
+| --- | --- |
+| `kie.ai/billing` 화면 (crome 로그인 계정) | **0 크레딧** |
+| `kie-balance.mjs` (n8n 이 쓰는 키) | **735.1 크레딧** |
+
+**판정법.** 화면이 0 인데 최근 회로 실행이 `success` 였으면 계정이 갈린 것이다.
+`kie.ai/logs` 에 잔액을 깎은 기록이 남아 있는데 billing 이 0 이면 확정이다.
+잔액 부족으로 멈추는 것은 **`kie-balance.mjs` 가 `BLOCK` 을 낼 때뿐이다.**
+
+**회로 1회 비용은 18 크레딧이다 (260829, 260830 로그 실측).**
+`gpt-image-2-text-to-image` 6 + `ai-music-api/generate` 12. 두 채널이면 36.
+`claude-opus-4-7` 호출 세 건이 매번 `failure` 로 찍히는데 0 크레딧이고 회로는 그대로 돈다.
+이건 고장이 아니니 잔액 판정에 섞지 마라.
 
 ### 잔액 숫자는 카운트업 애니메이션이다. 바로 읽으면 0 이 나온다 (260819 실측)
 
@@ -297,6 +337,32 @@ API 키가 필요하면 `api-key` 페이지에서 복사해 쓴다.
    | 건강장수비결 | `건강장수비결 · 본편 (소재큐)`(화면에 뜨는 이름 그대로) | 화면에서 이름으로 찾는다 |
 
 3. **각각 한 번씩 수동 실행한다.** 한 채널에 하나씩만 올린다.
+
+   **`Execute workflow` 버튼은 탭이 배경이면 좌표 클릭이 안 먹는다 (260830 실측).**
+   화면 캡처에 버튼이 멀쩡히 보이고 `Clicked at (...)` 도 정상으로 돌아오는데
+   실행 기록이 안 생긴다. 오류도 안 뜬다. 좌표를 두 번 고쳐 눌러도 똑같다.
+
+   **DOM 에서 버튼을 찾아 `.click()` 을 부르면 한 번에 들어간다.**
+
+   ```js
+   [...document.querySelectorAll('button')]
+     .filter(x => /Execute workflow/i.test(x.innerText))
+     .find(x => { const r = x.getBoundingClientRect(); return r.width > 0 && r.y > 0 && r.y < window.innerHeight; })
+     .click();
+   ```
+
+   **눌렸는지는 탭 제목으로 본다.** `▶️` 가 `🔄` 로 바뀌면 시작한 것이다.
+   확정은 DB 로 한다. 화면 상태를 믿지 마라.
+
+   ```bash
+   node -e "const s=require('sqlite3');const d=new s.Database('.n8n/database.sqlite',1);d.all('select id,workflowId,status,startedAt from execution_entity order by id desc limit 3',[],(e,r)=>r.forEach(x=>console.log('#'+x.id,x.status,x.workflowId,x.startedAt)))"
+   ```
+
+   **실행 중 상태는 `running` 과 `waiting` 두 개다.** 회로가 KIE 작업을 폴링하는 동안
+   `waiting` 으로 앉아 있는다. `running` 만 보고 기다리면 **1분 만에 끝난 줄 알고 다음으로 넘어간다.**
+   끝난 판정은 `success` 나 `error` 가 찍혔을 때다. 한 채널에 6~7분 걸린다.
+
+   두 채널은 **차례로** 돌린다. 앞 회로가 끝난 뒤 다음을 시작한다.
 
 4. **에러가 나면 그때만 고친다.** 회로 JSON 을 고쳐야 할 수도 있다.
    고칠 때는 **먼저 로컬 DB 에서 현재 회로를 내보내 읽고** 그걸 고친다.
@@ -346,6 +412,41 @@ n8n 콜백으로 돌아가 credential 이 저장된다.
    제목, 썸네일, 공개 여부가 맞는지 본다.
 
 3. **각 계정으로 자기 영상에 좋아요 하나.** 계정을 잘못 바꾸고 누르지 않게 **누르기 전에 현재 계정을 확인한다.**
+
+   현재 계정은 아바타 메뉴를 열어 읽는다. 채널 이름은 `ytd-active-account-header-renderer` 에 있다.
+   페이지 HTML 의 `ownerChannelName` 은 **영상 주인**이지 내 계정이 아니다. 헷갈리지 마라.
+
+   ```js
+   document.querySelector('#avatar-btn').click();
+   // 2초 뒤
+   document.querySelector('ytd-active-account-header-renderer').innerText
+   ```
+
+   계정을 바꾸려면 그 메뉴에서 `계정 전환` 을 누르고 `ytd-account-item-renderer` 중 이름이 맞는 줄을 클릭한다.
+   전환하면 같은 주소로 페이지가 다시 뜬다.
+
+   ### 영상이 5초라 좋아요를 누르기 전에 자동재생이 넘어간다 (260830 실측)
+
+   **이 채널 쇼츠는 5초짜리다.** watch 페이지로 열면 재생이 끝나고 자동재생이 **다음 영상으로 넘어간다.**
+   그 상태에서 좋아요를 누르면 **남의 영상에 좋아요가 들어간다.** 주소창이 바뀐 것도 늦게 알아챈다.
+   실제로 260830 에 두 번 넘어갔다(엘리니아 숲, Live Camera).
+
+   **재생을 계속 눌러 막으면서 버튼을 찾는다.** 한 번만 `pause()` 하면 다시 재생된다.
+
+   ```js
+   const stop = setInterval(() => { const v = document.querySelector('video'); if (v) { v.pause(); v.currentTime = 0; } }, 120);
+   let seg = null;
+   for (let i = 0; i < 40; i++) {
+     seg = [...document.querySelectorAll('button')].find(b => /이 동영상에 좋아요 표시/.test(b.getAttribute('aria-label') || ''));
+     if (seg) break;
+     await new Promise(r => setTimeout(r, 250));
+   }
+   if (seg && seg.getAttribute('aria-pressed') !== 'true') seg.click();
+   clearInterval(stop);
+   ```
+
+   **누르기 전후로 `location.href` 가 그 영상인지 확인한다.** 그리고 판정은 `aria-pressed` 로 한다.
+   `false` → `true` 면 눌린 것이다. 라벨 글자는 `다른 사용자 N명과 함께...` 처럼 바뀌니 라벨로 판정하지 마라.
 
 ## P4. 유튜브 영상을 인스타그램용으로 뽑기
 
@@ -463,11 +564,32 @@ r.items.map(i => ({ code: i.code, cap: (i.caption?.text || "").split("
 크롬이 그 탭의 **동영상 로딩을 멈춘다.** 인스타 업로더는 영상 길이와 크기를 읽어야 다음으로 가는데
 그걸 영영 못 읽어서 "사진과 동영상을 여기에 끌어다 놓으세요" 화면에 계속 머문다.
 
-- **판정법.** 페이지에서 `URL.createObjectURL(file)` 로 `<video>` 를 만들고 `loadedmetadata` 를 기다린다.
+**어느 경우인지 두 줄로 갈린다 (260830 실측).** 아래 절의 "창이 아니라 탭이 뒤에 있을 때"와
+여기의 "창이 최소화됐을 때"는 고치는 법이 완전히 다르다. **먼저 어느 쪽인지부터 정한다.**
+
+```js
+({ vis: document.visibilityState, outer: [window.outerWidth, window.outerHeight], title: document.title })
+```
+
+| 무엇이 나오나 | 무슨 상태 | 어떻게 |
+| --- | --- | --- |
+| `visible` | 멀쩡하다 | 그냥 진행한다 |
+| `hidden` 이고 **`outerWidth` 가 0** | 창이 **최소화**됐다 | 아래 `chrome-front.ps1` 로 창을 세운다. 그러면 끝 |
+| `hidden` 인데 `outerWidth` 가 0 이 아니다 | 내 탭이 **배경 탭**이다 | 창을 세워도 안 낫는다. 아래 팝업 절로 간다 |
+
+`outerWidth === 0` 이 최소화 신호다. 창 제목을 견주는 것보다 이게 확실하다.
+**창 제목이 내 탭 제목과 같은데도 `hidden` 이면 거의 최소화다.** 260830 이 그랬고, 창만 세우니
+`visible` 로 돌아와 팝업 없이 확장 탭에서 업로드와 캡션 타이핑을 다 했다.
+
+**창 세우기는 명령 하나다 (L1).** 창이 여럿이면 `-Match` 로 하나만 고른다.
+전부 복원하면 마지막 것이 앞에 서서 헛일이 된다.
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeline/scripts/chrome-front.ps1"
+```
+
+- **영상이 붙는지 판정법.** 페이지에서 `URL.createObjectURL(file)` 로 `<video>` 를 만들고 `loadedmetadata` 를 기다린다.
   8초 안에 안 오면 창이 숨은 것이다. 파일 탓이 아니다(`arrayBuffer()` 로 `ftypisom` 까지 읽힌다)
-- **고치는 법.** 사람을 부르지 말고 L1 으로 직접 창을 세운다. `EnumWindows` 로 클래스
-  `Chrome_WidgetWin_1` 인 창을 훑어 **제목에 대상이 든 것 하나만** 골라
-  `ShowWindow(h, 9)` 다음 `SetForegroundWindow(h)`. 전부 복원하면 마지막 것이 앞에 서서 헛일이 된다
 - 창 제목은 **그 창의 활성 탭 제목**이다. 내 탭이 뒤에 있으면 제목으로 못 찾는다.
   그럴 땐 **그룹에 탭을 하나만 남긴다.** 나머지를 닫으면 남은 탭이 활성이 된다
 - 클릭과 DOM 조작은 숨은 탭에서도 잘 된다. **동영상만** 안 된다
@@ -559,8 +681,16 @@ r.items.map(i => ({ code: i.code, cap: (i.caption?.text || "").split("
 
 **되는 방법은 이렇다. 로컬 서버에서 페이지로 File 을 넘긴다.**
 
-1. mp4 를 스크래치패드로 복사하고 `127.0.0.1` 에 작은 http 서버를 띄운다.
-   `/reel.mp4` 와 `/sender.html` 두 개만 있으면 된다.
+서버는 **매번 손으로 짓지 말고 이 명령으로 띄운다 (L1).** 준비 폴더를 주면 mp4 를 알아서 찾는다.
+`/reel.mp4` 와 `/sender.html` 을 내주고, 인스타 탭에 심을 코드도 같이 찍어 준다.
+
+```bash
+node "<OPS>/manuals/shorts-pipeline/scripts/insta-file-server.mjs" "<준비 폴더>"
+```
+
+배경으로 띄우고, 게시가 끝나면 반드시 내린다. 아래는 그 서버가 하는 일이다.
+
+1. mp4 를 `127.0.0.1` 에서 내준다. `/reel.mp4` 와 `/sender.html` 두 개면 된다.
 2. `sender.html` 은 제 출처에서 mp4 를 `fetch` 해 `File` 을 만들고
    `window.opener.postMessage({file}, 'https://www.instagram.com')` 로 넘긴다.
 3. 인스타 페이지에 `message` 리스너를 먼저 심고, 임시 링크를 만들어 진짜로 클릭해서 연다.
@@ -786,8 +916,18 @@ DOM 의 `innerText` 를 보지 말고 이 숫자를 봐라.
 - **SNS서포터 수량 칸을 폼 채우기 도구로 넣으면 주문금액이 `₩0` 이다.** 진짜 타이핑이어야 한다
 - **결제 화면에 승인 없이 글자를 치면 차단된다.** 금액과 대상을 먼저 숫자로 보고하면 그 뒤로는 통한다
 - **주문 전에 주문내역을 본다.** 사람이 먼저 넣어 뒀으면 두 번 나간다
-- **KIE 잔액은 카운트업 애니메이션이다.** 열자마자 읽으면 0 이 나온다.
-  값이 멈출 때까지 여러 번 재고 나서 판단한다. 이걸로 P2 를 통째로 건너뛴 적이 있다
+- **KIE 잔액을 `kie.ai/billing` 화면으로 판정하지 마라.** 크롬에 로그인된 계정과
+  n8n 이 쓰는 키의 계정이 다르다. 화면 0, 실제 735.1 이었다(260830 실측).
+  이 오독으로 260829, 260830 이틀 연속 P2 를 건너뛸 뻔했다.
+  **`scripts/kie-balance.mjs` 가 `BLOCK` 을 낼 때만 멈춘다**
+- **잔액 숫자는 카운트업 애니메이션이기도 하다.** 화면을 굳이 볼 일이 있으면
+  값이 멈출 때까지 여러 번 재고 나서 판단한다. 판정 근거로는 여전히 쓰지 마라
+- **`kie.ai/logs` 의 `claude-opus-4-7` 실패 세 줄은 정상이다.** 0 크레딧이고 회로는 그대로 돈다.
+  잔액이나 고장 판정에 섞지 마라
+- **배경 탭에서 n8n `Execute workflow` 는 좌표 클릭이 안 먹는다.** 오류 없이 아무 일도 안 난다.
+  DOM 에서 버튼을 찾아 `.click()` 을 부르면 들어간다. 확인은 탭 제목(`▶️`→`🔄`)과 DB 다
+- **n8n 실행 대기 상태는 `running` 과 `waiting` 둘이다.** KIE 폴링 중에는 `waiting` 이라
+  `running` 만 보고 기다리면 1분 만에 끝난 줄 안다. `success`/`error` 를 기다려라
 - **탭을 쌓아 두지 마라.** 그룹에 탭이 여럿이면 내 탭이 뒤로 밀리고, 그러면 동영상이 안 붙는다
 - **소재 개수를 파일 수로 세지 마라.** 본편은 `LOCKED_SOURCE_PACK=1` 이 붙은 파일을 건너뛴다.
   `*-instagram_*.md` 가 전부 그렇고 그건 `원본 릴스` 회로 몫이다. 두 회로가 같은 폴더와
@@ -811,6 +951,15 @@ DOM 의 `innerText` 를 보지 말고 이 숫자를 봐라.
 - **주문내역은 `/orders` 다.** `/mypage/orders` 는 404 다
 - **리포스트 버튼은 계정마다 있고 없다.** `kmin.kyeong` 에는 없다. 없으면 넘어가고 보고에 적는다
 - **`chrome.exe --new-window` 로 연 창은 확장으로 못 닫는다.** 핸들을 확인하고 `PostMessage(h, 0x0010, 0, 0)` 으로 닫는다
+- **유튜브 watch 페이지는 5초 뒤 자동재생으로 넘어간다.** 그 자리에서 좋아요를 누르면 남의 영상에 들어간다.
+  `pause()` 를 짧은 간격으로 반복하면서 버튼을 찾고, 누르기 전에 `location.href` 를 확인한다
+- **유튜브 현재 계정을 `ownerChannelName` 으로 판정하지 마라.** 그건 영상 주인이다.
+  아바타 메뉴의 `ytd-active-account-header-renderer` 를 읽는다
+- **파일 넘기는 sender 탭을 열면 인스타 탭이 배경이 된다.** File 을 받은 즉시 sender 탭을 닫으면
+  인스타 탭이 다시 활성이 된다. 닫기 전에 업로더를 만지면 동영상이 안 붙는다
+- **인스타 공유 창의 사람 순서는 계정마다 다르다.** 260830 에 haruyaksa 는 약대사람이 1번,
+  kmin.kyeong 은 약대사람 1번에 하루건강약사 3번, yakdae.saram 은 김민경 2번에 하루건강약사 4번이었다.
+  자리를 외우지 말고 매번 이름으로 찾는다
 
 ## 사람에게 알려야 하는 지점
 
