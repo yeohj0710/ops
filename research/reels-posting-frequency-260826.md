@@ -44,7 +44,7 @@
 - 이 표본은 국내 약사, 병원, 헬스 계정이다. 다른 영역에 그대로 옮기면 안 된다.
 - 핸들 7개(donghae.city, eva.pharma, khmcpr, bebememo_kr, ggnn_yaksa, yakin_magazine, urimedi1)는
   프로필 API가 계속 400을 뱉었다. 두 번 돌려도 같은 계정만 실패했으니 rate limit 이 아니라
-  계정이 없어졌거나 비공개로 바뀐 것으로 본다. pharm-social-intelligence 원장의 핸들이 낡았다.
+  계정이 없어졌거나 비공개로 바뀐 것으로 본다. pharm-social-intelligence 원본의 핸들이 낡았다.
 
 ## 공개 자료 대조
 
