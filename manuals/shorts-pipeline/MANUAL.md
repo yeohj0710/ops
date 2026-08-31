@@ -742,7 +742,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeli
 **되는 방법은 이렇다. 로컬 서버에서 페이지로 File 을 넘긴다.**
 
 서버는 **매번 손으로 짓지 말고 이 명령으로 띄운다 (L1).** 준비 폴더를 주면 mp4 를 알아서 찾는다.
-`/reel.mp4` 와 `/sender.html` 을 내주고, 인스타 탭에 심을 코드도 같이 찍어 준다.
+`/f/0` 과 `/sender.html` 을 내주고, 인스타 탭에 심을 코드도 같이 찍어 준다.
+(mp4 가 없으면 png 를 이름순으로 전부 내준다. 카드뉴스 캐러셀이 그 길을 쓴다.
+sender 는 `{files:[...], file: files[0]}` 을 보내니 릴스 쪽은 `e.data.file` 을 그대로 쓰면 된다.)
 
 ```bash
 node "<OPS>/manuals/shorts-pipeline/scripts/insta-file-server.mjs" "<준비 폴더>"
