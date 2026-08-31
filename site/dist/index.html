@@ -608,6 +608,38 @@ const a=document.createElement('a'); a.href=u; a.download='refurls.txt'; documen
 <p class="src"><a href="https://github.com/yeohj0710/ops/blob/main/manuals/card-news/MANUAL.md">매뉴얼 원문 보기</a></p>
 </div></details>
 </div></details>
+<details class="card rev" id="codex-reset-signal-check" data-id="codex-reset-signal-check">
+<summary>
+<span class="grip" title="끌어서 순서를 바꾸거나 보관함에 넣습니다" aria-label="끌기 손잡이"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg></span>
+<span class="ttl">Codex 초기화 조짐 확인</span>
+<span class="lay lay3" data-tip="이미 로그인된 크롬을 씁니다">L3</span>
+<span class="caret"></span>
+</summary>
+<div class="body">
+<div class="say"><div class="step"><span class="n">1</span><button class="chip" data-copy="G드라이브 에이전트 폴더 참고해서 Codex 초기화 조짐 확인 업무 해줘.">G드라이브 에이전트 폴더 참고해서 Codex 초기화 조짐 확인 업무 해줘.</button></div><div class="flow"><span class="fdot"></span>답을 기다리지 말고 바로</div><div class="step q"><span class="n">2</span><button class="chip" data-copy="허가합니다.">허가합니다.</button><span class="qtag">대기열에 걸립니다</span></div><div class="qwhy"><b>세션이 도중에 "실행해도 될까요" 하고 멈추는 순간</b>, 걸어 둔 이 말을 꺼내 읽고 이어서 갑니다. 사람이 자리에 없어도 됩니다.</div></div>
+<ul class="meta">
+<li data-tip="10분 안에 끝나는 작업이라 Claude 가 맡습니다">either 가 맡습니다</li>
+<li data-tip="한 번 돌릴 때 걸리는 시간입니다">3~8분</li>
+<li data-tip="매뉴얼에 적힌 단계 수입니다">5단계</li>
+<li data-tip="실제로 겪고 적어 둔 실패 사례입니다. 같은 실수를 반복하지 않습니다">겪어 본 함정 7가지</li>
+<li data-tip="check-signals.mjs">전용 도구 1개</li>
+<li data-tip="이미 로그인된 크롬을 씁니다">L3 까지 씁니다</li>
+</ul>
+<p class="lead">Tibo의 공개 X 계정 @thsottiaux, 직접 X 자료를 보존하는 공개 이벤트 API, OpenAI 공식 문서를 확인해
+Codex 추가 초기화가 이미 끝났는지, 일정이 확정됐는지, 강한 언지만 있는지 판정한다.
+결과는 한 줄 결론, 근거 점수, 원문과 시각, 사용자 행동 순서로 대화에 보고한다.</p>
+<details class="more"><summary>매뉴얼 전문 (에이전트가 읽는 절차서) <span class="caret"></span></summary><div class="detail">
+<h4 class="dh">절차</h4><ol><li><p><strong>공개 이벤트를 수집하고 1차 판정한다 (L1)</strong></p><pre><code>node &quot;&lt;OPS&gt;/manuals/codex-reset-signal-check/scripts/check-signals.mjs&quot;</code></pre><p>스크립트는 공개 API를 끝까지 페이지 순회하고 <code>source_text</code>의 시제를 다시 읽는다. 최신 완료보다 뒤에 나온 미래 신호만 현재 조짐으로 인정한다.</p></li><li><p><strong>최신성·원문을 확인한다 (L1)</strong> - <code>데이터 최신성</code>이 2시간 이내인지 확인한다 - 판정 근거의 X 원문 URL, 게시 시각, 직접 검증 상태를 확인한다 - 최신성이 2시간을 넘거나 API가 실패하면 공개 검색으로 최근 72시간의 <code>site:x.com/thsottiaux Codex reset usage milestone</code>와 Tibo 답글을 찾는다 - X가 L1에 403을 돌려도 게시물이 없다는 뜻이 아니다. L2로 원문을 열고, 로그인된 세션이 꼭 필요할 때만 L3를 쓴다</p></li><li><p><strong>공식 문서로 종류를 구분한다 (L1)</strong> <code>banked</code>, <code>full</code>, <code>global</code>, <code>automatic</code> 표현을 공식 문서 정의와 대조한다. 대상 요금제, 만료, 적용 시각이 원문에 없으면 모른다고 적고 추측하지 않는다.</p></li><li><p><strong>개인 계정 상태는 별도 확인한다 (L2)</strong> 사용자가 “내 계정에도 들어왔나”까지 물었을 때만 Codex <code>Settings → Usage</code>를 확인한다. 공개 공지가 있어도 계정별 반영이 늦거나 대상이 다를 수 있다. 화면에서 사용 가능량, 다음 초기화 시각, <code>reset available</code> 표시를 읽는다. banked reset은 사용하지 않는다.</p></li><li><p><strong>짧게 보고한다</strong></p><pre><code>결론: 강한 조짐 있음 — Tibo가 “내일 축하할 이정표”와 “Codex를 아껴두라”고 직접 언급.
+근거 점수: 80/100 (발생 확률이 아니라 공개 신호 강도)
+시각: 2026-08-29 14:38 KST · 원문: &lt;URL&gt;
+구분: hard reset 언지로 보이나 대상·정확한 시각은 미확정.
+권장: 오늘 급하지 않은 대량 작업은 12~24시간 보류. 확정 공지가 나오면 다시 확인.</code></pre><p>이미 완료됐다면 “조짐 있음”이라고 하지 말고 <code>최근 초기화 완료, 그 뒤 새 언지 없음</code>이라고 쓴다.</p></li></ol>
+<h4 class="dh">산출물</h4><ul><li>기본: 대화 보고만 남긴다</li><li>큐 업무나 재현 자료가 필요할 때:</li></ul>
+<pre><code>  node &quot;&lt;OPS&gt;/manuals/codex-reset-signal-check/scripts/check-signals.mjs&quot; --out &quot;&lt;OPS&gt;/work/&lt;taskId&gt;/codex-reset-signal-report.md&quot;</code></pre>
+<h4 class="dh">겪어 본 함정</h4><ul><li>X 원문이 L1에서 403 → X 차단일 뿐 신호 부재가 아니다 → Direct X API 자료를 보고 L2로 원문을 교차 확인한다</li><li>공개 API의 <code>category</code>가 원문 시제와 충돌 → 분류 오류가 실제로 있었다 → <code>source_text</code>의 <code>now/has been/will/tomorrow</code>를 우선한다</li><li>완료 게시물 뒤의 <code>see you soon</code> 같은 농담 → 구체적 미래 시각·이정표가 없다 → 새 조짐 점수를 올리지 않는다</li><li>tracker의 reset 시각 → 계정 UI 변화를 관측한 보조 자료일 수 있다 → Tibo 원문과 개인 <code>Settings → Usage</code>를 따로 적는다</li><li>주말·요일·최근 평균 간격 → 공개 약속이 아니다 → 단독 근거로 점수를 주지 않는다</li><li>banked reset 발표 → 자동 초기화가 아니다 → 사용 가능한 1회권과 즉시 hard reset을 구분한다</li><li>최근 완료 직후 <code>RESET_PLANNED</code> 중복 이벤트 → 이미 일어난 일을 미래 예측으로 잘못 셀 수 있다 → 최신 완료 뒤의 미래형 원문만 남긴다</li></ul>
+<p class="src"><a href="https://github.com/yeohj0710/ops/blob/main/manuals/codex-reset-signal-check/MANUAL.md">매뉴얼 원문 보기</a></p>
+</div></details>
+</div></details>
 <details class="card rev" id="deploy-sync" data-id="deploy-sync">
 <summary>
 <span class="grip" title="끌어서 순서를 바꾸거나 보관함에 넣습니다" aria-label="끌기 손잡이"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6" cy="4" r="1.3"/><circle cx="10" cy="4" r="1.3"/><circle cx="6" cy="8" r="1.3"/><circle cx="10" cy="8" r="1.3"/><circle cx="6" cy="12" r="1.3"/><circle cx="10" cy="12" r="1.3"/></svg></span>
@@ -1428,7 +1460,7 @@ node &quot;&lt;OPS&gt;/manuals/shorts-refill/scripts/compare-with-winners.mjs&qu
           <a href="https://wellnessbox.kr/about/privacy">개인정보처리방침</a>
           <a href="https://wellnessbox.kr/about/contact">문의하기</a>
         </div>
-        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-31 14:29</span></p>
+        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-08-31 14:33</span></p>
       </div>
 
       <div class="fcol">
