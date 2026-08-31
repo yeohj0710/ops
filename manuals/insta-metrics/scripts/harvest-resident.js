@@ -190,8 +190,28 @@
     팔로워있음: S.rows.filter((r) => typeof r.f === "number").length,
   });
 
-  // 한 번에 다 돌려주면 도구 응답이 잘린다. 조각으로 꺼낸다
-  S.dump = (from = 0, size = 150) => JSON.stringify(S.rows.slice(from, from + size));
+  // 결과를 꺼내는 길은 이게 제일 낫다. 파일 하나로 통째로 내린다.
+  // 도구 응답으로 돌려받으면 10KB 안팎에서 잘린다. 337개면 48KB 라 조각을 열 번 넘게 불러야 한다.
+  // blob 다운로드는 한 번에 끝나고 셸에서 ~/Downloads 로 바로 집을 수 있다 (260831 확인)
+  S.download = (name = "igm.json") => {
+    const blob = new Blob([JSON.stringify({ n: S.n, halted: S.halted, rows: S.rows })], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 3000);
+    return "내렸다: " + name + " (" + S.rows.length + "행)";
+  };
+
+  // 조각으로 꺼내야 할 때만 쓴다. 30행쯤이 안 잘리는 선이다
+  S.dump = (from = 0, size = 30) => JSON.stringify(S.rows.slice(from, from + size));
 
   S.stop = () => {
     S.running = false;
@@ -223,8 +243,10 @@
     persist();
   };
 
-  // 숨은 탭은 크롬이 5분 뒤부터 타이머를 분당 한 번으로 조인다. 그러면 628개가 열 시간이 된다.
-  // 소리를 내는 탭은 그 조이기에서 빠진다. 안 들리는 소리를 계속 틀어 탭을 깨워 둔다
+  // 숨은 탭은 크롬이 타이머를 조인다. 소리를 내는 탭은 그 조이기에서 빠지니 안 들리는 소리를 튼다.
+  // **다만 사람이 그 탭을 한 번도 안 눌렀으면 AudioContext 가 suspended 로 남아 소용이 없다.**
+  // 260831 에 337개를 돌렸더니 뒤쪽 열 개쯤에서 눈에 띄게 느려졌다(그래도 끝까지는 갔다).
+  // 급하면 사람이 그 탭을 한 번 눌러 앞으로 꺼내 두면 된다
   try {
     const ac = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ac.createOscillator();
@@ -232,6 +254,7 @@
     g.gain.value = 0.0001; // 사람 귀에는 안 들린다
     osc.connect(g).connect(ac.destination);
     osc.start();
+    ac.resume().catch(() => {});
     S.keepAlive = { ac, osc };
   } catch {}
 

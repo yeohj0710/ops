@@ -48,7 +48,10 @@ for (const f of dumps) {
     const u = handles[r.i];
     if (!u) continue; // 순번이 목록 밖이면 버린다. 목록이 바뀐 것이다
     seen.add(r.i);
-    rows.push({ ...r, u });
+    // 로그인해서 본 행이라고 못박는다. 이게 없으면 로그아웃 런과 합칠 때
+    // 그쪽의 via 2 와 soft401 1 이 그대로 남아, 프로필을 실제로 봤는데도
+    // "안 봤다" 로 읽혀 공개 연락처 칸이 통째로 건너뛰어진다
+    rows.push({ ...r, u, au: 1, soft401: 0, via: r.via ?? 0 });
   }
 }
 rows.sort((a, b) => a.i - b.i);
