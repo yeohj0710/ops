@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 const API_URL = 'https://tibo.modelyard.dev/api/events';
+const STATUS_URL = 'https://tibo.modelyard.dev/api/status';
 const OFFICIAL_HELP = 'https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work';
 
 function parseArgs(argv) {
-  const args = { out: null, json: false, selfTest: false };
+  const args = { out: null, state: null, json: false, compact: false, selfTest: false };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--out') args.out = argv[++i];
+    else if (argv[i] === '--state') args.state = argv[++i];
     else if (argv[i] === '--json') args.json = true;
+    else if (argv[i] === '--compact') args.compact = true;
     else if (argv[i] === '--self-test') args.selfTest = true;
     else throw new Error(`알 수 없는 인자: ${argv[i]}`);
   }
@@ -87,12 +90,18 @@ async function fetchAllEvents(fetchImpl = fetch) {
   return events.sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
 }
 
+async function fetchMonitorStatus(fetchImpl = fetch) {
+  const response = await fetchImpl(STATUS_URL, { headers: { accept: 'application/json' } });
+  if (!response.ok) throw new Error(`공개 모니터 상태 API ${response.status} ${response.statusText}`);
+  return response.json();
+}
+
 function isDirect(event) {
   return event.source_quality === 'DIRECT'
     && event.verification_status === 'DIRECT_VERIFIED';
 }
 
-function analyze(events, now = new Date()) {
+function analyze(events, now = new Date(), monitorStatus = null) {
   const enriched = events.map((event) => ({ ...event, analysis: classify(event) }));
   const completed = enriched.filter((event) => event.analysis.kind.startsWith('completed_'));
   const latestCompleted = completed[0] || null;
@@ -127,12 +136,15 @@ function analyze(events, now = new Date()) {
     score = 0;
   }
 
-  const newestObserved = enriched
+  const newestObservedEvent = enriched
     .map((event) => event.observed_at || event.verified_at || event.published_at)
     .filter(Boolean)
     .sort((a, b) => Date.parse(b) - Date.parse(a))[0] || null;
-  const freshnessHours = newestObserved
-    ? Math.max(0, (now.getTime() - Date.parse(newestObserved)) / 3_600_000)
+  const sourceCheckedAt = monitorStatus?.lastSourceFetch
+    || monitorStatus?.lastSuccessfulCron
+    || newestObservedEvent;
+  const freshnessHours = sourceCheckedAt
+    ? Math.max(0, (now.getTime() - Date.parse(sourceCheckedAt)) / 3_600_000)
     : null;
 
   return {
@@ -145,10 +157,46 @@ function analyze(events, now = new Date()) {
     primary,
     latestCompleted,
     freshnessHours,
-    newestObserved,
+    sourceStatus: monitorStatus?.status || null,
+    sourceCheckedAt,
+    newestObservedEvent,
     signalWindowHours: 72,
     recent: enriched.slice(0, 8),
   };
+}
+
+function resultSignature(result) {
+  return JSON.stringify({
+    verdict: result.verdict,
+    score: result.score,
+    primary: result.primary?.source_url || null,
+    latestCompleted: result.latestCompleted?.source_url || null,
+  });
+}
+
+function toCompact(result, changed = true) {
+  const freshness = result.freshnessHours == null ? '?' : result.freshnessHours.toFixed(1);
+  const source = result.primary?.source_url || result.latestCompleted?.source_url || '원문 없음';
+  return `${changed ? 'CHANGED' : 'UNCHANGED'} | ${result.verdict} | 근거 ${result.score}/100`
+    + ` | 소스 확인 ${freshness}시간 전 | ${source}`;
+}
+
+async function updateState(statePath, result) {
+  let previous = null;
+  try {
+    previous = JSON.parse(await readFile(statePath, 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  const signature = resultSignature(result);
+  const changed = previous?.signature !== signature;
+  await mkdir(dirname(statePath), { recursive: true });
+  await writeFile(statePath, JSON.stringify({
+    signature,
+    checkedAt: result.checkedAt,
+    sourceCheckedAt: result.sourceCheckedAt,
+  }, null, 2), 'utf8');
+  return changed;
 }
 
 function formatKst(value) {
@@ -203,9 +251,10 @@ function runSelfTest() {
   const plan = { ...base, published_at: '2026-08-31T06:00:00.000Z', source_text: 'Your Codex reset will land at 6pm PST.' };
   const staleHint = { ...base, published_at: '2026-08-20T05:00:00.000Z', source_text: 'We might hit a new milestone to celebrate tomorrow. Hold on to your Codex.' };
   const now = new Date('2026-08-31T07:00:00.000Z');
+  const monitorStatus = { status: 'ok', lastSourceFetch: '2026-08-31T06:55:00.000Z' };
 
   assert(classify(mislabeledDuplicate).kind === 'completed_hard', 'category보다 완료 시제를 우선해야 한다');
-  assert(analyze([mislabeledDuplicate, completed], now).verdict === '새 조짐 없음', '완료 중복을 미래 신호로 세면 안 된다');
+  assert(analyze([mislabeledDuplicate, completed], now, monitorStatus).verdict === '새 조짐 없음', '완료 중복을 미래 신호로 세면 안 된다');
   assert(analyze([hint, completed], now).verdict === '강한 조짐 있음', '은유적 내일 언지를 잡아야 한다');
   assert(analyze([plan, completed], now).verdict === '초기화 예정이 확인됨', '명시적 미래 일정을 잡아야 한다');
   assert(analyze([staleHint], now).verdict === '판정 자료 부족', '72시간이 지난 언지를 현재 신호로 세면 안 된다');
@@ -216,9 +265,14 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.selfTest) return runSelfTest();
 
-  const events = await fetchAllEvents();
-  const result = analyze(events);
-  const output = args.json ? JSON.stringify(result, null, 2) : toMarkdown(result);
+  const [events, monitorStatus] = await Promise.all([fetchAllEvents(), fetchMonitorStatus()]);
+  const result = analyze(events, new Date(), monitorStatus);
+  const changed = args.state ? await updateState(args.state, result) : true;
+  const output = args.json
+    ? JSON.stringify({ ...result, changed }, null, 2)
+    : args.compact
+      ? toCompact(result, changed)
+      : toMarkdown(result);
 
   if (args.out) {
     await mkdir(dirname(args.out), { recursive: true });

@@ -97,8 +97,16 @@ hard reset과 banked reset도 섞지 않는다.
    스크립트는 공개 API를 끝까지 페이지 순회하고 `source_text`의 시제를 다시 읽는다.
    최신 완료보다 뒤에 나온 미래 신호만 현재 조짐으로 인정한다.
 
+   예약 확인은 아래의 한 줄 출력과 상태 파일을 사용한다. 같은 판정이면 `UNCHANGED`만 나오므로
+   모델이 긴 설명을 다시 만들 필요가 없다.
+
+   ```text
+   node "<OPS>/manuals/codex-reset-signal-check/scripts/check-signals.mjs" --compact --state "<OPS>/work/codex-reset-signal-check/automation-state.json"
+   ```
+
 2. **최신성·원문을 확인한다 (L1)**
 
+   - `데이터 최신성`은 마지막 게시물 시각이 아니라 공개 모니터가 X를 마지막으로 확인한 시각이다
    - `데이터 최신성`이 2시간 이내인지 확인한다
    - 판정 근거의 X 원문 URL, 게시 시각, 직접 검증 상태를 확인한다
    - 최신성이 2시간을 넘거나 API가 실패하면 공개 검색으로 최근 72시간의
@@ -136,6 +144,15 @@ hard reset과 banked reset도 섞지 않는다.
   ```text
   node "<OPS>/manuals/codex-reset-signal-check/scripts/check-signals.mjs" --out "<OPS>/work/<taskId>/codex-reset-signal-report.md"
   ```
+
+## 예약 확인
+
+- Codex 예약 작업 이름: `Codex 초기화 조짐 확인`
+- 주기: 4시간마다
+- 모델: `gpt-5.6-luna`, 추론 강도 `xhigh`
+- 정상·변화 없음: 로컬 스크립트 한 번과 한 줄 보고만 사용한다
+- 새 신호: 원문 URL을 포함해 6줄 이내로 알린다
+- 상태 API가 2시간 넘게 낡았거나 실패했을 때만 웹 검색 1회를 추가한다
 
 ## 완료 검사
 
