@@ -59,6 +59,10 @@ const OPT = {
   gap: Number(flag("gap", "1200")),
   limit: Number(flag("limit", "0")),
   profile: flag("profile", path.join(LOCAL, "ops/ig-session")),
+  // 사람이 이미 로그인해 둔 크롬에 붙는다. 크롬을 --remote-debugging-port=9222 로 띄워 두면 된다.
+  // 좋아요 중앙값, 공개 연락처, 1만 넘는 팔로워는 로그인 없이는 안 나오는데
+  // 크롬 151 부터 쿠키가 App-Bound 암호화라 로그인을 다른 프로필로 옮겨 심을 수가 없다(260831 실측)
+  cdp: has("cdp") ? flag("cdp", "http://127.0.0.1:9222") : null,
   check: has("check"),
   login: has("login"),
   fresh: has("fresh"), // 이어받지 않고 처음부터 다시
@@ -347,6 +351,30 @@ function readReelTiles() {
 
 // ── 브라우저를 띄운다 ─────────────────────────────────────────────────────────────
 async function openBrowser(chromium, headless) {
+  // ── 사람 크롬에 붙는 길. 여기로 오면 로그인이 이미 되어 있다 ──────────────────────
+  if (OPT.cdp) {
+    let browser;
+    try {
+      browser = await chromium.connectOverCDP(OPT.cdp, { timeout: 8000 });
+    } catch (e) {
+      throw new Error(
+        `${OPT.cdp} 에 못 붙었다. 크롬을 디버깅 포트로 띄워야 한다.\n` +
+          `크롬을 전부 닫고 이걸 친다:\n` +
+          `  "C:/Program Files/Google/Chrome/Application/chrome.exe" --remote-debugging-port=9222\n` +
+          `원래 오류: ${e.message}`
+      );
+    }
+    const ctx = browser.contexts()[0];
+    if (!ctx) throw new Error("붙기는 했는데 컨텍스트가 없다. 크롬 창이 하나는 열려 있어야 한다.");
+    const page = await ctx.newPage(); // 사람이 보던 탭은 건드리지 않는다. 새 탭에서 논다
+    await page.goto("https://www.instagram.com/", { waitUntil: "domcontentloaded", timeout: 60000 });
+    const authed = (await ctx.cookies("https://www.instagram.com")).some(
+      (c) => c.name === "sessionid" && c.value
+    );
+    // 브라우저는 사람 것이니 닫지 않는다. 우리가 연 탭만 닫는다
+    return { ctx: { close: () => page.close().catch(() => {}), cookies: (u) => ctx.cookies(u) }, page, authed };
+  }
+
   fs.mkdirSync(OPT.profile, { recursive: true });
   const base = {
     headless,
@@ -369,8 +397,9 @@ async function openBrowser(chromium, headless) {
     await page.waitForTimeout(1000);
   }
 
+  // ds_user_id 는 로그아웃해도 남는다. 진짜 로그인 표시는 sessionid 다 (260831 실측)
   const authed = (await ctx.cookies("https://www.instagram.com")).some(
-    (c) => c.name === "ds_user_id" && c.value
+    (c) => c.name === "sessionid" && c.value
   );
   return { ctx, page, authed };
 }
@@ -390,8 +419,19 @@ async function tabViews(page, name) {
       { timeout: 12000 }
     )
     .catch(() => {});
-  await page.mouse.wheel(0, 900).catch(() => {});
-  await page.waitForTimeout(1500);
+  // 한 번만 굴리면 12~16 타일에서 멈춘다. 260831 에 yfh_0822 이 12타일 중앙 21,500,
+  // 18타일 중앙 14,000 으로 1.5배 벌어졌다. 세 번 굴려 붙는 만큼 받는다
+  for (let s = 0; s < 3; s++) {
+    const before = await page.evaluate(
+      () => document.querySelectorAll("main a[href*=\"/reel/\"]").length
+    );
+    await page.mouse.wheel(0, 1400).catch(() => {});
+    await page.waitForTimeout(1200);
+    const after = await page.evaluate(
+      () => document.querySelectorAll("main a[href*=\"/reel/\"]").length
+    );
+    if (after <= before) break; // 더 안 붙으면 그만 굴린다
+  }
   return page.evaluate(readReelTiles);
 }
 
@@ -462,12 +502,20 @@ const chromium = await loadChromium();
 if (OPT.login) {
   const { ctx, page } = await openBrowser(chromium, false);
   await page.goto("https://www.instagram.com/accounts/login/", { waitUntil: "domcontentloaded" });
-  console.error("창이 떴다. 사람이 직접 로그인해라. 다 되면 이 콘솔에서 Enter 를 눌러라.");
-  console.error("비밀번호는 에이전트가 넣지 않는다. 로그인이 없어도 이 업무는 끝난다. 연락처만 덜 나온다.");
-  await new Promise((r) => process.stdin.once("data", r));
-  const ok = (await ctx.cookies("https://www.instagram.com")).some(
-    (c) => c.name === "ds_user_id" && c.value
-  );
+  console.error("창이 떴다. 사람이 직접 로그인해라. 비밀번호는 에이전트가 넣지 않는다.");
+  console.error("로그인이 끝나면 스크립트가 알아서 알아채고 닫는다. Enter 를 누를 필요 없다.");
+  // Enter 를 기다리면 에이전트 세션에서 stdin 이 없어 영영 안 끝난다. 쿠키를 직접 본다
+  const 제한초 = Number(flag("wait", "420"));
+  let ok = false;
+  for (let s = 0; s < 제한초; s += 3) {
+    const ck = await ctx.cookies("https://www.instagram.com");
+    if (ck.some((c) => c.name === "sessionid" && c.value)) {
+      ok = true;
+      await page.waitForTimeout(2500); // 남은 쿠키가 다 붙게 잠깐 둔다
+      break;
+    }
+    await page.waitForTimeout(3000);
+  }
   console.log(JSON.stringify({ 프로필: OPT.profile, 로그인: ok }, null, 1));
   await ctx.close();
   process.exit(ok ? 0 : 1);
@@ -488,7 +536,7 @@ if (OPT.check) {
   console.log(
     JSON.stringify(
       {
-        프로필: OPT.profile,
+        방식: OPT.cdp ? "사람 크롬에 붙음 " + OPT.cdp : "자기 프로필 " + OPT.profile,
         로그인: authed,
         붙는데걸린초: Math.round((Date.now() - t0) / 100) / 10,
         표본: probe.st,
