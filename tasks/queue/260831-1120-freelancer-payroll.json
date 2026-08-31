@@ -1,0 +1,14 @@
+{
+  "id": "260831-1120-freelancer-payroll",
+  "manual": "freelancer-payroll",
+  "title": "권성은 편집자 26년 8월 편집비 등록",
+  "runner": "claude",
+  "est_minutes": 30,
+  "needs_screen": true,
+  "resource": null,
+  "priority": 5,
+  "input": {},
+  "created": "2026-08-31T11:20:03+09:00",
+  "lease": null,
+  "log": []
+}
