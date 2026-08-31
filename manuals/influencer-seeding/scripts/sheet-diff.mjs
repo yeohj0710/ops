@@ -27,7 +27,8 @@
 //       "newKeys": ["@newperson"],
 //       "deletedKeys": ["@remove-after-user-approval"],
 //       "emptyCells": [{"key":"@a","column":"③협상 관련 메모"}],
-//       "protectedColumns": ["④합의 단가", "⑥방문 예정일"]
+//       "protectedColumns": ["④합의 단가", "⑥방문 예정일"],
+//       "externalColumns": ["예상 조회수", "1차 제안"]
 //     }
 //   }
 //
@@ -35,6 +36,12 @@
 // `newKeys` 는 이번에 새로 만든 행, `deletedKeys` 는 사용자가 승인한 삭제 행이다.
 // `emptyCells` 에 없는 기존 값 삭제는 실패한다. `protectedColumns` 는 다른 허용보다 우선한다.
 // 허용값이 없으면 그 탭은 읽기 전용으로 본다.
+//
+// `externalColumns` 는 **이 런이 쓰지 않았는데 어차피 바뀌는 열**이다. 두 가지가 여기 든다.
+// 수식이 알아서 다시 계산하는 열(예상 조회수, 1차 제안)과 사람이 손으로 채우는 열(진행 상태).
+// 그 변경은 `externalChanges` 로 따로 담고 `clean` 판정에서 뺀다.
+// **이게 없으면 다른 세션이 시트를 만진 날 이 런은 영영 못 끝난다.** 260831 에 그랬다.
+// 고칠 수 없는 것을 통과 조건에 걸어 두면 런너는 같은 검사만 반복한다.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -103,6 +110,7 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
     duplicateKeys: [],
     emptiedCells: [],
     outOfScope: [],
+    externalChanges: [],
     allowedChanges: [],
     allowedDeletedKeys: [],
     rowCountBefore: 0,
@@ -149,6 +157,7 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
   const deletedKeys = new Set((allow.deletedKeys || []).map(norm));
   const emptyCells = new Set((allow.emptyCells || []).map((x) => cellId(x.key, x.column)));
   const protectedCols = new Set((allow.protectedColumns || []).map(norm));
+  const externalCols = new Set((allow.externalColumns || []).map(norm));
 
   const bIdx = indexByKey(bRows, keyIdx);
   const aIdx = indexByKey(aRows, keyIdx);
@@ -175,6 +184,10 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
       const colName = norm(bHead[c]) || `col${c}`;
       const hit = { key: k, col: c, colName, before: bv, after: av };
 
+      if (externalCols.has(colName)) {
+        out.externalChanges.push({ ...hit, why: "이 런이 쓰지 않는 열. 수식이거나 다른 세션이다" });
+        continue;
+      }
       if (protectedCols.has(colName)) { out.outOfScope.push({ ...hit, why: "보호 열" }); continue; }
       if (bv !== "" && av === "") {
         if (allowedCols.has(c) && allowedKeys.has(k) && emptyCells.has(cellId(k, colName))) {
@@ -262,6 +275,15 @@ function selfTest() {
   assert.deepEqual(parseCsv('a,"b,c",d')[0], ["a", "b,c", "d"]);
   assert.deepEqual(parseCsv('a,"두 줄\n메모",c')[0], ["a", "두 줄\n메모", "c"]);
 
+  // 이 런이 안 쓰는 열의 변경은 externalChanges 로 빠지고 clean 을 막지 않는다.
+  // 다른 세션이 진행 상태를 고친 날 이 런이 못 끝나면 안 된다
+  d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n2,미접촉,@b,9999,메모유지,70000\n", {
+    ...allow, externalColumns: ["팔로워"],
+  });
+  assert.equal(d.externalChanges.length, 1);
+  assert.equal(d.outOfScope.length, 0);
+  assert.equal(isClean(d), true);
+
   console.log("sheet-diff self-test: ok");
 }
 
@@ -314,13 +336,21 @@ function main() {
       d.headerChanged.length + d.disappearedKeys.length + d.unexpectedNewKeys.length +
       d.duplicateKeys.length + d.emptiedCells.length + d.outOfScope.length;
     const mark = bad ? "✗" : "✓";
-    console.log(`${mark} ${d.tab}: 허용 변경 ${d.allowedChanges?.length ?? 0}건, 문제 ${bad}건`);
+    const ext = d.externalChanges?.length ?? 0;
+    console.log(
+      `${mark} ${d.tab}: 허용 변경 ${d.allowedChanges?.length ?? 0}건, 문제 ${bad}건` +
+      (ext ? `, 이 런 밖의 변경 ${ext}건(수식이거나 다른 세션)` : ""),
+    );
     for (const h of d.headerChanged) console.log(`    머리글 ${h.col}: "${h.before}" → "${h.after}"`);
     for (const k of d.disappearedKeys) console.log(`    행이 사라짐: ${k}`);
     for (const k of d.unexpectedNewKeys) console.log(`    예상 못 한 새 행: ${k}`);
     for (const k of d.duplicateKeys) console.log(`    열쇠 중복: ${k.key} ${k.count}줄`);
     for (const c of d.emptiedCells) console.log(`    칸을 비움: ${c.key} / ${c.colName} = "${c.before}"`);
     for (const c of d.outOfScope) console.log(`    범위 밖: ${c.key ?? ""} / ${c.colName ?? ""} "${c.before}" → "${c.after}" (${c.why})`);
+    // 이 런이 고칠 수 있는 것이 아니다. 보고만 하고 통과 판정에서 뺀다
+    const 열별 = {};
+    for (const c of d.externalChanges || []) 열별[c.colName] = (열별[c.colName] || 0) + 1;
+    for (const [col, n] of Object.entries(열별)) console.log(`    이 런 밖: ${col} ${n}건`);
   }
 
   if (!report.clean) {
