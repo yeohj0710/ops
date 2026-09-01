@@ -40,10 +40,23 @@ const REJECT_FIT = [
 ];
 const SCHEDULE_HOLD = [
   /(?:\d{1,2}\s*월|다음\s*달|귀국\s*후|입국\s*후).{0,25}(?:부터\s*)?(?:가능|희망)/i,
+  /(?:\d{1,2}\s*월|다음\s*달|연말).{0,25}(?:한국|방한|귀국|방문|촬영).{0,25}(?:오|온다고|계획|가능|연락)/i,
+  /그때.{0,12}연락하기로/i,
   /(?:현재|지금).{0,15}(?:방문|촬영)\s*일정.{0,10}없.{0,40}(?:향후|나중).{0,20}(?:협력|협업)\s*희망/i,
   /(?:일정|스케줄|방문|촬영).{0,20}(?:미룸|미뤄|연기|보류)/i,
   /일정.{0,15}(?:차\s*있|가득)/i,
   /(?:현재|지금|그때).{0,10}한국에.{0,12}(?:없|계시지\s*않)/i,
+];
+const STRONG_SCHEDULE_HOLD = [
+  /(?:일정|스케줄|방문|촬영).{0,20}(?:미룸|미뤄|연기|보류)/i,
+  /(?:현재|지금).{0,10}한국에.{0,12}(?:없|계시지\s*않)/i,
+  /그때.{0,12}연락하기로/i,
+  /(?:10|11|12)\s*월.{0,25}(?:한국|방한|귀국|방문|촬영).{0,25}(?:오|온다고|계획|가능)/i,
+  /연말.{0,25}(?:한국|방한|귀국|방문|촬영)/i,
+];
+const FUTURE_WILLING = [
+  /(?:향후|나중|추후).{0,20}(?:협력|협업|진행).{0,12}(?:희망|가능|의향)/i,
+  /(?:협력|협업|진행).{0,20}(?:향후|나중|추후).{0,12}(?:희망|가능|의향)/i,
 ];
 const NEGOTIATION = [
   /(?:가격|비용|금액|단가|예산|페이팔|fee|budget).{0,25}(?:요구|희망|제시|문의|얼마|협의|협상|조율)/i,
@@ -69,6 +82,19 @@ const NO_PROOF = [
   /(?:합의|수락).{0,20}(?:원문.{0,10}없|확인되지\s*않|확인\s*안\s*됨)/i,
   /(?:원문|증거).{0,15}(?:없|미확인)/i,
 ];
+const INACTIVE_VISIT = [
+  /미미라인\s*아님/i,
+  /현재\s*캠페인\s*아님/i,
+];
+const UNSET_VISIT = [
+  /^(?:아직\s*)?미정\.?$/i,
+  /일정\s*미정/i,
+];
+
+const isUnassigned = (row) => {
+  const value = txt(row["배정 건"]);
+  return !value || value === "미배정";
+};
 
 function candidate(row, recommendedStatus, reason, evidenceColumn = "③협상 관련 메모", mode = "auto") {
   const currentStatus = txt(row["진행 상태"]);
@@ -88,13 +114,29 @@ function candidate(row, recommendedStatus, reason, evidenceColumn = "③협상 �
 export function classifyRow(row) {
   const currentStatus = txt(row["진행 상태"]);
   const memo = txt(row["③협상 관련 메모"]);
+  const visit = txt(row["⑥방문 예정일"]);
   const confirmed = isTrue(row["⑤확정"]);
 
-  if (confirmed) {
-    if (has(memo, CANCELLATION)) {
-      return candidate(row, "확인 필요", "확정 체크와 취소·철회 메모가 충돌함", "③협상 관련 메모", "review");
+  if (currentStatus === "확정" && confirmed && has(memo, CANCELLATION)) {
+    return candidate(row, "확인 필요", "확정 체크와 취소·철회 메모가 충돌함", "③협상 관련 메모", "review");
+  }
+
+  // ⑤확정은 과거 합의 기록이다. 현재 캠페인 배정·일정·협상 상태보다 우선하지 않는다.
+  if (has(visit, INACTIVE_VISIT)) {
+    return candidate(row, "보류", "방문 예정일에 현재 캠페인 대상이 아님을 명시함", "⑥방문 예정일");
+  }
+  if (currentStatus === "확정" && !isUnassigned(row) && has(visit, UNSET_VISIT)) {
+    return candidate(row, "일정 보류", "활성 배정은 있으나 방문 일정이 미정임", "⑥방문 예정일");
+  }
+  if (currentStatus === "확정" && !isUnassigned(row)) return null;
+  if (currentStatus === "확정" && isUnassigned(row)) {
+    if (has(memo, REJECTION)) return candidate(row, "거절", "명시적 거절 또는 참여 불가 메모");
+    if (has(memo, REJECT_FIT)) return candidate(row, "반려", "콘텐츠·언어권·캠페인 적합도 부족 메모");
+    if (has(memo, NEGOTIATION)) return candidate(row, "협상중", "현재 배정이 없고 금액·조건이 미합의 상태임");
+    if (has(memo, SCHEDULE_HOLD) || has(visit, UNSET_VISIT)) {
+      return candidate(row, "일정 보류", "현재 배정이 없고 방문·촬영 시기만 남아 있음");
     }
-    return candidate(row, "확정", "⑤확정이 TRUE", "⑤확정");
+    return candidate(row, "보류", "⑤확정은 과거 합의 기록이지만 현재 배정 건이 미배정임", "배정 건");
   }
 
   if (!memo) {
@@ -104,14 +146,18 @@ export function classifyRow(row) {
     return null;
   }
 
+  if (currentStatus === "거절" || currentStatus === "반려") return null;
+
   if (currentStatus === "확정" && has(memo, CANCELLATION)) {
     return candidate(row, "확인 필요", "확정 상태와 취소·철회 메모가 충돌함", "③협상 관련 메모", "review");
   }
-  if (has(memo, SCHEDULE_HOLD)) return candidate(row, "일정 보류", "참여 의사는 있으나 일정이 미뤄진 메모");
-  if (has(memo, REJECTION)) return candidate(row, "거절", "명시적 거절 또는 참여 불가 메모");
   if (has(memo, REJECT_FIT)) return candidate(row, "반려", "콘텐츠·언어권·캠페인 적합도 부족 메모");
   if (has(memo, NO_REPLY) || has(memo, NO_PROOF)) return null;
+  if (has(memo, FUTURE_WILLING)) return candidate(row, "일정 보류", "현재 일정은 어렵지만 향후 협업 의사가 있음");
+  if (has(memo, REJECTION)) return candidate(row, "거절", "명시적 거절 또는 참여 불가 메모");
   if (has(memo, NEGOTIATION)) return candidate(row, "협상중", "금액·조건 협상 메모");
+  if (currentStatus === "협상중" && has(memo, SCHEDULE_HOLD) && !has(memo, STRONG_SCHEDULE_HOLD)) return null;
+  if (has(memo, SCHEDULE_HOLD)) return candidate(row, "일정 보류", "참여 의사는 있으나 일정이 미뤄진 메모");
   if (has(memo, HOLD)) return candidate(row, "보류", "연락 통로나 방문 계획이 없는 메모");
   if (has(memo, ACCEPTANCE)) {
     return candidate(row, "확정", "수락으로 보이는 메모는 원문과 ⑤확정을 확인해야 함", "③협상 관련 메모", "review");
@@ -140,15 +186,21 @@ export async function buildStatusAudit(opts = {}) {
 }
 
 function selfTest() {
-  const row = (status, memo, extra = {}) => ({ row: 3, key: "@test", "진행 상태": status, "③협상 관련 메모": memo, "⑤확정": "FALSE", ...extra });
-  assert.equal(classifyRow(row("협상중", "", { "⑤확정": "TRUE" })).recommendedStatus, "확정");
+  const row = (status, memo, extra = {}) => ({ row: 3, key: "@test", "진행 상태": status, "③협상 관련 메모": memo, "⑤확정": "FALSE", "배정 건": "미배정", ...extra });
+  assert.equal(classifyRow(row("협상중", "", { "⑤확정": "TRUE" })), null);
   assert.equal(classifyRow(row("협상중", "11월부터 촬영 가능하다고 하심")).recommendedStatus, "일정 보류");
   assert.equal(classifyRow(row("1차 발송", "이번 캠페인은 진행하지 않겠습니다")).recommendedStatus, "거절");
+  assert.equal(classifyRow(row("일정 보류", "현재 서울 방문 일정이 없어 거절했지만 향후 협업 희망")), null);
   assert.equal(classifyRow(row("미접촉", "콘텐츠가 캠페인에 맞지 않음")).recommendedStatus, "반려");
   assert.equal(classifyRow(row("미접촉", "DM불가")).recommendedStatus, "보류");
   assert.equal(classifyRow(row("1차 발송", "150,000원 희망")).recommendedStatus, "협상중");
   assert.equal(classifyRow(row("협상중", "협업 진행하겠습니다")).mode, "review");
-  assert.equal(classifyRow(row("확정", "11월부터 촬영 가능", { "⑤확정": "TRUE" })), null);
+  assert.equal(classifyRow(row("확정", "", { "⑤확정": "TRUE" })).recommendedStatus, "보류");
+  assert.equal(classifyRow(row("확정", "", { "⑤확정": "TRUE", "⑥방문 예정일": "미미라인 아님." })).recommendedStatus, "보류");
+  assert.equal(classifyRow(row("확정", "11월부터 촬영 가능", { "⑤확정": "TRUE" })).recommendedStatus, "일정 보류");
+  assert.equal(classifyRow(row("확정", "가격 협의 중", { "⑤확정": "TRUE" })).recommendedStatus, "협상중");
+  assert.equal(classifyRow(row("확정", "협업 수락", { "⑤확정": "TRUE", "배정 건": "미미라인 중국", "⑥방문 예정일": "9/2 18:00" })), null);
+  assert.equal(classifyRow(row("확정", "협업 수락", { "⑤확정": "TRUE", "배정 건": "미미라인 중국", "⑥방문 예정일": "아직 미정." })).recommendedStatus, "일정 보류");
   assert.equal(classifyRow(row("확정", "이번 배정 취소", { "⑤확정": "TRUE" })).mode, "review");
   console.log("build-status-audit self-test: ok");
 }
