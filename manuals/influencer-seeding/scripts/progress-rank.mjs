@@ -9,7 +9,7 @@ export const STATUS_ORDER = Object.freeze([
   "확인 필요", "미접촉", "보류", "반려", "거절", "",
 ]);
 export const STATUS_GROUP = Object.freeze(Object.fromEntries(STATUS_ORDER.map((value, index) => [value, STATUS_ORDER.length - index])));
-const LANGUAGE_ORDER = Object.freeze(["중국어권", "일본어권", "국내", "기타", ""]);
+const LANGUAGE_ORDER = Object.freeze(["중국어권", "중국어권-간체", "일본어권", "국내", "기타", ""]);
 const PLATFORM_ORDER = Object.freeze(["인스타그램", "샤오홍슈", "틱톡", ""]);
 const SOURCE_ORDER = Object.freeze(["직접 조사", "AI 에이전트", ""]);
 
@@ -139,7 +139,7 @@ export function sortKeys(row) {
 export function compareRows(a, b) {
   const x = a.sortKeys || sortKeys(a);
   const y = b.sortKeys || sortKeys(b);
-  for (const key of ["status", "language", "platform", "source", "visitPresent", "visitTime", "agreementMissing", "followerFit", "followers"]) {
+  for (const key of ["language", "platform", "status", "source", "visitPresent", "visitTime", "agreementMissing", "followerFit", "followers"]) {
     if (x[key] !== y[key]) return x[key] - y[key];
   }
   return x.account.localeCompare(y.account, "en");
@@ -204,7 +204,10 @@ function selfTest() {
   assert.equal(rankProgress({ status: "확정", paid: true }).rank, rankProgress({ status: "확정", confirmed: true }).rank);
 
   assert.ok(compareRows({ status: "미접촉", language: "중국어권" }, { status: "미접촉", language: "일본어권" }) < 0);
+  assert.ok(compareRows({ status: "미접촉", language: "중국어권-간체" }, { status: "미접촉", language: "일본어권" }) < 0);
   assert.ok(compareRows({ status: "미접촉", language: "중국어권", platform: "인스타그램" }, { status: "미접촉", language: "중국어권", platform: "샤오홍슈" }) < 0);
+  assert.ok(compareRows({ status: "미접촉", language: "중국어권", platform: "인스타그램" }, { status: "확인 필요", language: "국내", platform: "인스타그램" }) < 0);
+  assert.ok(compareRows({ status: "미접촉", language: "중국어권", platform: "인스타그램" }, { status: "확정", language: "중국어권", platform: "샤오홍슈" }) < 0);
   assert.ok(compareRows({ status: "미접촉", source: "직접 조사" }, { status: "미접촉", source: "AI 에이전트" }) < 0);
   assert.ok(compareRows({ status: "미접촉", visitDate: "9/1 20:30" }, { status: "미접촉", visitDate: "" }) < 0);
   assert.ok(compareRows({ status: "미접촉", followers: 20_000 }, { status: "미접촉", followers: 70_000 }) < 0);
@@ -220,7 +223,7 @@ function selfTest() {
   });
   assert.deepEqual(plan.sortedRowOrder, [4, 3, 5, 6]);
   assert.ok(plan.inversionsBefore > 0);
-  console.log("progress-rank self-test: 11/11 passed");
+  console.log("progress-rank self-test: 14/14 passed");
 }
 
 function parseArgs(argv) {
