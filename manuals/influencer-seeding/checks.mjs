@@ -80,6 +80,28 @@ export function accountProblems(meta, label) {
   return out;
 }
 
+function normalizedCounts(value) {
+  return Object.fromEntries(
+    Object.entries(value || {})
+      .map(([key, count]) => [key, Number(count || 0)])
+      .filter(([, count]) => count !== 0)
+      .sort(([a], [b]) => a.localeCompare(b, "ko"))
+  );
+}
+
+export function countsAfterStatusAudit(before, changes, sheetTitle) {
+  const counts = { ...(before || {}) };
+  for (const change of changes || []) {
+    if (change.sheet && sheetTitle && change.sheet !== sheetTitle) continue;
+    const from = String(change.currentStatus ?? change.before ?? "").trim();
+    const to = String(change.recommendedStatus ?? change.after ?? "").trim();
+    if (!from || !to || from === to) continue;
+    counts[from] = Number(counts[from] || 0) - 1;
+    counts[to] = Number(counts[to] || 0) + 1;
+  }
+  return normalizedCounts(counts);
+}
+
 function selfTest() {
   // 열쇠
   assert.equal(roomKey({ 링크: "https://x/1" }), "https://x/1");
@@ -135,6 +157,14 @@ function selfTest() {
     "expectedAccount 를 낮춰 적어도 상수와 대조해 잡아야 한다"
   );
 
+  assert.deepEqual(
+    countsAfterStatusAudit({ "일정 보류": 2, 거절: 1 }, [
+      { currentStatus: "일정 보류", recommendedStatus: "거절" },
+    ]),
+    { "거절": 2, "일정 보류": 1 },
+    "상태 점검으로 바뀐 건수만 반영해야 한다"
+  );
+
   console.log("influencer-seeding self-test: ok");
 }
 
@@ -150,7 +180,7 @@ if (!taskFile || !fs.existsSync(taskFile)) {
 }
 
 selfTest();
-for (const name of ["progress-rank.mjs", "validate-write-plan.mjs", "backup-sheet.mjs", "sheet-diff.mjs"]) {
+for (const name of ["progress-rank.mjs", "build-status-audit.mjs", "validate-write-plan.mjs", "backup-sheet.mjs", "sheet-diff.mjs"]) {
   execFileSync(process.execPath, [path.join(HERE, "scripts", name), "--self-test"], { stdio: "inherit" });
 }
 
@@ -166,7 +196,7 @@ const read = (name) => {
 };
 
 // 0. 안전 게이트 산출물
-for (const name of ["before", "after", "write-plan.json", "write-plan.validated.json", "diff.json", "result.json"]) {
+for (const name of ["before", "after", "write-plan.json", "write-plan.validated.json", "diff.json", "result.json", "status-audit.json"]) {
   assert.ok(fs.existsSync(path.join(taskDir, name)), `안전 산출물이 없다: ${name}`);
 }
 
@@ -210,6 +240,11 @@ assert.notEqual(diff.clean, false, "diff.clean 이 false 다");
 const result = read("result.json");
 const mode = String(result.mode || "갱신").trim();
 assert.ok(["갱신", "정비"].includes(mode), `result.mode 가 갱신이나 정비여야 한다 (지금 ${mode})`);
+const statusAudit = read("status-audit.json");
+assert.ok(Array.isArray(statusAudit.자동변경후보), "status-audit.json 자동변경후보 배열이 필요하다");
+assert.ok(Array.isArray(statusAudit.검토후보), "status-audit.json 검토후보 배열이 필요하다");
+assert.equal(statusAudit.자동변경후보.length, 0, "메모·상태 점검의 자동변경후보가 남아 있다");
+const statusAuditApplied = Array.isArray(result.statusAuditApplied) ? result.statusAuditApplied : [];
 
 // 3-4. 계정 확인과 안 읽음 복원. 정비 갈래는 받은함을 안 열었으니 건너뛴다.
 if (mode === "갱신") {
@@ -259,9 +294,9 @@ for (const s of result.sheets) {
     assert.equal(added, 0, `${s.title}: 정비 갈래는 줄을 만들지 않는다`);
     assert.equal(s.rowCountAfter, s.rowCountBefore, `${s.title}: 행 수가 바뀌었다`);
     assert.deepEqual(
-      s.statusCountsAfter,
-      s.statusCountsBefore,
-      `${s.title}: 정비 갈래인데 상태별 건수가 바뀌었다`
+      normalizedCounts(s.statusCountsAfter),
+      countsAfterStatusAudit(s.statusCountsBefore, statusAuditApplied, s.title),
+      `${s.title}: 상태별 건수 변화가 statusAuditApplied 와 다르다`
     );
   } else {
     assert.equal(
