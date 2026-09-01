@@ -49,13 +49,19 @@ function orderOf(value, order) {
   return index === -1 ? order.length : index;
 }
 
+/* 줄여 쓴 표기의 배수. 인스타는 K M, 샤오홍슈는 만 w 万 을 쓴다.
+ * 이걸 모르면 `9.9만` 이 0 으로 읽혀서 그 행이 정렬 맨 뒤로 밀린다 */
+const UNIT_FACTOR = Object.freeze({ k: 1_000, m: 1_000_000, b: 1_000_000_000, w: 10_000, 천: 1_000, 만: 10_000, 억: 100_000_000, 万: 10_000, 亿: 100_000_000 });
+
 function numberValue(value) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const raw = String(value ?? "").trim().replaceAll(",", "");
-  const match = raw.match(/^(-?\d+(?:\.\d+)?)\s*([KkMm])?$/);
+  const raw = String(value ?? "").trim().replace(/[,\s₩¥￦]/g, "");
+  const match = raw.match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z천만억万亿]?)$/);
   if (!match) return 0;
-  const factor = /k/i.test(match[2] || "") ? 1_000 : /m/i.test(match[2] || "") ? 1_000_000 : 1;
-  return Number(match[1]) * factor;
+  const unit = match[2] ? UNIT_FACTOR[match[2].toLowerCase()] ?? UNIT_FACTOR[match[2]] : 1;
+  if (!unit) return 0;
+  const n = Number(match[1]) * unit;
+  return Number.isFinite(n) ? n : 0;
 }
 
 function normalizedAccount(value) {
