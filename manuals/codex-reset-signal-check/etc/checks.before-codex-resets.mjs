@@ -15,11 +15,7 @@ const required = [
   '- **제어층**:',
   '- **한 번에 걸리는 시간**:',
   'https://x.com/thsottiaux',
-  'https://codex-resets.com/api/v1/resets',
-  'https://codex-resets.com/api/v1/status',
   'how-banked-codex-resets-work',
-  'active_watch',
-  '관찰 신호',
   '근거 점수',
   '발생 확률',
 ];

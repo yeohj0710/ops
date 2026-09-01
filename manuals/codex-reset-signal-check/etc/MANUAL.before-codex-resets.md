@@ -10,9 +10,8 @@
 
 ## 무엇을 만드는 업무인가
 
-`codex-resets.com` 초기화 이력·현재 `active_watch`, Tibo의 공개 X 계정 `@thsottiaux`,
-직접 X 자료를 보존하는 공개 이벤트 API, OpenAI 공식 문서를 확인해 Codex 추가 초기화가
-이미 끝났는지, 일정이 확정됐는지, 강한 언지만 있는지 판정한다.
+Tibo의 공개 X 계정 `@thsottiaux`, 직접 X 자료를 보존하는 공개 이벤트 API, OpenAI 공식 문서를 확인해
+Codex 추가 초기화가 이미 끝났는지, 일정이 확정됐는지, 강한 언지만 있는지 판정한다.
 결과는 **한 줄 결론, 근거 점수, 원문과 시각, 사용자 행동** 순서로 대화에 보고한다.
 
 이 업무는 확률을 맞히는 업무가 아니다. `근거 점수`는 공개 신호의 강도이며 실제 발생 확률이 아니다.
@@ -30,26 +29,23 @@
 
 ## 기준 자료
 
-서로 맡는 역할이 다르다.
+우선순위가 높은 순서다.
 
-1. Tibo X 원문: 미래 시제와 실제 표현을 판정한다. `https://x.com/thsottiaux`
-2. `codex-resets.com` 공개 API: 49개 초기화 발표 이력과 현재 `active_watch`를 읽는다.
-   완료 시각의 기준은 `https://codex-resets.com/api/v1/resets`, 현재 예측 보조 신호는
-   `https://codex-resets.com/api/v1/status`다.
-3. Tibo 원문을 Direct X API로 보존한 공개 이벤트 자료: 원문 URL·시각·검증 상태와
-   완료 전 게시물을 읽는다. `https://tibo.modelyard.dev/api/events`
-4. OpenAI 공식 문서. hard reset과 banked reset을 구분할 때 사용:
+1. Tibo X 원문: `https://x.com/thsottiaux`
+2. Tibo 원문을 Direct X API로 가져와 원문 URL·시각·검증 상태를 남기는 공개 자료:
+   `https://tibo.modelyard.dev/api/events`
+3. OpenAI 공식 문서. hard reset과 banked reset을 구분할 때 사용:
    `https://help.openai.com/en/articles/20001498-how-banked-codex-resets-work`
-5. 발견·교차 확인용 보조 자료: `https://tibo.modelyard.dev/reset-history/`,
+4. 발견·교차 확인용 보조 자료: `https://tibo.modelyard.dev/reset-history/`,
    `https://codex-reset.com/tibo`, `https://t.me/s/codexreset`
 
-`codex-resets.com`의 `active_watch`는 AI가 분류한 예측이며 OpenAI의 약속이 아니다.
-확정 예정 판정은 Tibo 원문에 reset 대상과 미래 시각·기한이 직접 있을 때만 내린다.
+보조 자료만으로 확정 판정을 내리지 않는다. 원문 URL, `source_quality=DIRECT`,
+`verification_status=DIRECT_VERIFIED` 중 확인되는 것을 같이 적는다.
 
 ## 실데이터에서 확인한 패턴
 
-2026-09-01에 `codex-resets.com`의 초기화 발표 49개와 Tibo 보존 이벤트 44개를 대조했다.
-아래 표는 원문 선행 신호와 이력 API의 완료 발표 시각을 연결할 수 있는 최근 사례다.
+2026-08-31에 공개 API의 44개 이벤트를 대조했다. 이 중 reset 계열 분류는 35개였다.
+아래 표는 원문과 완료 시각을 함께 확인할 수 있는 최근 사례만 추린 것이다.
 
 | 선행 신호(UTC) | 완료 확인(UTC) | 관찰된 간격 | 판정에 쓰는 표현 |
 | --- | --- | ---: | --- |
@@ -60,9 +56,9 @@
 | 8/29 21:23 | 8/31 02:29 | 29시간 6분 | celebration moved to tomorrow, button pressed |
 | 8/30 19:24 | 8/31 02:29 | 7시간 5분 | reset will land at 6pm PST |
 
-보존 표본에서는 명시적 일정 4건과 은유적 사전 언지 2건이 모두 72시간 안에 완료 발표로
-이어졌다. 하지만 Tibo 이벤트 자료는 모든 일반 게시물을 보존한 전수 자료가 아니므로 적중률이나
-발생 확률로 해석하지 않는다. 스크립트는 매 실행 때 두 API를 다시 연결해 표본 수를 갱신한다.
+관찰 표본에서는 **명시적 일정 4건이 모두 7~30시간 안에 완료 확인으로 이어졌고**,
+은유적 사전 언지 2건도 10~15시간 안에 완료 확인으로 이어졌다. 표본이 작고 여러 원인이 겹친다.
+고정 주기나 미래 보장으로 해석하지 않는다.
 
 반복된 원인은 두 갈래였다.
 
@@ -78,11 +74,10 @@
 | --- | ---: | --- | --- |
 | 완료 | 별도 | `has been reset`, `reset propagated`, `brand new usage`, `reset has landed` | 이미 초기화됨 |
 | 확정 예정 | 90~100 | reset 대상과 미래 시각·기한을 직접 말함 | 초기화 예정이 확인됨 |
-| 강한 조짐 | 70~89 | Tibo의 반복된 은유 표현 또는 `active_watch.level=strong` | 강한 언지가 있음 |
-| 관찰 신호 | 35~69 | 유효한 `active_watch.level=elevated`. 제3자 예측임을 같이 적음 | 관찰 신호가 있음 |
+| 강한 조짐 | 70~89 | `milestone/celebrate tomorrow`, `hold on`, `reset button tomorrow`, `little surprise tomorrow` | 강한 언지가 있음 |
+| 보조 조짐 | 35~69 | 사용량 이상 조사·수정 배포와 보상 언급. 미래 초기화 표현은 없음 | 가능성은 있으나 직접 언지는 없음 |
 | 새 조짐 없음 | 0~34 | 최근 완료 뒤 새로운 미래 신호가 없음 | 현재 공개 근거로는 새 조짐 없음 |
 
-장애, 사용량 소진, 조사, 수정 배포만 말한 게시물은 참고 문맥으로 남기되 단독 경보로 쓰지 않는다.
 `RESET_PLANNED` 같은 제3자 분류보다 원문 시제를 우선한다. 실제로 2026-08-31 이벤트 하나는
 `RESET_PLANNED`로 분류됐지만 원문이 `we have now reset`이라 완료였다.
 
@@ -99,12 +94,8 @@ hard reset과 banked reset도 섞지 않는다.
    node "<OPS>/manuals/codex-reset-signal-check/scripts/check-signals.mjs"
    ```
 
-   스크립트는 `codex-resets.com` 이력 API를 끝까지 읽어 완료 기준선을 만들고, Tibo 이벤트의
-   `source_text` 시제를 다시 읽는다. 같은 원문이 5분 늦게 중복 저장돼도 텍스트 유사도와 시각으로
-   제거한다. 최신 완료보다 뒤에 나온 미래 신호만 현재 조짐으로 인정한다.
-
-   `active_watch`가 있으면 만료 시각과 최신 완료 뒤에 생성됐는지 확인한다. `strong`은 강한 조짐,
-   `elevated`는 관찰 신호로만 쓴다. Tibo의 명시적 미래 약속이 항상 더 높은 근거다.
+   스크립트는 공개 API를 끝까지 페이지 순회하고 `source_text`의 시제를 다시 읽는다.
+   최신 완료보다 뒤에 나온 미래 신호만 현재 조짐으로 인정한다.
 
    예약 확인은 아래의 한 줄 출력과 상태 파일을 사용한다. 같은 판정이면 `UNCHANGED`만 나오므로
    모델이 긴 설명을 다시 만들 필요가 없다.
@@ -115,8 +106,8 @@ hard reset과 banked reset도 섞지 않는다.
 
 2. **최신성·원문을 확인한다 (L1)**
 
-   - Tibo 모니터와 `codex-resets.com` API 최신성을 따로 확인한다
-   - 두 최신성이 모두 2시간 이내인지 확인한다
+   - `데이터 최신성`은 마지막 게시물 시각이 아니라 공개 모니터가 X를 마지막으로 확인한 시각이다
+   - `데이터 최신성`이 2시간 이내인지 확인한다
    - 판정 근거의 X 원문 URL, 게시 시각, 직접 검증 상태를 확인한다
    - 최신성이 2시간을 넘거나 API가 실패하면 공개 검색으로 최근 72시간의
      `site:x.com/thsottiaux Codex reset usage milestone`와 Tibo 답글을 찾는다
@@ -160,17 +151,15 @@ hard reset과 banked reset도 섞지 않는다.
 - 주기: 4시간마다
 - 모델: `gpt-5.6-luna`, 추론 강도 `xhigh`
 - 정상·변화 없음: 로컬 스크립트 한 번과 한 줄 보고만 사용한다
-- 새 신호: `확정 예정 / 강한 조짐 / 관찰 신호`를 구분하고 원문 URL을 포함해 6줄 이내로 알린다
-- 두 상태 API 중 하나라도 2시간 넘게 낡았거나 실패했을 때만 웹 검색 1회를 추가한다
+- 새 신호: 원문 URL을 포함해 6줄 이내로 알린다
+- 상태 API가 2시간 넘게 낡았거나 실패했을 때만 웹 검색 1회를 추가한다
 
 ## 완료 검사
 
 - [ ] 최신 완료와 그 뒤의 미래 신호를 시간순으로 분리했다
-- [ ] `이미 완료`, `확정 예정`, `강한 조짐`, `관찰 신호`, `새 조짐 없음` 중 하나로 결론을 냈다
+- [ ] `이미 완료`, `확정 예정`, `강한 조짐`, `새 조짐 없음` 중 하나로 결론을 냈다
 - [ ] 근거 점수를 확률처럼 쓰지 않았다
 - [ ] 원문 URL, 게시 시각, 데이터 최신성을 적었다
-- [ ] `active_watch` 예측값을 Tibo의 직접 약속처럼 쓰지 않았다
-- [ ] 장애·조사 게시물만으로 경보를 올리지 않았다
 - [ ] hard reset과 banked reset을 구분했다
 - [ ] 개인 계정 반영 여부를 공개 공지로 단정하지 않았다
 
@@ -178,16 +167,11 @@ hard reset과 banked reset도 섞지 않는다.
 
 - X 원문이 L1에서 403 → X 차단일 뿐 신호 부재가 아니다 → Direct X API 자료를 보고 L2로 원문을 교차 확인한다
 - 공개 API의 `category`가 원문 시제와 충돌 → 분류 오류가 실제로 있었다 → `source_text`의 `now/has been/will/tomorrow`를 우선한다
-- `codex-resets.com` 이력의 과거 `reset_type`이 본문의 `banked`와 충돌 → 본문에 `banked`가 있으면 banked로 보정한다
-- `status.latest_reset`과 `/resets` 최신 항목이 충돌 → 상태 응답이 중복·지연될 수 있다 → 완료 기준선은 `/resets` 최신 항목을 우선한다
-- API가 HTTP 200이지만 이력이 비었거나 시각·원문 URL이 잘못됨 → 조용히 상태값으로 대체하면 경계가 다시 틀어진다 → 스크립트를 실패시키고 공개 검색 폴백을 쓴다
-- `active_watch`가 남아 있음 → 이미 초기화됐거나 만료됐을 수 있다 → 최신 완료 뒤 생성됐고 `expires_at` 전인 경우만 쓴다
-- 장애·사용량 조사 뒤 초기화된 사례가 있음 → 전수 게시물 자료가 아니라 기본 발생률을 계산할 수 없다 → 조사만으로 경보를 올리지 않는다
 - 완료 게시물 뒤의 `see you soon` 같은 농담 → 구체적 미래 시각·이정표가 없다 → 새 조짐 점수를 올리지 않는다
 - tracker의 reset 시각 → 계정 UI 변화를 관측한 보조 자료일 수 있다 → Tibo 원문과 개인 `Settings → Usage`를 따로 적는다
 - 주말·요일·최근 평균 간격 → 공개 약속이 아니다 → 단독 근거로 점수를 주지 않는다
 - banked reset 발표 → 자동 초기화가 아니다 → 사용 가능한 1회권과 즉시 hard reset을 구분한다
-- 최근 완료 직후 `RESET_PLANNED` 중복 이벤트 → 같은 원문이 5분 늦게 다른 URL로 저장된 실제 사례가 있다 → URL뿐 아니라 본문 유사도와 30분 창으로 중복 제거한다
+- 최근 완료 직후 `RESET_PLANNED` 중복 이벤트 → 이미 일어난 일을 미래 예측으로 잘못 셀 수 있다 → 최신 완료 뒤의 미래형 원문만 남긴다
 
 ## 사람에게 물어야 하는 지점
 
