@@ -21,9 +21,13 @@ import fs from "node:fs";
 
 const SHEET_ID = "1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE";
 
-// 이 업무가 숫자만 있어야 한다고 보는 열
+/* 이 업무가 숫자만 있어야 한다고 보는 열
+ *
+ * **플랫폼으로 거르지 않는다.** 숫자 열에 글자가 든 것은 인스타든 샤오홍슈든 똑같이 고장이다.
+ * gviz 가 그 칸을 빈칸으로 돌려주니 수식도 죽고 계획에도 안 잡힌다.
+ * 플랫폼 거르기는 "빈칸을 몇 개 채워야 하나" 를 셀 때(build-targets)만 하는 일이다. */
 export const TABS = [
-  { tab: "인플루언서", columns: ["릴스 중앙 조회수", "팔로워"], platform: "인스타그램" },
+  { tab: "인플루언서", columns: ["릴스 중앙 조회수", "팔로워", "노트 중앙 좋아요"], platform: null },
   { tab: "유입", columns: ["릴스 중앙 조회수", "좋아요 중앙값", "팔로워"], platform: null },
 ];
 
@@ -66,12 +70,34 @@ export async function resolveGids(sheetId = SHEET_ID) {
   return map;
 }
 
-/* 숫자로 읽히는 글자면 그 숫자를 준다. "14,000" → 14000, "17.2만" → null */
+/* 줄여 쓴 표기의 배수. 인스타는 K M, 샤오홍슈는 만 w 万 을 쓴다 */
+const UNITS = { k: 1e3, m: 1e6, b: 1e9, w: 1e4, 천: 1e3, 만: 1e4, 억: 1e8, 万: 1e4, 亿: 1e8 };
+
+/* 숫자로 읽히는 글자면 그 숫자를 준다.
+ *
+ *   "14,000" → 14000    "783.2K" → 783200    "9.9만" → 99000
+ *   "1.2M"   → 1200000  "1.2w"   → 12000     "3천"   → 3000
+ *
+ * **줄여 쓴 표기를 그대로 두면 안 된다.** 숫자 열에 든 글자라 gviz 가 빈칸으로 돌려주고,
+ * 그러면 `예상 조회수` 같은 수식이 죽고 계획에도 안 잡혀서 영영 안 고쳐지는 칸이 된다.
+ * 화면에는 값이 보이는데 어느 도구도 못 읽는 상태라 사람 눈에만 멀쩡해 보인다.
+ *
+ * **편 값은 근사값이다.** `783.2K` 의 원래 값은 783,163 일 수도 있다.
+ * 그래서 `근사` 를 같이 돌려준다. 나중에 그 계정을 실측하면 이 칸은 덮어써도 되는 칸이다. */
 export function asNumber(s) {
-  const t = txt(s).replace(/[,\s₩]/g, "");
-  if (!t || !/^-?\d+(\.\d+)?$/.test(t)) return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
+  const t = txt(s).replace(/[,\s₩¥￦]/g, "");
+  if (!t) return null;
+  const m = t.match(/^(-?\d+(?:\.\d+)?)\s*([a-zA-Z천만억万亿]?)$/);
+  if (!m) return null;
+  const unit = m[2] ? UNITS[m[2].toLowerCase()] ?? UNITS[m[2]] : 1;
+  if (!unit) return null;
+  const n = Number(m[1]) * unit;
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+/* 줄여 쓴 표기였는가. 편 값이 근사값이라는 표시다 */
+export function isAbbrev(s) {
+  return /[a-zA-Z천만억万亿]/.test(txt(s).replace(/[,\s₩¥￦]/g, ""));
 }
 
 export async function scanTab({ sheetId = SHEET_ID, tab, gid, columns, platform = null, keyColumn = "계정" }) {
@@ -117,7 +143,10 @@ export async function scanTab({ sheetId = SHEET_ID, tab, gid, columns, platform 
       };
       const n = asNumber(item.value);
       item.제안 = n === null ? "clear" : "set";
-      if (n !== null) item.숫자 = n;
+      if (n !== null) {
+        item.숫자 = n;
+        if (isAbbrev(item.value)) item.근사 = true; // 줄여 쓴 표기를 편 값. 실측이 나오면 덮어쓴다
+      }
       if (platform && item.플랫폼 && item.플랫폼 !== platform) { skippedByPlatform.push(item); continue; }
       junk.push(item);
     }

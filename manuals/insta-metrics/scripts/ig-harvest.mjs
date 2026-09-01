@@ -58,6 +58,9 @@ const OPT = {
   out: flag("out"),
   gap: Number(flag("gap", "1200")),
   limit: Number(flag("limit", "0")),
+  // 릴스 탭을 몇 번 굴려 타일을 붙일지. 기본 3 이면 18타일 안팎이다.
+  // 이상치를 다시 잴 때는 --scrolls 8 처럼 올려 표본을 늘린다
+  scrolls: Math.max(1, Number(flag("scrolls", "3"))),
   profile: flag("profile", path.join(LOCAL, "ops/ig-session")),
   // 사람이 이미 로그인해 둔 크롬에 붙는다. 크롬을 --remote-debugging-port=9222 로 띄워 두면 된다.
   // 좋아요 중앙값, 공개 연락처, 1만 넘는 팔로워는 로그인 없이는 안 나오는데
@@ -420,8 +423,9 @@ async function tabViews(page, name) {
     )
     .catch(() => {});
   // 한 번만 굴리면 12~16 타일에서 멈춘다. 260831 에 yfh_0822 이 12타일 중앙 21,500,
-  // 18타일 중앙 14,000 으로 1.5배 벌어졌다. 세 번 굴려 붙는 만큼 받는다
-  for (let s = 0; s < 3; s++) {
+  // 18타일 중앙 14,000 으로 1.5배 벌어졌다. 기본 세 번 굴려 붙는 만큼 받는다.
+  // 이상치 재측정 런은 --scrolls 8 로 올려 표본을 더 넓게 잡는다
+  for (let s = 0; s < OPT.scrolls; s++) {
     const before = await page.evaluate(
       () => document.querySelectorAll("main a[href*=\"/reel/\"]").length
     );
