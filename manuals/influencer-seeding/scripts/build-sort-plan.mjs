@@ -13,6 +13,7 @@
  */
 
 import fs from "node:fs";
+import { decodeJsStringContent } from "../../../lib/js-string.mjs";
 import { buildPlan } from "./progress-rank.mjs";
 
 const SHEET_ID = "1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE";
@@ -57,7 +58,7 @@ async function get(url) {
 async function resolveGid(sheetId, tab) {
   const html = await get(`https://docs.google.com/spreadsheets/d/${sheetId}/htmlview`);
   for (const m of html.matchAll(/name:\s*"((?:[^"\\]|\\.)*)"[\s\S]{0,400}?gid:\s*"(\d+)"/g)) {
-    if (JSON.parse(`"${m[1]}"`) === tab) return m[2];
+    if (decodeJsStringContent(m[1]) === tab) return m[2];
   }
   throw new Error(`시트에 "${tab}" 탭이 없다. 탭 이름이 바뀌었는지 본다`);
 }

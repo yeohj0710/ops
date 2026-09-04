@@ -18,6 +18,7 @@
  */
 
 import fs from "node:fs";
+import { decodeJsStringContent } from "../../../lib/js-string.mjs";
 
 const SHEET_ID = "1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE";
 
@@ -63,7 +64,7 @@ export async function resolveGids(sheetId = SHEET_ID) {
   const html = await get(`https://docs.google.com/spreadsheets/d/${sheetId}/htmlview`);
   const map = new Map();
   for (const m of html.matchAll(/name:\s*"((?:[^"\\]|\\.)*)"[\s\S]{0,400}?gid:\s*"(\d+)"/g)) {
-    const name = JSON.parse(`"${m[1]}"`);
+    const name = decodeJsStringContent(m[1]);
     if (!map.has(name)) map.set(name, m[2]);
   }
   if (!map.size) throw new Error("htmlview 에서 탭 gid 를 못 읽었다. 시트 공유 설정을 본다");
@@ -172,7 +173,8 @@ export async function scanAll({ sheetId = SHEET_ID, tabs = TABS, allPlatforms = 
 }
 
 // ── CLI ───────────────────────────────────────────────────────────────────────────
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, "/")}` || process.argv[1]?.endsWith("scan-junk.mjs")) {
+const invokedPath = process.argv[1]?.replace(/\\/g, "/");
+if (invokedPath && (import.meta.url === `file://${invokedPath}` || invokedPath.endsWith("scan-junk.mjs"))) {
   const argv = process.argv.slice(2);
   const flag = (n, d = null) => {
     const i = argv.indexOf("--" + n);

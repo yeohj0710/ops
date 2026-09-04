@@ -23,6 +23,11 @@
 
   const H = { "x-ig-app-id": "936619743392459" };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const usernamePath = (value) => {
+    const name = String(value || "");
+    if (!/^[A-Za-z0-9._]+$/.test(name)) throw new Error("인스타 계정 형식이 아니다");
+    return name;
+  };
   const med = (a) => {
     if (!a.length) return null;
     const s = [...a].sort((x, y) => x - y);
@@ -50,7 +55,7 @@
 
   const grab = async (name) => {
     let p = null;
-    const a = await jget("/api/v1/users/web_profile_info/?username=" + encodeURIComponent(name));
+    const a = await jget("/api/v1/users/web_profile_info/?username=" + usernamePath(name));
     if (a.s === 401 || a.s === 429) return { st: "차단" + a.s };
     if (a.s === 200 && a.j && a.j.data && a.j.data.user) {
       const u = a.j.data.user;
@@ -69,7 +74,7 @@
     // 400 은 계정 문제가 아니다. ig_business_category_subvertical 스키마가 깨져서 나는 인스타 오류다
     if (!p) {
       await sleep(600);
-      const sr = await jget("/web/search/topsearch/?context=blended&query=" + encodeURIComponent(name));
+      const sr = await jget("/web/search/topsearch/?context=blended&query=" + usernamePath(name));
       if (sr.s === 429) return { st: "차단429" };
       const hit =
         sr.j && Array.isArray(sr.j.users)
@@ -116,12 +121,20 @@
       return row;
     }
     const items = fr.j.items || [];
-    const clips = items.filter((i) => i.product_type === "clips");
+    const isPinned = (i) =>
+      i?.is_pinned === true ||
+      i?.is_pinned_for_username === true ||
+      (Array.isArray(i?.timeline_pinned_user_ids) && i.timeline_pinned_user_ids.length > 0) ||
+      (Array.isArray(i?.pinned_for_users) && i.pinned_for_users.length > 0);
+    const pinned = items.filter(isPinned);
+    const regularItems = items.filter((i) => !isPinned(i));
+    const clips = regularItems.filter((i) => i.product_type === "clips");
     // 한 편만 보여도 그 값을 쓴다
     const plays = clips.map((i) => i.play_count).filter((v) => typeof v === "number" && v > 0);
     // like_count 는 좋아요를 숨긴 글에서 -1 이나 0 으로 온다
-    const likes = items.map((i) => i.like_count).filter((v) => typeof v === "number" && v > 0);
+    const likes = regularItems.map((i) => i.like_count).filter((v) => typeof v === "number" && v > 0);
     row.n = items.length;
+    row.pn = pinned.length;
     row.rn = clips.length;
     row.vn = plays.length;
     row.rm = med(plays);

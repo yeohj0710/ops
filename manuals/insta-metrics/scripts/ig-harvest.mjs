@@ -304,13 +304,21 @@ async function grabInPage([name, authed, feedDead]) {
     row.st = "비공개";
     return row;
   }
-  const clips = items.filter((i) => i.product_type === "clips");
+  const isPinned = (i) =>
+    i?.is_pinned === true ||
+    i?.is_pinned_for_username === true ||
+    (Array.isArray(i?.timeline_pinned_user_ids) && i.timeline_pinned_user_ids.length > 0) ||
+    (Array.isArray(i?.pinned_for_users) && i.pinned_for_users.length > 0);
+  const pinned = items.filter(isPinned);
+  const regularItems = items.filter((i) => !isPinned(i));
+  const clips = regularItems.filter((i) => i.product_type === "clips");
   // 한 편만 보여도 그 값을 쓴다. 다 보여야 한다는 규칙이 지난 런에서 601행을 빈칸으로 남겼다
   const plays = clips.map((i) => i.play_count).filter((v) => typeof v === "number" && v > 0);
   // like_count 는 좋아요를 숨긴 글에서 -1 이나 0 으로 온다. 그대로 세면 중앙값이 주저앉는다
-  const likes = items.map((i) => i.like_count).filter((v) => typeof v === "number" && v > 0);
+  const likes = regularItems.map((i) => i.like_count).filter((v) => typeof v === "number" && v > 0);
 
   row.n = items.length;
+  row.pn = pinned.length;
   row.rn = clips.length;
   row.vn = plays.length;
   row.rm = med(plays);
@@ -340,12 +348,21 @@ function readReelTiles() {
   const anchors = [...document.querySelectorAll("main a[href]")].filter((a) =>
     /\/reel\/[^/]+\//.test(a.getAttribute("href") || "")
   );
-  const views = anchors
+  const pinLabel = /^(?:고정|고정됨|고정 게시물|고정된 게시물|pinned|pinned post)$/i;
+  const isPinned = (a) => {
+    const box = a.parentElement || a;
+    return [...box.querySelectorAll("[aria-label]")].some((n) =>
+      pinLabel.test((n.getAttribute("aria-label") || "").trim())
+    );
+  };
+  const regularAnchors = anchors.filter((a) => !isPinned(a));
+  const views = regularAnchors
     .map((a) => parse((a.innerText || "").trim().split("\n")[0]))
     .filter((v) => typeof v === "number" && v > 0);
   const txt = (document.body.innerText || "").slice(0, 3000);
   return {
     rn: anchors.length,
+    pn: anchors.length - regularAnchors.length,
     views,
     priv: /비공개 계정입니다|This Account is Private|이 계정은 비공개/.test(txt),
     wall: !!document.querySelector('input[name="username"]'),
@@ -460,6 +477,7 @@ async function grabOne(page, name, authed, feedDead = false) {
   try {
     const t = await tabViews(page, name);
     row.rn = t.rn;
+    row.pn = t.pn;
     row.vn = t.views.length;
     row.rm = median(t.views);
     row.src = "tab";
