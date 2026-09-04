@@ -887,6 +887,11 @@ const j = await fetch(`/api/v1/media/${pk}/info/`, {headers:{'x-ig-app-id':'9366
 
 ## P7. 릴스에 조회수 2천 회 주문하기 (200원, 인스타 게시 직후 실행)
 
+**여기는 한 번에 2,000회를 넣는 자리다.** 사람이 "나눠서", "몇 회씩 몇 번", "몇 분 간격" 을 말했으면
+이 절이 아니라 `snsview-drip` 업무다. 그쪽은 API 로 배경에서 돌아 세션이 끝나도 이어진다.
+API 키가 `자격증명/.env` 에 있으니 이 P7 도 화면 대신 그 스크립트로 한 건 넣어도 된다.
+`node "<OPS>/manuals/snsview-drip/scripts/snsview-drip.mjs" start --link <릴스> --qty 2000 --runs 1 --every 5m`
+
 1. https://snssupporter.com 에 들어간다 (L3). 로그인 정보는 `자격증명/계정.md`.
    크레딧이 200원도 없으면 다른 계정으로 로그인한다(둘 다 그 파일에 있다).
 2. **주문 페이지는 첫 화면 `/` 다 (260903 실측).** `/order` 도 `/neworder` 도 404 다.
