@@ -180,7 +180,10 @@ if (!taskFile || !fs.existsSync(taskFile)) {
 }
 
 selfTest();
-for (const name of ["progress-rank.mjs", "build-status-audit.mjs", "validate-write-plan.mjs", "backup-sheet.mjs", "sheet-diff.mjs"]) {
+for (const name of [
+  "progress-rank.mjs", "build-status-audit.mjs", "validate-write-plan.mjs", "backup-sheet.mjs",
+  "sheet-diff.mjs", "build-notion-direct-sync-plan.mjs", "audit-notion-direct-sync.mjs",
+]) {
   execFileSync(process.execPath, [path.join(HERE, "scripts", name), "--self-test"], { stdio: "inherit" });
 }
 
@@ -194,6 +197,14 @@ const read = (name) => {
   }
   return JSON.parse(fs.readFileSync(p, "utf8"));
 };
+
+// 노션 직접 선별 목록 동기화는 후보 파일이 있는 실행에서만 별도 완결성을 검사한다.
+// 일반 회신 갱신에 이 파일을 강제하면 서로 다른 업무가 다시 엉킨다.
+if (fs.existsSync(path.join(taskDir, "notion-direct-candidates.json"))) {
+  const notionAudit = read("notion-sync-audit.json");
+  assert.equal(notionAudit.ok, true, "노션 직접 선별 목록 동기화 검사가 실패했다");
+  assert.equal((notionAudit.issues || []).length, 0, "노션 후보 누락·중복·가격 오류가 남았다");
+}
 
 // 0. 안전 게이트 산출물
 for (const name of ["before", "after", "write-plan.json", "write-plan.validated.json", "diff.json", "result.json", "status-audit.json"]) {

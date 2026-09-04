@@ -53,7 +53,7 @@ const bl = (v) => !String(v ?? "").trim();
 const txt = (v) => String(v ?? "").trim();
 
 async function get(url) {
-  const r = await fetch(url);
+  const r = await fetch(url, { signal: AbortSignal.timeout(20_000) });
   if (!r.ok) throw new Error(`못 받았다: HTTP ${r.status} ${url}`);
   return r.text();
 }
@@ -155,8 +155,8 @@ export async function scanTab({ sheetId = SHEET_ID, tab, gid, columns, platform 
   return { tab, gid, 행: tb.length, 검사한열: columns.filter((c) => H.includes(c)), junk, 다른플랫폼: skippedByPlatform };
 }
 
-export async function scanAll({ sheetId = SHEET_ID, tabs = TABS, allPlatforms = false } = {}) {
-  const gids = await resolveGids(sheetId);
+export async function scanAll({ sheetId = SHEET_ID, tabs = TABS, allPlatforms = false, gids: suppliedGids = null } = {}) {
+  const gids = suppliedGids || await resolveGids(sheetId);
   const out = { 시트: sheetId, 탭: {}, junk: [], 다른플랫폼: [] };
   for (const t of tabs) {
     const gid = gids.get(t.tab);
@@ -180,7 +180,15 @@ if (invokedPath && (import.meta.url === `file://${invokedPath}` || invokedPath.e
     const i = argv.indexOf("--" + n);
     return i > -1 && argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[i + 1] : d;
   };
-  const res = await scanAll({ sheetId: flag("sheet-id", SHEET_ID), allPlatforms: argv.includes("--all-platforms") });
+  const influencerGid = flag("influencer-gid"), intakeGid = flag("intake-gid");
+  const suppliedGids = influencerGid && intakeGid
+    ? new Map([["인플루언서", influencerGid], ["유입", intakeGid]])
+    : null;
+  const res = await scanAll({
+    sheetId: flag("sheet-id", SHEET_ID),
+    allPlatforms: argv.includes("--all-platforms"),
+    gids: suppliedGids,
+  });
   const out = flag("out");
   if (out) fs.writeFileSync(out, JSON.stringify(res, null, 1), "utf8");
   console.log(JSON.stringify(res, null, 1));

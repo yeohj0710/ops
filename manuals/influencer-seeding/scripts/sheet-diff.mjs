@@ -93,7 +93,7 @@ export function headerIndex(header) {
 function indexByKey(rows, keyIdx) {
   const map = new Map();
   rows.forEach((r, i) => {
-    const k = norm(r[keyIdx]);
+    const k = normKey(r[keyIdx]);
     if (!k) return;
     if (!map.has(k)) map.set(k, []);
     map.get(k).push({ row: r, at: i });
@@ -108,6 +108,7 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
     disappearedKeys: [],
     unexpectedNewKeys: [],
     duplicateKeys: [],
+    preexistingDuplicateKeys: [],
     emptiedCells: [],
     outOfScope: [],
     externalChanges: [],
@@ -140,6 +141,20 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
 
   const keyName = allow.keyColumn;
   const hi = headerIndex(bHead);
+  const requestedHeaders = [
+    allow.keyColumn,
+    ...(allow.columns || []),
+    ...(allow.protectedColumns || []),
+    ...(allow.externalColumns || []),
+  ].map(norm).filter(Boolean);
+  // gviz headers=2 can concatenate a merged title cell with the first real header.
+  // Example: "인플루언서 통합 시트 언어권". Resolve only an explicitly
+  // requested suffix, so similarly named ordinary columns are not guessed.
+  for (const wanted of requestedHeaders) {
+    if (hi.has(wanted)) continue;
+    const matches = bHead.map((h, i) => [norm(h), i]).filter(([h]) => h.endsWith(wanted));
+    if (matches.length === 1) hi.set(wanted, matches[0][1]);
+  }
   const keyIdx = keyName != null ? hi.get(norm(keyName)) : undefined;
   if (keyIdx === undefined) {
     out.outOfScope.push({ why: `열쇠 열을 못 찾았다: ${keyName}` });
@@ -152,9 +167,9 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
     if (i === undefined) out.outOfScope.push({ why: `허용 열이 시트에 없다: ${c}` });
     else allowedCols.add(i);
   }
-  const allowedKeys = new Set((allow.keys || []).map(norm));
-  const newKeys = new Set((allow.newKeys || []).map(norm));
-  const deletedKeys = new Set((allow.deletedKeys || []).map(norm));
+  const allowedKeys = new Set((allow.keys || []).map(normKey));
+  const newKeys = new Set((allow.newKeys || []).map(normKey));
+  const deletedKeys = new Set((allow.deletedKeys || []).map(normKey));
   const emptyCells = new Set((allow.emptyCells || []).map((x) => cellId(x.key, x.column)));
   const protectedCols = new Set((allow.protectedColumns || []).map(norm));
   const externalCols = new Set((allow.externalColumns || []).map(norm));
@@ -162,7 +177,12 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
   const bIdx = indexByKey(bRows, keyIdx);
   const aIdx = indexByKey(aRows, keyIdx);
 
-  for (const [k, list] of aIdx) if (list.length > 1) out.duplicateKeys.push({ key: k, count: list.length });
+  for (const [k, list] of aIdx) {
+    if (list.length <= 1) continue;
+    const beforeCount = bIdx.get(k)?.length || 0;
+    if (list.length > beforeCount) out.duplicateKeys.push({ key: k, count: list.length, beforeCount });
+    else out.preexistingDuplicateKeys.push({ key: k, count: list.length });
+  }
 
   for (const [k] of bIdx) {
     if (aIdx.has(k)) continue;
@@ -181,7 +201,9 @@ export function diffSheet(name, beforeCsv, afterCsv, allow = {}) {
       const av = norm(after[c]);
       if (bv === av) continue;
 
-      const colName = norm(bHead[c]) || `col${c}`;
+      let colName = norm(bHead[c]) || `col${c}`;
+      const suffix = requestedHeaders.filter((wanted) => colName.endsWith(wanted));
+      if (suffix.length === 1) colName = suffix[0];
       const hit = { key: k, col: c, colName, before: bv, after: av };
 
       if (externalCols.has(colName)) {
@@ -233,7 +255,7 @@ function selfTest() {
   // 허용 안 한 행
   d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n2,거절,@b,2000,메모유지,70000\n", allow);
   assert.equal(d.outOfScope.length, 1, "허용 안 한 행 변경을 잡아야 한다");
-  assert.equal(d.outOfScope[0].key, "@b");
+  assert.equal(d.outOfScope[0].key, "b");
 
   // 값이 있던 칸을 비움
   d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n2,미접촉,@b,2000,,70000\n", allow);
@@ -241,7 +263,7 @@ function selfTest() {
 
   // 행이 사라짐
   d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n", allow);
-  assert.deepEqual(d.disappearedKeys, ["@b"], "사라진 행을 잡아야 한다");
+  assert.deepEqual(d.disappearedKeys, ["b"], "사라진 행을 잡아야 한다");
   d = diffSheet("t", before, head + "1,1차 발송,@a,1000,,\n", { ...allow, deletedKeys: ["@b"] });
   assert.ok(isClean(d), "승인 목록의 행 삭제는 통과해야 한다");
 
@@ -267,9 +289,19 @@ function selfTest() {
 
   // 예상 못 한 새 줄
   d = diffSheet("t", before, before + "3,미접촉,@c,300,,\n", allow);
-  assert.deepEqual(d.unexpectedNewKeys, ["@c"]);
+  assert.deepEqual(d.unexpectedNewKeys, ["c"]);
   d = diffSheet("t", before, before + "3,미접촉,@c,300,,\n", { ...allow, newKeys: ["@c"] });
   assert.ok(isClean(d), "미리 적어 둔 새 줄은 통과해야 한다");
+
+  // 계정은 대소문자를 구분하지 않는다.
+  d = diffSheet("t", before, before + "3,미접촉,@CaseName,300,,\n", { ...allow, newKeys: ["@casename"] });
+  assert.ok(isClean(d), "계정 대소문자 차이는 같은 키로 봐야 한다");
+
+  // 실행 전부터 있던 중복은 이번 실행의 신규 사고가 아니다.
+  const preDup = head + "1,1차 발송,@a,1000,,\n2,미접촉,@a,2000,,\n";
+  d = diffSheet("t", preDup, preDup, allow);
+  assert.ok(isClean(d), "기존 중복은 별도 보고하고 이번 실행 실패로 보지 않는다");
+  assert.equal(d.preexistingDuplicateKeys.length, 1);
 
   // 따옴표 안 쉼표
   assert.deepEqual(parseCsv('a,"b,c",d')[0], ["a", "b,c", "d"]);
@@ -345,6 +377,7 @@ function main() {
     for (const k of d.disappearedKeys) console.log(`    행이 사라짐: ${k}`);
     for (const k of d.unexpectedNewKeys) console.log(`    예상 못 한 새 행: ${k}`);
     for (const k of d.duplicateKeys) console.log(`    열쇠 중복: ${k.key} ${k.count}줄`);
+    for (const k of d.preexistingDuplicateKeys || []) console.log(`    기존 열쇠 중복: ${k.key} ${k.count}줄`);
     for (const c of d.emptiedCells) console.log(`    칸을 비움: ${c.key} / ${c.colName} = "${c.before}"`);
     for (const c of d.outOfScope) console.log(`    범위 밖: ${c.key ?? ""} / ${c.colName ?? ""} "${c.before}" → "${c.after}" (${c.why})`);
     // 이 런이 고칠 수 있는 것이 아니다. 보고만 하고 통과 판정에서 뺀다
