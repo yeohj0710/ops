@@ -641,15 +641,18 @@ async function runLoop(id) {
 
   let consecutiveErrors = 0;
   let shortWaits = 0;
-  // 이어 받을 때 곧바로 넣지 않는다. 직전 주문에서 간격만큼 지난 뒤가 다음 회차다.
-  // 바로 넣으면 사이트가 같은 링크 연속 주문을 `link_duplicate` 로 되돌린다 (260905 실측)
+  // 이어 받을 때 곧바로 넣지 않는다. 직전 주문 또는 실패한 시도에서 간격만큼 지난 뒤가 다음 회차다.
+  // 실패 직후 프로세스가 다시 뜨면 직전 주문만 봐서는 곧바로 재시도해 `link_duplicate` 가 반복된다 (260905 실측)
   let next = Date.now();
-  const lastAt = s.orders.at(-1)?.at;
+  const lastAt = [s.orders.at(-1)?.at, s.errors.at(-1)?.at]
+    .filter(Boolean)
+    .sort((a, b) => new Date(a.replace(" ", "T")) - new Date(b.replace(" ", "T")))
+    .at(-1);
   if (lastAt) {
     const due = new Date(lastAt.replace(" ", "T")).getTime() + s.everySec * 1000;
     if (Number.isFinite(due) && due > next) {
       next = due;
-      log(id, `직전 주문이 ${lastAt} 이라 다음 회차는 ${stamp(new Date(next))} 부터다`);
+      log(id, `직전 시도가 ${lastAt} 이라 다음 회차는 ${stamp(new Date(next))} 부터다`);
     }
   }
 
