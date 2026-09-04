@@ -16,6 +16,15 @@ const num = (v) => {
 };
 const formulaError = (v) => /^#(?:REF!|N\/A|VALUE!|DIV\/0!|NAME\?|NUM!|NULL!)/i.test(txt(v));
 
+export function staleHandleGate({ status, memo, action }) {
+  const flagged = /(?:기존|이전|옛)\s*핸들.{0,30}(?:접속\s*불가|사라|삭제)|최신\s*핸들.{0,20}미확인/i.test(`${txt(memo)} ${txt(action)}`);
+  if (!flagged) return [];
+  const issues = [];
+  if (txt(status) !== "확인 필요") issues.push("stale-handle-status");
+  if (!/발송\s*금지/.test(txt(action))) issues.push("stale-handle-not-gated");
+  return issues;
+}
+
 function headerIndex(header, wanted) {
   const exact = header.findIndex((h) => txt(h) === wanted);
   if (exact >= 0) return exact;
@@ -115,6 +124,11 @@ export function audit({ payload, beforeInfluencer, afterIntake, afterInfluencer 
     for (const r of rows) {
       const missing = ["팔로워", "릴스 중앙 조회수", "1차 제안", "2차 상향", "3차 상향(상한)"].filter((name) => !txt(r[ii[name]]));
       if (missing.length) issues.push({ type: "all-row-required-blank", key: k, missing });
+      for (const type of staleHandleGate({
+        status: r[ii["진행 상태"]],
+        memo: r[ii["품질·운영 메모"]],
+        action: r[ii["추천 액션"]],
+      })) issues.push({ type, key: k });
       r.forEach((v, column) => { if (formulaError(v)) issues.push({ type: "formula-error", key: k, column, value: v }); });
     }
   }
@@ -141,7 +155,9 @@ if (process.argv.includes("--self-test")) {
   assert.equal(num("₩30,000"), 30000);
   assert.equal(formulaError("#REF!"), true);
   assert.equal(formulaError("#하자매"), false);
-  console.log("audit-notion-direct-sync self-test: 5/5 passed");
+  assert.deepEqual(staleHandleGate({ status: "미접촉", memo: "기존 핸들 접속 불가", action: "" }), ["stale-handle-status", "stale-handle-not-gated"]);
+  assert.deepEqual(staleHandleGate({ status: "확인 필요", memo: "기존 핸들 접속 불가", action: "최신 핸들 미확인 · 발송 금지" }), []);
+  console.log("audit-notion-direct-sync self-test: 7/7 passed");
 } else {
   const candidates = arg("--candidates"), beforeDir = arg("--before"), afterDir = arg("--after"), out = arg("--out");
   if (!candidates || !beforeDir || !afterDir || !out) throw new Error("쓰는 법: --candidates <json> --before <폴더> --after <폴더> --out <json>");
