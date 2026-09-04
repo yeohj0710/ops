@@ -9,9 +9,8 @@
  * 샤오홍슈 행까지 세어 "빈칸 192개" 같은 숫자가 나와서 다 못 채운 런처럼 보였다.
  * 실제로 이 업무가 채울 인스타 행의 빈칸은 그때 11개였다.
  *
- * 기본은 **사유가 없는 빈칸만** 대상으로 삼는다.
- * 조회수 근거에 "릴스 없음" 이 적힌 빈칸은 지난 런이 보고 비워 둔 칸이라 다시 재도 그대로다.
- * 그것까지 다시 재려면 --all-blanks 를 붙인다.
+ * 계정이 있으면 사유와 관계없이 숫자 지표 빈칸을 모두 대상으로 삼는다.
+ * 삭제·비공개·릴스 없음도 추정값을 넣어야 하므로 예외로 건너뛰지 않는다.
  */
 
 import fs from "node:fs";
@@ -21,12 +20,9 @@ import { parseCsv, resolveGids } from "./scan-junk.mjs";
 const SHEET_ID = "1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE";
 
 const TABS = [
-  { tab: "인플루언서", metrics: ["릴스 중앙 조회수", "공개 연락처"], reasonColumn: "조회수 근거", platform: "인스타그램" },
+  { tab: "인플루언서", metrics: ["릴스 중앙 조회수", "팔로워", "공개 연락처"], reasonColumn: "조회수 근거", platform: "인스타그램" },
   { tab: "유입", metrics: ["릴스 중앙 조회수", "좋아요 중앙값", "팔로워"], reasonColumn: null, platform: "인스타그램" },
 ];
-
-// 지난 런이 보고 비워 둔 칸. 다시 재도 값이 안 생긴다
-const 해명된사유 = /계정 없음|릴스 없음|비공개 계정|조회수 숨김/;
 
 const argv = process.argv.slice(2);
 const flag = (n, d = null) => {
@@ -61,7 +57,7 @@ fs.mkdirSync(path.join(OPT.outdir, "export"), { recursive: true });
 const handles = [];
 const seenHandle = new Set();
 const targets = {};
-const report = { 시트: OPT.sheetId, 기준: OPT.allBlanks ? "빈칸 전부" : "사유 없는 빈칸만", 탭: {} };
+const report = { 시트: OPT.sheetId, 기준: "빈칸 전부", 탭: {} };
 
 for (const { tab, metrics, reasonColumn, platform } of TABS) {
   // 서식 뷰로 받는다. gviz 는 숫자 열에 든 글자를 빈칸으로 줘서 "빈칸" 판정이 어긋난다
@@ -93,9 +89,6 @@ for (const { tab, metrics, reasonColumn, platform } of TABS) {
     const missing = [];
     for (const c of cols) {
       if (!bl(row[H.indexOf(c)])) continue;
-      // 조회수 쪽 빈칸은 근거가 설명하고 있으면 다시 재지 않는다
-      const 조회수쪽 = c === "릴스 중앙 조회수";
-      if (!OPT.allBlanks && 조회수쪽 && 해명된사유.test(사유)) { stat.해명된빈칸++; continue; }
       missing.push(c);
       stat.열별[c]++;
     }

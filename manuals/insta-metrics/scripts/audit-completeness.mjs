@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // 인스타 지표 보충 완료 게이트.
-// 빈칸을 단순히 세지 않고, 확인 완료된 예외와 아직 조사하지 않은 누락을 구분한다.
+// 계정이 있는 행은 팔로워·조회수·세 제안 가격에 숫자가 있어야 완료다.
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -76,7 +76,9 @@ export function auditRows(rows) {
     }
   }
 
-  report.ok = report.unhandledMetricBlanks.length === 0
+  report.ok = report.followerBlank === 0
+    && report.viewsBlank === 0
+    && report.unhandledMetricBlanks.length === 0
     && report.retryFailures.length === 0
     && report.priceBlanks.length === 0
     && report.xhsLikesWithoutViews.length === 0;
@@ -89,7 +91,11 @@ function selfTest() {
     ["인스타그램", "@ok", "1000", "2000", "30000", "50000", "100000", "릴스 10편 실측", ""],
     ["인스타그램", "@gone", "", "", "30000", "50000", "100000", "계정 없음(재확인)", ""],
   ];
-  assert.equal(auditRows(rows).ok, true, "확인 완료된 삭제 계정은 허용해야 한다");
+  assert.equal(auditRows(rows).ok, false, "삭제 계정도 숫자 추정 없이 완료로 인정하면 안 된다");
+  rows[2][2] = "7895";
+  rows[2][3] = "6000";
+  rows[2][7] = "팔로워 추정";
+  assert.equal(auditRows(rows).ok, true, "근거를 남긴 숫자 추정은 완료로 인정해야 한다");
   rows.push(["샤오홍슈", "bad", "1000", "", "30000", "50000", "100000", "접근실패", "20"]);
   const failed = auditRows(rows);
   assert.equal(failed.ok, false, "접근실패를 완료로 인정하면 안 된다");
@@ -117,4 +123,3 @@ if (outPath) {
 }
 console.log(JSON.stringify(report, null, 2));
 if (!report.ok) process.exit(1);
-
