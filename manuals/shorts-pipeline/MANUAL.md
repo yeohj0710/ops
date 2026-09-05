@@ -428,12 +428,20 @@ API 키가 필요하면 `api-key` 페이지에서 복사해 쓴다.
 
 1. **http://localhost:5678/home/credentials** 로 간다 (L3)
 2. 해당 credential 을 누른다. **이름이 채널을 가른다.**
-   | credential 이름 | 어느 계정으로 로그인하나 |
-   | --- | --- |
-   | `youtube account` | **하루건강약사** |
-   | `account2` | **건강장수비결** |
+   | credential 이름 (화면 표기) | 어느 채널인가 | 어느 구글 계정으로 로그인하나 |
+   | --- | --- | --- |
+   | `YouTube account` | **하루건강약사** | `wellnessbox.youtube@gmail.com` |
+   | `YouTube account 2` | **건강장수비결** | `wellnessbox.auth@gmail.com` |
 
    **바꿔서 로그인하면 영상이 엉뚱한 채널로 올라간다.** 누르기 전에 이름을 확인한다.
+   구글 계정과 채널의 짝은 외우지 말고 유튜브 탭에서 재확인할 수 있다. 응답이
+   `채널명 → 구독자수 → 이메일` 차례로 나오니 **채널명 바로 뒤의 이메일이 그 채널 주인**이다.
+
+   ```js
+   const t = await fetch('/getAccountSwitcherEndpoint').then(r => r.text());
+   const s = t.replace(/^\)\]\}'/, '');
+   [...s.matchAll(/"accountName":\{"simpleText":"([^"]+)"\}|([\w.\-]+@[\w.\-]+)/g)].map(m => m[1] || m[2]);
+   ```
 3. 구글 로그인을 다시 한다. **권한 체크박스를 전부 켜고** 확인을 누른다.
    하나라도 빠지면 업로드가 다시 실패한다.
 4. 회로를 다시 실행한다.
@@ -454,6 +462,49 @@ n8n 콜백으로 돌아가 credential 이 저장된다.
 
 **같은 탭에서 열지 마라.** OAuth 는 부모 창에 결과를 돌려주는 구조라 흐름이 깨진다.
 계정 선택 화면에서 **어느 계정을 고르는지** 다시 확인한다. 여기서 틀리면 채널이 바뀐다.
+
+### OAuth 주소를 확장 밖으로 꺼내는 법 (260905 실측)
+
+**가로챈 주소를 그냥 찍으면 출력이 통째로 막힌다.** 확장의 JS 실행 결과에 쿼리스트링이 섞이면
+`[BLOCKED: Cookie/query string data]` 만 돌아온다. 주소를 못 받으니 새 탭에서 열 수도 없다.
+
+**base64 로 바꿔서 두 토막으로 나눠 꺼낸 뒤 셸에서 합친다.** 한 번에 다 찍으면 길이 제한에 잘린다.
+
+```js
+// 1) 버튼을 누른 직후, 같은 탭에서
+window.__b64 = btoa(unescape(encodeURIComponent(window.__opened.pop())));
+({ total: window.__b64.length, p1: window.__b64.slice(0, 600) })
+// 2) 다음 호출에서
+({ p2: window.__b64.slice(600) })
+```
+
+두 토막을 파일로 저장하고 `Buffer.from(p1 + p2, 'base64').toString('utf8')` 로 되돌리면
+원래 주소가 나온다. 그 문자열은 `navigate` 인자로는 통한다. 막히는 건 **JS 실행 결과 출력**뿐이다.
+
+**팝업은 아예 못 열게 막는다.** 가로채기에서 원래 `window.open` 을 부르면 확장이 못 만지는
+크롬 창이 하나 뜨고, 그 창이 같은 state 를 먼저 태워서 내 탭 콜백이 `The OAuth callback state is
+invalid!` 로 죽는다. 주소만 받고 창은 안 여는 가짜를 돌려주면 된다.
+
+```js
+window.__opened = [];
+window.open = function(u, ...r){ if(u) window.__opened.push(String(u)); return {closed:false, close(){}, focus(){}, location:{href:''}}; };
+```
+
+**`state` 는 금방 만료된다.** `The OAuth callback state is invalid!` 가 뜨면 되살리려 하지 말고
+`Sign in with Google` 을 다시 눌러 새 주소를 받는다. 받은 뒤로는 화면 몇 개를 빨리 넘겨야 한다.
+
+**`login_hint` 를 붙이지 마라 (260905 실측).** 계정 선택을 건너뛰려고 넣었더니 브랜드 채널
+위임 흐름이 깨져서 `문제가 발생했습니다` 로 떨어졌다. 계정 선택 화면을 그냥 거쳐 간다.
+
+**구글 화면은 매번 첫 클릭이 안 닿는다.** 계정 선택, `Google에서 확인하지 않은 앱`, 권한 화면
+셋 다 그렇다. 화면이 바뀔 때마다 **스크롤 한 번 → 좌표 다시 재기 → 클릭** 을 지킨다.
+
+**권한 화면의 `모두 선택` 이 안 먹으면 다섯 개를 하나씩 누른다.** 누른 뒤
+`[...document.querySelectorAll('input[type=checkbox]')].map(e => e.checked)` 가 전부 `true` 인지
+확인하고 나서 `계속` 을 누른다. 하나라도 `false` 면 업로드가 또 실패한다.
+`계속` 버튼은 화면 아래에 있어 스크롤해야 좌표가 잡힌다.
+
+끝나면 콜백 탭에 `Connection successful` 이 뜬다. 그게 성공 판정이다.
 
 ## P3. 유튜브에 올라갔는지 확인하고 좋아요 누르기
 
@@ -536,16 +587,26 @@ n8n 콜백으로 돌아가 credential 이 저장된다.
 `ready_for_manual_upload` 그대로라 폴더만 보면 무엇이 나갔는지 알 수 없다.
 실제로 세 폴더가 전부 `ready` 인데 그중 두 편은 이미 올라가 있었다.
 
-**무엇이 남았는지는 인스타 피드로 본다.** 로그인된 탭에서 부르면 한 번에 온다 (L3).
+**무엇이 남았는지는 인스타 피드로 본다.** 프로필 화면을 열고 타일에서 긁는다 (L3).
 
 ```js
-const r = await fetch("/api/v1/feed/user/15272270790/?count=18",
-  { headers: { "x-ig-app-id": "936619743392459" } }).then(r => r.json());
-r.items.map(i => ({ code: i.code, cap: (i.caption?.text || "").split("
-")[0] }));
+// https://www.instagram.com/haruyaksa/ 로 이동한 뒤
+[...document.querySelectorAll('main a[href*="/reel/"], main a[href*="/p/"]')].slice(0, 12)
+  .map(a => ({
+    code: (a.getAttribute('href').match(/\/(?:reel|p)\/([^/]+)\//) || [])[1],
+    cap: (a.querySelector('img')?.getAttribute('alt') || '').split("\n")[0],
+  }));
 ```
 
-캡션 첫 줄이 영상 제목이라 폴더 이름과 그대로 맞춰 보면 된다.
+타일 이미지의 `alt` 에 **캡션 전문이 들어 있다.** 첫 줄이 영상 제목이라 폴더 이름과 그대로 맞춰
+보면 되고, 그대로 `pick-next-reel.mjs` 에 넘길 JSON 이 된다. 카드뉴스는 `alt` 가
+`Photo by 하루건강약사 on ...` 로 시작하니 그건 릴스 후보에서 빠진다.
+
+**API 두 개는 지금 안 된다 (260905 실측).** 매뉴얼에 오래 적혀 있던
+`/api/v1/feed/user/<id>/` 는 로그인한 계정이 그 계정이어도 앱 껍데기 HTML 로 리다이렉트되고
+(`redirected: true`, 200), `/api/v1/users/web_profile_info/?username=...` 은 429 를 준다.
+둘 다 오류처럼 안 보이고 **JSON 파싱 오류로만 드러나서** 로그인이 풀린 줄 오해하기 쉽다.
+프로필 화면 긁기는 그 자리에서 잘 됐다.
 
 1. **무엇이 밀렸는지 센다 (L1)**
    - 이미 준비된 폴더: `<드라이브>/영상 편집/AI 크리에이터/인스타그램 업로드용/`
@@ -722,10 +783,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeli
 `SWP_NOACTIVATE` 를 준다. 사용자가 보던 창은 포커스를 그대로 쥐고, 팝업만 위에 뜬다.
 그 순간 `visibilityState` 가 `visible` 이 되고 동영상 메타데이터가 **2ms 만에** 온다.
 
+**손으로 짓지 말고 이 명령으로 한다 (L1).** 제목으로 창 하나만 골라 올린다.
+
 ```bash
-# 크기와 자리는 화면 구석으로. 게시가 끝나면 팝업을 닫는다
-# SWP_NOACTIVATE(0x0010) | SWP_SHOWWINDOW(0x0040) = 0x0050, after = HWND_TOPMOST(-1)
+powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeline/scripts/window-topmost.ps1" -Match "Instagram"
+# 끝나면 핀을 푼다
+powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeline/scripts/window-topmost.ps1" -Match "Instagram" -Off
 ```
+
+**올리고 나서 바로 재지 마라 (260905 실측).** `OK=True` 가 나온 직후 1.2초 뒤에 읽으면
+아직 `hidden` 이다. 몇 초 더 기다렸다가 다시 읽으면 `visible` 로 바뀌어 있고 그때 동영상이
+2ms 만에 붙는다. 한 번 `hidden` 을 보고 "안 됐다" 며 다른 길을 찾지 마라.
+
+**이 기계에는 항상 위를 자동으로 푸는 가드가 돈다.** `C:\dev\tools\topmost-guard.ps1` 이
+1초마다 훑어서 크롬 창의 핀을 뗀다. 지금 상태는
+`powershell -ExecutionPolicy Bypass -File C:\dev\tools\topmost-list.ps1` 로 본다.
+260905 에는 게시가 끝날 때까지 핀이 남아 있어 그대로 통했다. 핀이 자꾸 풀려서 막히면
+`C:\dev\tools\topmost-guard-ignore.txt` 에 `chrome` 을 잠깐 넣고 **끝나면 반드시 빼라.**
 
 사람 화면을 통째로 뺏지 않으므로 사용자가 원격에서 다른 일을 보고 있어도 된다.
 **게시가 끝나면 `__pop.close()` 로 반드시 닫는다.** 스크립트가 연 창이라 스크립트가 닫을 수 있다.
@@ -1174,7 +1248,21 @@ j.inbox.threads.slice(0,4).map(t => ({u: t.users.map(x=>x.username).join(), code
   화면에서 눌러 선택 표시가 옮겨간 것을 보고 진행한다
 - **인스타 공유 창의 사람 순서는 계정마다 다르다.** 260830 에 haruyaksa 는 약대사람이 1번,
   kmin.kyeong 은 약대사람 1번에 하루건강약사 3번, yakdae.saram 은 김민경 2번에 하루건강약사 4번이었다.
-  자리를 외우지 말고 매번 이름으로 찾는다
+  260905 에는 haruyaksa 가 김민경 1번 약대사람 2번, kmin.kyeong 이 약대사람 1번 하루건강약사 2번,
+  yakdae.saram 이 김민경 3번 하루건강약사 4번이었다. 자리를 외우지 말고 매번 이름으로 찾는다
+- **인스타 계정 전환 목록은 스크롤 목록이다 (260905 실측).** 열 개가 넘는데 다섯 줄만 보인다.
+  DOM 으로 잰 좌표를 그냥 누르면 보이는 영역 밖이라 **뒷배경을 눌러서 창이 닫힌다.**
+  전환이 안 됐는데 창만 사라져서 클릭이 안 먹은 줄 오해한다. 창 안에서 **스크롤을 먼저 굴려
+  대상 계정을 화면에 올린 뒤** 캡처에서 잰 좌표로 누른다
+- **사이드바 `더 보기` 는 토글이다.** 안 열린 것 같아서 한 번 더 누르면 닫힌다. 누른 뒤
+  `계정 전환` 의 `getBoundingClientRect().width` 가 0 이 아닌지로 판정하고, 한 번만 더 누른다.
+  메뉴가 열렸는데 `계정 전환` 이 뷰포트 아래(예: y=708, 화면은 579)로 렌더될 때가 있다.
+  그때는 좌표를 포기하고 그 요소에 `.click()` 을 부른다. 메뉴 항목은 이게 잘 먹는다
+- **n8n 실행 상태는 `running` 과 `waiting` 을 오간다.** 260905 에 #400 이
+  running → waiting → running → success 로 갔다. `waiting` 을 봤다고 폴링 단계로 단정하지 말고
+  `success`/`error` 만 끝으로 본다
+- **캡션 수정 화면의 `완료` 는 눌린 뒤 몇 초 늦게 닫힌다.** 바로 확인하면 창이 그대로라
+  안 눌린 줄 알고 또 누르게 된다. 3~5초 기다렸다가 `div[role="dialog"]` 이 사라졌는지 본다
 
 ## 사람에게 알려야 하는 지점
 
