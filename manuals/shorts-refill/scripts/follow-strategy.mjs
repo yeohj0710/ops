@@ -7,13 +7,8 @@
 //
 //   팔로우 수 = 조회수 × 전환율
 //
-// 260825 실측(51편)에서 조회수가 훨씬 크게 흔들린다. 로그 표준편차가 조회수 1.29,
-// 전환율 0.59 로 2.2배다. 팔로우 수와의 상관도 조회수 0.92, 전환율 0.52 다.
-// **조회수가 지배한다.** 안약 편은 전환율이 0.014% 로 바닥인데 62.9만 조회로
-// 팔로우 86명을 데려와 전체 5위다. 전환율만 보면 이 편을 버리는 판단을 하게 된다.
-//
-// **다만 둘은 서로 무관하다(상관 0.15). 트레이드오프가 아니라 둘 다 챙기는 것이다.**
-// 조회수를 깎아가며 전환율을 올리면 손해고, 전환율이 바닥인 결을 그냥 두면 남는 걸 흘린다.
+// 누적 관측값은 게시 후 경과 시간이 다르다. 상관과 중앙값 비교를 인과나 손실로 해석하지 않는다.
+// 0명도 포함하며, 같은 릴스는 최신 관측 한 건만 남긴다.
 //
 // 자료는 릴스 인사이트 랩이 화면 녹화를 OCR 로 데이터화해 둔 것이다.
 // 로그인이 필요 없어서 L1 으로 그냥 받는다. 화면을 긁을 일이 없다.
@@ -28,6 +23,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { collapse } from "./follow-metrics.mjs";
 
 const SOURCE = "https://reels-insight-lab.vercel.app/data/dashboard.json";
 const N8N = "C:/dev/n8n-youtube-shorts-automation";
@@ -46,37 +42,6 @@ const localJson = arg("json");
 const raw = localJson
   ? JSON.parse(fs.readFileSync(localJson, "utf8"))
   : await (await fetch(SOURCE)).json();
-
-// 숫자는 "1,223,317" 이나 "18,136" 처럼 온다. 0 과 빈 값을 갈라야 한다.
-const num = (s) => {
-  const n = Number(String(s ?? "").replace(/[^0-9.]/g, ""));
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
-
-// 한 릴스가 두 화면(릴스 인사이트, 게시물 인사이트)으로 두 번 찍힌다.
-// 같은 shortcode 면 팔로우가 큰 쪽을 남긴다. 작은 쪽은 화면을 덜 스크롤한 컷이다.
-function collapse(records) {
-  const m = new Map();
-  for (const r of records) {
-    const row = {
-      account: r.account_handle,
-      title: (r.instagram_reel_title || r.content_title_hint || "").trim(),
-      code: r.instagram_shortcode || null,
-      date: r.instagram_post_date || null,
-      views: num(r.summary?.views),
-      reach: num(r.summary?.reach_or_viewers),
-      follows: num(r.summary?.follows),
-      watch: num(r.summary?.average_watch_time?.value),
-      saves: r.header_counters_display?.saves || null,
-      shares: r.header_counters_display?.shares || null,
-    };
-    if (!row.views || !row.follows) continue;
-    const key = row.account + "|" + (row.code || row.title);
-    const prev = m.get(key);
-    if (!prev || row.follows > prev.follows) m.set(key, row);
-  }
-  return [...m.values()];
-}
 
 const all = collapse(raw.records || []);
 const mine = all.filter((r) => r.account === ACCOUNT);
@@ -127,12 +92,14 @@ const pct = (n) => n.toFixed(3) + "%";
 const kn = (n) => n.toLocaleString("ko-KR");
 
 const stamp = new Date().toISOString().slice(0, 10);
-say(`# 팔로우 전환 전략 (${ACCOUNT})`);
+say(`# 팔로우 유입 분석 (${ACCOUNT})`);
 say("");
-say(`자료 ${SOURCE}`);
+say(`자료: [릴스 인사이트 랩 데이터](${SOURCE})`);
 say(`뽑은 날 ${stamp}, 편 수 ${mine.length}, 총 조회 ${kn(sum(mine, "views"))}, 총 팔로우 ${kn(sum(mine, "follows"))}`);
 say("");
-say("**목표는 전환율이 아니라 팔로우 수다.** 전환율이 낮아도 조회수가 크면 그만이다.");
+say("목표는 릴스별 팔로우 유입 수다. 조회수와 전환율은 결과를 설명하는 보조 지표로 본다.");
+say(`팔로우 0명 ${mine.filter(r => r.follows === 0).length}편을 포함했다. 같은 릴스는 최신 관측을 사용하며 합산하지 않았다.`);
+say("누적 수치의 관측일과 게시 후 경과 시간이 다르다. 릴스 귀속 팔로우 합계는 현재 팔로워 수나 순증가가 아니다.");
 say("");
 
 // 계정 비교는 기본으로 안 낸다. 아래 이유를 보라.
@@ -176,22 +143,25 @@ const corr = (a, b) => {
   for (let i = 0; i < n; i++) { const da = a[i] - ma, db = b[i] - mb; sa += da * da; sb += db * db; sab += da * db; }
   return sab / Math.sqrt(sa * sb);
 };
-const lf = mine.map((r) => ln(r.follows));
-const lv = mine.map((r) => ln(r.views));
-const lr = mine.map((r) => ln(r.follows / r.views));
+const positive = mine.filter(r => r.follows > 0);
+const lf = positive.map((r) => ln(r.follows));
+const lv = positive.map((r) => ln(r.views));
+const lr = positive.map((r) => ln(r.follows / r.views));
 const totalF = sum(mine, "follows");
 const top10F = byFollows.slice(0, 10).reduce((s, r) => s + r.follows, 0);
 
-say("## 무엇이 팔로우 수를 흔드는가");
+say("## 조회수·전환율과 팔로우 수의 상관");
+say("");
+say("큰 수치의 영향을 줄이려고 조회수와 전환율을 로그로 바꿔 비교했다. 표준편차는 수치의 흩어진 정도, 상관은 함께 늘고 줄어드는 정도다.");
 say("");
 say("| 견줄 것 | 로그 표준편차 | 팔로우 수와 상관 |");
 say("| --- | --- | --- |");
 say(`| 조회수 | ${sd(lv).toFixed(2)} | ${corr(lf, lv).toFixed(2)} |`);
 say(`| 전환율 | ${sd(lr).toFixed(2)} | ${corr(lf, lr).toFixed(2)} |`);
 say("");
-say(`조회수가 ${(sd(lv) / sd(lr)).toFixed(1)}배 더 크게 흔들리고 팔로우 수와도 훨씬 붙어 있다. **조회수가 지배한다.**`);
-say(`조회수와 전환율은 서로 상관 ${corr(lv, lr).toFixed(2)} 로 거의 무관하다. **트레이드오프가 아니라 둘 다 챙기는 것이다.**`);
-say(`상위 10편이 전체 팔로우의 ${Math.round((top10F / totalF) * 100)}% 를 만들었다(${kn(top10F)}/${kn(totalF)}). 소수 히트 게임이다.`);
+say(`로그 통계는 팔로우가 양수인 ${positive.length}편만 계산했다. 전체 순위와 합계에는 0명도 포함했다.`);
+say(`조회수와 전환율의 로그 상관은 ${corr(lv, lr).toFixed(2)}이다. 이 값만으로 제목이나 소재의 효과를 확정할 수 없다.`);
+say(`상위 10편이 전체 팔로우의 ${Math.round((top10F / totalF) * 100)}%를 만들었다(${kn(top10F)}/${kn(totalF)}). 상위 소수 영상에 유입이 집중됐다.`);
 say("");
 
 say("## 팔로우를 많이 데려온 편");
@@ -208,18 +178,18 @@ const spilled = mine
   .map((r) => ({ ...r, lost: Math.round(r.views * midRate / 100) - r.follows }))
   .filter((r) => r.lost > 15)
   .sort((a, b) => b.lost - a.lost);
-say("## 조회수는 벌어 놓고 전환에서 흘린 편");
+say("## 중앙 전환율을 적용한 참고 비교");
 say("");
-say(`중앙 전환율 ${pct(midRate)} 만 됐어도 몇 명을 더 데려왔을지로 센다. 여기가 제일 아까운 자리다.`);
+say(`각 조회수에 중앙 전환율(${pct(midRate)})을 곱한 단순 비교다. 실제 놓친 팔로우나 달성 가능한 예측치가 아니다.`);
 say("");
-say("| 놓친 수 | 실제 팔로우 | 조회 | 전환 | 제목 |");
+say("| 단순 차이 | 실제 팔로우 | 조회 | 전환 | 제목 |");
 say("| --- | --- | --- | --- | --- |");
 for (const r of spilled.slice(0, 10)) {
   say(`| ${kn(r.lost)} | ${kn(r.follows)} | ${kn(r.views)} | ${pct(rate(r))} | ${r.title.slice(0, 36)} |`);
 }
 say("");
 
-say("## 조회수도 전환도 낮아 아무것도 못 벌어온 편");
+say("## 관측된 팔로우 유입 하위 편");
 say("");
 say("| 팔로우 | 조회 | 전환 | 시청 | 제목 |");
 say("| --- | --- | --- | --- | --- |");
@@ -231,11 +201,12 @@ say("");
 // 회로별
 const bon = mine.filter(isMainline);
 const etc = mine.filter((r) => !isMainline(r));
-say("## 회로별");
+say("## 회로별 참고 비교");
+say("제목 유사도로 추정한 구분이라 오분류할 수 있다. 실제 제작 로그를 대신하지 않는다.");
 say("");
 say("| 회로 | 편 | 합산 전환 | 중앙 전환 |");
 say("| --- | --- | --- | --- |");
-if (bon.length) say(`| 본편(카드 4항목) | ${bon.length} | ${pct(pooled(bon))} | ${pct(median(bon))} |`);
+if (bon.length) say(`| 본편 제목 추정 | ${bon.length} | ${pct(pooled(bon))} | ${pct(median(bon))} |`);
 if (etc.length) say(`| 레퍼런스와 옛 편 | ${etc.length} | ${pct(pooled(etc))} | ${pct(median(etc))} |`);
 say("");
 

@@ -38,6 +38,8 @@ const opt = (name, def) => {
 const ACCOUNT = opt("account", "haruyaksa");
 const TOP = Number(opt("top", 12));
 const WANT_WORST = argv.includes("--worst");
+const JSON_FILE = opt("json", null);
+const LOCAL_SITE_ROOT = opt("site-root", null);
 
 const num = (v) => Number(String(v ?? "").replace(/[^0-9.]/g, "")) || 0;
 
@@ -45,12 +47,16 @@ const num = (v) => Number(String(v ?? "").replace(/[^0-9.]/g, "")) || 0;
 // 같이 찍혀 진짜 오류처럼 보인다. exitCode 만 세우고 함수에서 빠져나간다.
 async function run() {
   console.log(`자료 ${SOURCE}`);
-  const res = await fetch(SOURCE);
-  if (!res.ok) {
-    console.error(`대시보드를 못 받았다: ${res.status}`);
-    return 1;
+  let doc;
+  if (JSON_FILE) doc = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'));
+  else {
+    const res = await fetch(SOURCE);
+    if (!res.ok) {
+      console.error(`대시보드를 못 받았다: ${res.status}`);
+      return 1;
+    }
+    doc = await res.json();
   }
-  const doc = await res.json();
 
   // ---------- 이 계정 편만 추리고 겹친 것을 합친다 ----------
   // 알려진 함정: 한 릴스가 릴스 인사이트와 게시물 인사이트로 **두 번** 잡힌다.
@@ -59,10 +65,11 @@ async function run() {
   for (const r of doc.records || []) {
     const handle = r.account_handle || r.instagram_account || "";
     if (handle !== ACCOUNT) continue;
-    const title = r.instagram_reel_title || r.content_title_hint || "";
-    const thumb = r.thumbnail_source || r.instagram_thumbnail_source || "";
+    const title = r.instagram_card_title || r.instagram_reel_title || r.content_title_hint || "";
+    const thumb = r.thumbnail_source || r.instagram_thumbnail_source || r.content_match?.content_evidence_image || "";
     if (!title || !thumb) continue;
     const s = r.summary || {};
+    if (s.follows == null || String(s.follows).trim() === '' || !/^[\d,]+$/.test(String(s.follows))) continue;
     const row = {
       title,
       thumb,
@@ -72,10 +79,11 @@ async function run() {
       follows: num(s.follows),
       watch: num(s.average_watch_time?.value),
       date: r.instagram_post_date || "",
+      snapshot: r.snapshot_date || "",
     };
     const key = row.shortcode || title;
     const old = byKey.get(key);
-    if (!old || row.follows > old.follows) byKey.set(key, row);
+    if (!old || row.snapshot > old.snapshot || (row.snapshot === old.snapshot && row.follows > old.follows)) byKey.set(key, row);
   }
 
   const all = [...byKey.values()];
@@ -106,9 +114,12 @@ async function run() {
       continue;
     }
     try {
-      const img = await fetch(SITE + r.thumb);
-      if (!img.ok) throw new Error("HTTP " + img.status);
-      fs.writeFileSync(dest, Buffer.from(await img.arrayBuffer()));
+      if (LOCAL_SITE_ROOT) fs.copyFileSync(path.join(LOCAL_SITE_ROOT, 'public', r.thumb), dest);
+      else {
+        const img = await fetch(SITE + r.thumb);
+        if (!img.ok) throw new Error("HTTP " + img.status);
+        fs.writeFileSync(dest, Buffer.from(await img.arrayBuffer()));
+      }
       got += 1;
     } catch (e) {
       // 하나 실패해도 멈추지 않는다. 끝에 모아서 알린다.
