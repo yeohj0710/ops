@@ -364,6 +364,39 @@
       "데이터원장": null,
       "공개": "public",
       "메모": "쓰는 사람이 없어 조용하다. 죽어 있어도 되살리지 않는다"
+    },
+    "canvas-html-lab": {
+      "폴더": "canvas-html-lab",
+      "url": "https://canvas-html-lab.vercel.app",
+      "배포": "cli",
+      "동기화": null,
+      "빌드": null,
+      "배포명령": "npm run deploy",
+      "데이터원장": null,
+      "공개": "public",
+      "메모": "정적 파일 그대로 올린다"
+    },
+    "yaksa-reels": {
+      "폴더": "reels-corpus",
+      "url": "https://yaksa-reels.vercel.app",
+      "배포": "cli",
+      "동기화": null,
+      "빌드": "node site/build.mjs",
+      "배포명령": "node site/deploy.mjs",
+      "데이터원장": "data",
+      "공개": "public",
+      "메모": "site/dist 안의 .vercel 링크로 올리고 별칭을 옮긴다. 루트에서 vercel 을 부르면 dist 라는 새 프로젝트가 생긴다(실제로 한 번 생겼다)"
+    },
+    "reels-insight-lab": {
+      "폴더": "G:/내 드라이브/여형준님/19 단건 업무/대시보드 데이터화/dashboard/site",
+      "url": "https://reels-insight-lab.vercel.app",
+      "배포": "cli",
+      "동기화": null,
+      "빌드": null,
+      "배포명령": "npm run deploy",
+      "데이터원장": "public",
+      "공개": "public",
+      "메모": "C:dev 밖 G드라이브에 있다. Vercel 프로젝트 이름이 site 였다가 reels-insight-lab 으로 바뀌었고, 사람이 보는 주소는 수동 별칭이라 deploy 스크립트가 같이 옮긴다"
     }
   },
   "자동배포에서뺀다": [

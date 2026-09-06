@@ -160,7 +160,9 @@ for (const [name, spec] of Object.entries(REG.프로젝트)) {
     경고: [],
   };
   try {
-    const dir = path.join(DEV, spec.폴더.replace(/\//g, path.sep));
+    // 폴더는 보통 C:\dev 기준 상대경로다. G드라이브처럼 밖에 있는 것은 절대경로를 그대로 쓴다.
+    const 폴더 = spec.폴더.replace(/\//g, path.sep);
+    const dir = path.isAbsolute(폴더) ? 폴더 : path.join(DEV, 폴더);
     row.경로 = dir;
     if (!fs.existsSync(dir)) {
       row.판정 = "폴더 없음";
