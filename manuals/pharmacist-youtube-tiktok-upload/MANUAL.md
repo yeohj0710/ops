@@ -168,6 +168,10 @@
 - **yt-dlp의 `--cookies-from-browser chrome`이 안 된다** → 크롬이 떠 있어 DB가 잠기고 App-Bound Encryption까지 걸린다 → 인스타 릴스는 릴스 페이지의 스크립트에서 `video_versions`를 파싱해 최고 화질 URL과 캡션을 뽑고, 그것을 Blob으로 만들어 `a[download]`로 내려받아 파일로 옮긴 뒤 L1에서 그 URL로 내려받는다. 확장 JS의 반환값은 쿼리스트링이 있으면 막히므로 URL을 화면으로 돌려받지 말고 파일로 떨군다.
 - **탭이 그룹에서 빠진다** → 그룹의 다른 탭을 닫으면 남은 탭이 그룹에서 빠져 `Tab is not in Claude's tab group`이 뜬다 → `tabs_context_mcp`를 `createIfEmpty`로 다시 불러 그룹을 세우고 탭 id를 다시 받는다.
 
+- **유튜브가 파일을 받자마자 오류를 냄인데 화면 문제가 아님 (260907 실측)** → `POST https://upload.youtube.com/upload/studio?authuser=N`이 `401 {"status":"STATUS_REJECTED","rejectionReason":"REJECTED_NOT_AUTHENTICATED"}`을 돌려준다 → 그 구글 계정의 업로드 세션이 죽은 것이다. 재현과 판정은 스튜디오 페이지에서 순수 fetch로 그 주소를 직접 찔러 보면 된다. 읽기(채널 목록, 콘텐츠 목록)는 멀쩡히 되므로 로그인 여부만 보고 판단하면 안 된다. `ServiceLogin`, `youtube.com/signin`으로 세션을 다시 받아도 안 풀리면 사람이 그 계정에 다시 로그인해야 한다.
+- **실패 원인을 화면에서 못 읽음** → 업로드 대화상자는 "예기치 않은 문제가 발생했습니다"만 보여준다 → 파일을 넣기 전에 `XMLHttpRequest.prototype.open/send`와 `window.fetch`를 가로채 `upload`가 들어간 요청의 상태와 응답 본문을 모아 두면 진짜 이유가 한 번에 나온다.
+- **배경 탭이라 영상이 안 붙음** → 확장이 만드는 탭은 항상 배경 탭이다 → 드라이브 `에이전트/능력/화면과로그인.md`의 "배경 탭에서는 영상이 안 붙는다" 절을 그대로 따른다. 실제 클릭으로 팝업 창을 띄우고, 여는 쪽 탭에서 `DataTransfer`로 파일을 넘긴다.
+
 ## 사람에게 물어야 하는 지점
 
 - 계정 매핑이 파일·플랫폼 화면 어디에도 없을 때
