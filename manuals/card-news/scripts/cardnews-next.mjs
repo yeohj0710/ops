@@ -3,6 +3,10 @@
 //
 //   node cardnews-next.mjs <인스타피드.json>
 //   node cardnews-next.mjs <인스타피드.json> --account haruyaksa
+//   node cardnews-next.mjs <인스타피드.json> --root "<다른 콘텐츠 폴더>" --account aroundpharm_official
+//
+// --root 를 주면 그 폴더를 대기 폴더로 본다 (어라운드팜, 미미팜 운영 폴더의 콘텐츠/).
+// mp4 가 든 폴더는 릴스로 판정한다. mp4 한 개와 캡션.txt 가 있으면 후보다.
 //
 // 인스타피드.json 은 로그인된 탭에서 받아 저장한다 (L3).
 //   const r = await fetch("/api/v1/feed/user/<숫자id>/?count=30",
@@ -21,13 +25,14 @@ import path from "node:path";
 const OPS = "C:/dev/ops";
 const MACHINE = JSON.parse(fs.readFileSync(path.join(OPS, "machine.json"), "utf8"));
 const DRIVE = MACHINE.drive_root.replace(/\//g, path.sep);
-const ROOT = path.join(DRIVE, "영상 편집", "AI 크리에이터", "카드뉴스");
-const DONE = path.join(ROOT, "업로드 완료");
-
 const args = process.argv.slice(2);
 const accIndex = args.indexOf("--account");
 const ACCOUNT = accIndex >= 0 ? args[accIndex + 1] : null;
-const feedPath = args.filter((a, i) => !a.startsWith("--") && i !== accIndex + 1)[0];
+const rootIndex = args.indexOf("--root");
+const ROOT = rootIndex >= 0 ? path.resolve(args[rootIndex + 1]) : path.join(DRIVE, "영상 편집", "AI 크리에이터", "카드뉴스");
+const DONE = path.join(ROOT, "업로드 완료");
+const skip = new Set([accIndex >= 0 ? accIndex + 1 : -1, rootIndex >= 0 ? rootIndex + 1 : -1]);
+const feedPath = args.filter((a, i) => !a.startsWith("--") && !skip.has(i))[0];
 
 if (!feedPath || !fs.existsSync(feedPath)) {
   console.log('사용법: node cardnews-next.mjs "<인스타피드.json>" [--account haruyaksa]');
@@ -64,7 +69,10 @@ for (const name of fs.readdirSync(ROOT)) {
   }
   if (ACCOUNT && meta.account && meta.account !== ACCOUNT) continue;
 
-  const pngs = fs.readdirSync(full).filter((f) => /\.png$/i.test(f)).sort();
+  const files = fs.readdirSync(full);
+  const mp4s = files.filter((f) => /\.mp4$/i.test(f));
+  const kind = mp4s.length ? "릴스" : "카드뉴스";
+  const pngs = kind === "릴스" ? mp4s : files.filter((f) => /\.png$/i.test(f)).sort();
   const capTxt = path.join(full, "캡션.txt");
   const hasCap = fs.existsSync(capTxt);
   // 캡션 첫 줄이 제목이다. 없으면 폴더 이름의 제목으로 견준다
@@ -75,6 +83,7 @@ for (const name of fs.readdirSync(ROOT)) {
     name,
     dir: full,
     ...meta,
+    kind,
     cards: pngs.length,
     hasCap,
     capTxt,
@@ -100,9 +109,9 @@ for (const r of rows) {
     console.log(`  [건너뜀] ${r.name}  (${r.state})`);
     continue;
   }
-  const warn = r.cards < 2 ? " ⚠장수부족" : r.cards > 10 ? " ⚠10장초과" : "";
+  const warn = r.kind === "릴스" ? (r.cards === 1 ? "" : " ⚠mp4개수") : r.cards < 2 ? " ⚠장수부족" : r.cards > 10 ? " ⚠10장초과" : "";
   const cw = r.hasCap ? "" : " ⚠캡션없음";
-  console.log(`  ${r.state.padEnd(6)} ${r.stamp}  ${String(r.cards).padStart(2)}장  ${r.title} (${r.design})${warn}${cw}`);
+  console.log(`  ${r.state.padEnd(6)} ${r.stamp}  ${r.kind === "릴스" ? "릴스 " : String(r.cards).padStart(2) + "장"}  ${r.title} (${r.design})${warn}${cw}`);
 }
 console.log("");
 
@@ -110,8 +119,9 @@ const done = fs.existsSync(DONE) ? fs.readdirSync(DONE).filter((f) => fs.statSyn
 console.log(`  업로드 완료 폴더에 ${done}벌`);
 console.log("");
 
-const candidates = rows.filter((r) => r.dir && !r.posted && r.cards >= 2 && r.cards <= 10 && r.hasCap);
-const broken = rows.filter((r) => r.dir && !r.posted && !(r.cards >= 2 && r.cards <= 10 && r.hasCap));
+const fits = (r) => (r.kind === "릴스" ? r.cards === 1 : r.cards >= 2 && r.cards <= 10) && r.hasCap;
+const candidates = rows.filter((r) => r.dir && !r.posted && fits(r));
+const broken = rows.filter((r) => r.dir && !r.posted && !fits(r));
 if (broken.length) {
   console.log("  아래는 규격이 안 맞아 후보에서 뺐다.");
   broken.forEach((r) => console.log(`    ${r.name} (${r.cards}장, 캡션 ${r.hasCap ? "있음" : "없음"})`));
@@ -127,6 +137,7 @@ if (!candidates.length) {
 const pick = candidates[0];
 console.log(`고른 벌: ${pick.title} (${pick.design})`);
 console.log(`  폴더    ${pick.dir}`);
+console.log(`  종류    ${pick.kind}`);
 console.log(`  장수    ${pick.cards}`);
 console.log(`  계정    ${pick.account || "(폴더 이름에 없음)"}`);
 console.log(`  캡션    ${pick.capTxt}`);
@@ -134,4 +145,4 @@ console.log(`  남은 후보 ${candidates.length}벌`);
 console.log("");
 console.log("다음: node <OPS>/manuals/shorts-pipeline/scripts/insta-file-server.mjs \"" + pick.dir + '"');
 console.log("");
-console.log(JSON.stringify({ pick: { dir: pick.dir, title: pick.title, cards: pick.cards, account: pick.account, capTxt: pick.capTxt }, candidates: candidates.length }));
+console.log(JSON.stringify({ pick: { dir: pick.dir, kind: pick.kind, title: pick.title, cards: pick.cards, account: pick.account, capTxt: pick.capTxt }, candidates: candidates.length }));
