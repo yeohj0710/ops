@@ -318,7 +318,7 @@ function skillDescription() {
 
 // 구글 드라이브에 두는 안내문. 새 컴에서 이 시스템을 발견하는 유일한 통로다.
 // 운영은 git 저장소가 한다. 드라이브에는 저장소를 두지 않는다(Drive 가 .git 을 건드려 깨뜨린다).
-function writeDriveGuide() {
+function writeDriveGuide({ guideOnly = false } = {}) {
   const me = machine();
   if (!me.drive_root || !fs.existsSync(me.drive_root)) {
     console.log("구글 드라이브를 못 찾아 안내문은 건너뛴다 (node setup.mjs --drive <경로>)");
@@ -349,6 +349,8 @@ function writeDriveGuide() {
 | --- | --- |
 | **무엇을 할 수 있나** (카톡, 노션, 시트, 피그마, 결제 등) | \`능력/읽어라.md\` |
 | **정해진 업무를 절차대로** | \`매뉴얼/읽어라.md\` → 그 업무의 \`.md\` |
+| **프로젝트 배경·결정·현재 상태를 이어서 파악** | \`기억/읽어라.md\` |
+| **TIPS 연구 파악·2차년도 AI 자동화·3차년도 사람 자료 교체** | \`기억/TIPS/시작.md\` |
 | 사업자번호, 법인번호, 주소, 전화, 매출 | \`정보/회사.md\` |
 | 사업자등록증, 인감, 도장, 로고, 명함, 사업계획서 파일 | \`정보/핵심자료.md\` |
 | 회의록, 기획, 진행 상황, 제품별 논의 | \`정보/노션.md\` |
@@ -486,6 +488,7 @@ ${rows}
 | \`백업.mjs\` | 이 컴 설정을 거둔다 (컴 → 드라이브) |
 | \`능력/\` | 업무 이름 없이도 쓰는 것들 (카톡, 노션, 드라이브, 시트, 메일, 인스타, 피그마, 문서, 화면, 돈) |
 | \`매뉴얼/\` | 업무 절차서 사본 (읽기용). 설치 없이도 여기만 보면 일할 수 있다 |
+| \`기억/\` | 프로젝트별 최신 결정·근거 위치·현재 상태. 반복 업무 매뉴얼과 별도로 관리한다 |
 | \`정보/\` | \`회사.md\`(사업자번호, 주소, 매출), \`핵심자료.md\`(서류, 도장, 로고 어디 있나) |
 | \`자격증명/\` | \`계정.md\`(로그인 정보), \`.env\`(API 키) |
 | \`설정/\` | 지침, 스킬, 기억. 설치기가 제자리에 놓는다 |
@@ -495,6 +498,10 @@ ${rows}
 
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "시작.md"), text, "utf8");
+  if (guideOnly) {
+    console.log("드라이브 시작 안내문만 갱신했다.");
+    return;
+  }
 
   // 부트스트랩 묶음을 드라이브에 깐다. 저장소 없이 단독으로 돌아야 한다.
   const bs = path.join(ROOT, "bootstrap");
@@ -896,6 +903,7 @@ const table = {
   add: cmdAdd,
   new: cmdNew,
   sync: cmdSync,
+  guide: () => writeDriveGuide({ guideOnly: true }),
   done: cmdDone,
   block: cmdBlock,
   manuals: cmdManuals,
@@ -914,6 +922,7 @@ if (!cmd || !table[cmd]) {
       "  node ops.mjs block <taskId> --note \"…\"",
       "  node ops.mjs manuals [검색어]",
       "  node ops.mjs sync",
+      "  node ops.mjs guide  (드라이브 시작 안내문만 갱신)",
       "  node ops.mjs status",
       "  node ops.mjs doctor",
     ].join("\n")

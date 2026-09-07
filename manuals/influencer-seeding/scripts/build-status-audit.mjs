@@ -46,6 +46,9 @@ const SCHEDULE_HOLD = [
   /(?:일정|스케줄|방문|촬영).{0,20}(?:미룸|미뤄|연기|보류)/i,
   /일정.{0,15}(?:차\s*있|가득)/i,
   /(?:현재|지금|그때).{0,10}한국에.{0,12}(?:없|계시지\s*않)/i,
+  /(?:한국|서울).{0,12}(?:오|올|방문|입국).{0,20}(?:계획|연락|예정|가능)/i,
+  /(?:오시면|오면|올\s*계획).{0,20}연락/i,
+  /\d{1,2}\s*\/\s*\d{1,2}.{0,12}(?:한국|서울).{0,12}(?:오|방문|입국)/i,
 ];
 const STRONG_SCHEDULE_HOLD = [
   /(?:일정|스케줄|방문|촬영).{0,20}(?:미룸|미뤄|연기|보류)/i,
@@ -64,6 +67,8 @@ const NEGOTIATION = [
   /(?:₩|￦|\bKRW\b|\d[\d,.]*\s*원).{0,15}(?:요구|희망|제시|문의|협의|협상|조율)/i,
   /(?:세금계산서|지급일|payment).{0,20}(?:질문|문의|협의|조율)/i,
   /조건.{0,20}(?:협의\s*중|조율\s*중|문의)/i,
+  /\d[\d,.]*\s*(?:만\s*)?원.{0,15}(?:가능|어떠|괜찮|될까)/i,
+  /(?:원하|희망).{0,12}제품.{0,12}(?:따로|별도|다름|있음)/i,
 ];
 const HOLD = [
   /DM\s*불가/i,
@@ -132,11 +137,15 @@ export function classifyRow(row) {
   if (currentStatus === "확정" && isUnassigned(row)) {
     if (has(memo, REJECTION)) return candidate(row, "거절", "명시적 거절 또는 참여 불가 메모");
     if (has(memo, REJECT_FIT)) return candidate(row, "반려", "콘텐츠·언어권·캠페인 적합도 부족 메모");
+    if (has(memo, NO_REPLY) && isTrue(row["①DM 발송"]) && !isTrue(row["②응답"])) {
+      return candidate(row, "1차 발송", "1차 제안 발송 뒤 응답이 없다는 메모와 단계 체크를 따름");
+    }
     if (has(memo, NEGOTIATION)) return candidate(row, "협상중", "현재 배정이 없고 금액·조건이 미합의 상태임");
     if (has(memo, SCHEDULE_HOLD) || has(visit, UNSET_VISIT)) {
       return candidate(row, "일정 보류", "현재 배정이 없고 방문·촬영 시기만 남아 있음");
     }
-    return candidate(row, "보류", "⑤확정은 과거 합의 기록이지만 현재 배정 건이 미배정임", "배정 건");
+    // 미배정만으로 보류하지 않는다. 명시적 반대 근거가 없으면 기존 확정 근거를 보존한다.
+    return null;
   }
 
   if (!memo) {
@@ -153,6 +162,7 @@ export function classifyRow(row) {
   }
   if (has(memo, REJECT_FIT)) return candidate(row, "반려", "콘텐츠·언어권·캠페인 적합도 부족 메모");
   if (has(memo, NO_REPLY) || has(memo, NO_PROOF)) return null;
+  if (currentStatus === "일정 보류" && has(memo, SCHEDULE_HOLD)) return null;
   if (has(memo, FUTURE_WILLING)) return candidate(row, "일정 보류", "현재 일정은 어렵지만 향후 협업 의사가 있음");
   if (has(memo, REJECTION)) return candidate(row, "거절", "명시적 거절 또는 참여 불가 메모");
   if (has(memo, NEGOTIATION)) return candidate(row, "협상중", "금액·조건 협상 메모");
@@ -195,10 +205,17 @@ function selfTest() {
   assert.equal(classifyRow(row("미접촉", "DM불가")).recommendedStatus, "보류");
   assert.equal(classifyRow(row("1차 발송", "150,000원 희망")).recommendedStatus, "협상중");
   assert.equal(classifyRow(row("협상중", "협업 진행하겠습니다")).mode, "review");
-  assert.equal(classifyRow(row("확정", "", { "⑤확정": "TRUE" })).recommendedStatus, "보류");
+  assert.equal(classifyRow(row("확정", "", { "⑤확정": "TRUE" })), null);
   assert.equal(classifyRow(row("확정", "", { "⑤확정": "TRUE", "⑥방문 예정일": "미미라인 아님." })).recommendedStatus, "보류");
   assert.equal(classifyRow(row("확정", "11월부터 촬영 가능", { "⑤확정": "TRUE" })).recommendedStatus, "일정 보류");
   assert.equal(classifyRow(row("확정", "가격 협의 중", { "⑤확정": "TRUE" })).recommendedStatus, "협상중");
+  assert.equal(classifyRow(row("확정", "서울으로 올 계획이 있으면 연락하기로 했음.", { "⑤확정": "TRUE" })).recommendedStatus, "일정 보류");
+  assert.equal(classifyRow(row("확정", "tiktok은 따로 비용 발생. (9/4한국으로 오심.)", { "⑤확정": "TRUE" })).recommendedStatus, "일정 보류");
+  assert.equal(classifyRow(row("확정", "한국으로 오시면 저희한테 연락주신다고 하심.", { "⑤확정": "TRUE" })).recommendedStatus, "일정 보류");
+  assert.equal(classifyRow(row("확정", "20만 원 가능할까요?", { "⑤확정": "TRUE" })).recommendedStatus, "협상중");
+  assert.equal(classifyRow(row("일정 보류", "10만원 제안 수락. 10월에 한국 방문 가능.")), null);
+  assert.equal(classifyRow(row("확정", "협업한 생각이 있지만, 원하시는 제품이 따로 있음.", { "⑤확정": "TRUE" })).recommendedStatus, "협상중");
+  assert.equal(classifyRow(row("확정", "1차 제안(3만원) 발송 후 답장 없음", { "⑤확정": "TRUE", "①DM 발송": "TRUE", "②응답": "FALSE" })).recommendedStatus, "1차 발송");
   assert.equal(classifyRow(row("확정", "협업 수락", { "⑤확정": "TRUE", "배정 건": "미미라인 중국", "⑥방문 예정일": "9/2 18:00" })), null);
   assert.equal(classifyRow(row("확정", "협업 수락", { "⑤확정": "TRUE", "배정 건": "미미라인 중국", "⑥방문 예정일": "아직 미정." })).recommendedStatus, "일정 보류");
   assert.equal(classifyRow(row("확정", "이번 배정 취소", { "⑤확정": "TRUE" })).mode, "review");

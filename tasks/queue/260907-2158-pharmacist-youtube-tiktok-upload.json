@@ -1,0 +1,14 @@
+{
+  "id": "260907-2158-pharmacist-youtube-tiktok-upload",
+  "manual": "pharmacist-youtube-tiktok-upload",
+  "title": "오약·제씨 유튜브 틱톡 예약 업로드 18편 (260908~260916)",
+  "runner": "codex",
+  "est_minutes": 60,
+  "needs_screen": true,
+  "resource": null,
+  "priority": 5,
+  "input": {},
+  "created": "2026-09-07T21:58:23+09:00",
+  "lease": null,
+  "log": []
+}

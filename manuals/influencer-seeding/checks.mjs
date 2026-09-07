@@ -30,6 +30,11 @@ export const CHANNELS = {
   gmail: "wellnessbox.global@gmail.com",
 };
 
+// 일본어권 Instagram을 확인한 실행만 이 채널을 메타에 넣는다. 기존 실행의 메타 형식도 유지한다.
+export const OPTIONAL_CHANNELS = {
+  instagramJapan: "wellnessbox_jp_official",
+};
+
 function normAccount(v) {
   return String(v || "")
     .trim()
@@ -58,7 +63,15 @@ export function missingRestores(before, after) {
 export function accountProblems(meta, label) {
   const out = [];
   const where = label ? `${label} ` : "";
-  for (const [channel, expected] of Object.entries(CHANNELS)) {
+  const channels = {
+    ...CHANNELS,
+    ...Object.fromEntries(
+      Object.entries(OPTIONAL_CHANNELS).filter(([channel]) =>
+        Object.prototype.hasOwnProperty.call(meta || {}, channel)
+      )
+    ),
+  };
+  for (const [channel, expected] of Object.entries(channels)) {
     const m = (meta || {})[channel];
     if (!m) {
       out.push(`${where}${channel}: 계정 확인 기록이 없다`);
@@ -138,9 +151,15 @@ function selfTest() {
   // 계정 확인
   const goodMeta = {
     instagram: { observedAccount: "@wellnessbox_global_official", status: "ok" },
+    instagramJapan: { observedAccount: "@wellnessbox_jp_official", status: "ok" },
     gmail: { observedAccount: "wellnessbox.global@gmail.com", userIndex: "u/6", status: "ok" },
   };
   assert.deepEqual(accountProblems(goodMeta), [], "맞는 계정이면 통과해야 한다");
+  assert.equal(
+    accountProblems({ ...goodMeta, instagramJapan: { observedAccount: "@other", status: "wrong-account" } }).length,
+    2,
+    "일본 Instagram의 엉뚱한 계정과 status 를 잡아야 한다"
+  );
   assert.equal(accountProblems({ instagram: goodMeta.instagram }).length, 1, "빠진 채널을 잡아야 한다");
   // 260827 사고 재현: 남의 지메일을 보고 회신 0건으로 끝냈다
   const wrongMeta = {
@@ -183,6 +202,7 @@ selfTest();
 for (const name of [
   "progress-rank.mjs", "build-status-audit.mjs", "validate-write-plan.mjs", "backup-sheet.mjs",
   "sheet-diff.mjs", "build-notion-direct-sync-plan.mjs", "audit-notion-direct-sync.mjs",
+  "audit-legacy-tabs.mjs",
 ]) {
   execFileSync(process.execPath, [path.join(HERE, "scripts", name), "--self-test"], { stdio: "inherit" });
 }
@@ -299,6 +319,15 @@ const mustBeZero = [
   "manualOverridesChanged",
 ];
 
+// 회신이 없고 시트를 전혀 쓰지 않은 정비 실행은 기존 정렬 역전을 고치지 않는다.
+// 정렬을 실행했거나 행을 고친 실행은 반드시 역전 0이어야 한다.
+const unchangedPreexistingSort = (s) =>
+  mode === "정비" &&
+  (s.touchedRows || []).length === 0 &&
+  s.sortExecuted === false &&
+  Number(s.inversionsBefore) === Number(s.inversionsAfter) &&
+  Number(s.preexistingInversions) === Number(s.inversionsAfter);
+
 for (const s of result.sheets) {
   const added = Array.isArray(s.newRows) ? s.newRows.length : (s.newRows ?? 0);
   if (mode === "정비") {
@@ -316,7 +345,10 @@ for (const s of result.sheets) {
       `${s.title}: 행 수가 새로 만든 줄(${added})만큼만 늘어야 한다`
     );
   }
-  for (const key of mustBeZero) assert.equal(s[key] ?? 0, 0, `${s.title}: ${key}=${s[key]}`);
+  for (const key of mustBeZero) {
+    if (key === "inversionsAfter" && unchangedPreexistingSort(s)) continue;
+    assert.equal(s[key] ?? 0, 0, `${s.title}: ${key}=${s[key]}`);
+  }
   assert.equal(
     s.agreedPricesChangedUnexpectedly ?? s.agreedPricesChanged ?? 0,
     0,

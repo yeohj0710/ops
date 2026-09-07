@@ -43,7 +43,8 @@
 
 ## 준비물
 
-- 로그인된 인스타 `@wellnessbox_global_official` (프로필 `사용자 이름1`)
+- 로그인된 인스타 `@wellnessbox_global_official` (중화권, 프로필 `사용자 이름1`)
+- 로그인된 인스타 `@wellnessbox_jp_official` (일본어권). 2026-09-07 크롬 프로필 2에서 로그인 상태를 확인했다
 - 로그인된 지메일 **`wellnessbox.global@gmail.com`**. 260820 실측 구글 계정 인덱스 **`u/6`**.
   기본 계정(`u/0`)이 아니고 지메일 커넥터(L1)도 이 주소가 아니다. **갈아타고 시작한다**
 - 통합 원장 시트 `1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE`
@@ -69,6 +70,18 @@
 **중국 진행표, 일본 진행표, 샤오홍슈 진행표는 이제 없다.** 그 이름이 보이면 `구_` 가 붙은 보관본이다.
 거기에 쓰면 아무도 안 보는 곳에 쓴 것이고, 오류도 안 난다.
 
+`구_국내 진행표`와 `구_일본 진행표`가 메인에 반영됐는지 단순 핸들 일치 개수로 판단하지 않는다.
+현재 핸들로 바뀐 계정은 `병합 기록`, 승인된 팔로워 범위 제외는 `rangeExcluded`, 게시물 없는 계정은
+`noPosts`로 분리한다. 아래 검사의 `unresolved`가 두 탭 모두 0이어야 이관 대조가 끝난 것이다.
+
+```text
+node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
+  --out "<OPS>/work/<taskId>/legacy-audit.json"
+```
+
+보관 탭 삭제는 이 검사가 통과해도 자동 실행하지 않는다. 원본 CSV 백업, `unresolved=0`, 메인 중복 계정
+정리까지 확인한 뒤 사용자가 이번 작업에서 명시적으로 승인해야 한다. 승인 전에는 숨김 상태만 유지한다.
+
 `No`, `방식`, `일감 종류` 열은 사용자가 삭제했다. 다시 만들지 않는다.
 
 ### 정본이 어디인지
@@ -84,12 +97,19 @@
   `미미라인`, `OWM 신사`, `성수퓨어약국` 세 값만 드롭다운으로 입력한다. `배정` 탭과 값이 충돌하면
   `배정` 탭을 정본으로 삼아 확인한다
 
-## 채널은 둘이고, 지메일은 갈아타야 보인다
+## 채널은 국가별로 나누고, 지메일은 갈아타야 보인다
 
 | 채널 | 어디를 보나 | 계정 |
 | --- | --- | --- |
-| 인스타 DM | `https://www.instagram.com/direct/inbox/` | `@wellnessbox_global_official` |
-| 지메일 (중국, 일본, 샤오홍슈 후보 전부) | `https://mail.google.com/mail/u/6/#search/is%3Aunread` | `wellnessbox.global@gmail.com` |
+| 인스타 DM (중화권) | `https://www.instagram.com/direct/inbox/` | `@wellnessbox_global_official` |
+| 인스타 DM (일본어권) | `https://www.instagram.com/direct/inbox/` | `@wellnessbox_jp_official` |
+| 지메일 (중국·샤오홍슈) | `https://mail.google.com/mail/u/6/#search/is%3Aunread` | `wellnessbox.global@gmail.com` |
+| 지메일 (일본어권, 메일 회신을 실제로 보낸 경우만) | 확인된 일본 계정의 받은함 | `wellnesbox.jp@gmail.com` |
+
+일본어권 후보의 Instagram 회신은 `@wellnessbox_jp_official`에서 읽는다. 일본어권 메일을
+`wellnessbox.global@gmail.com`에서 대신 찾지 않는다. `wellnesbox.jp@gmail.com`은 최신 일본
+매뉴얼의 표기이며, 로그인 여부를 확인하지 못했으면 메일을 열지 말고 미확인으로 기록한다.
+일본 계정과 중화권 계정을 전환할 때는 다른 업무가 같은 크롬 프로필을 쓰는지 먼저 확인한다.
 
 **샤오홍슈는 앱 쪽지가 아니라 메일이다.** 260820 에 샤오홍슈 직접 탐색 후보 55명에게 1차 제안을
 `wellnessbox.global@gmail.com` 으로 보냈다. 앱 쪽지로는 보낸 적이 없으니 받을 것도 없다.
@@ -357,7 +377,8 @@ Google Sheets API 의 `updateCells` 에서 `rows[].values` 사이에 `{}` 를 �
    **(가) 인스타 DM**
 
    `https://www.instagram.com/direct/inbox/` 를 열고 목록만 읽는다. 누르지 마라.
-   왼쪽 위 계정 이름이 `wellnessbox_global_official` 인지 먼저 본다.
+   중화권을 읽을 때는 왼쪽 위 계정 이름이 `wellnessbox_global_official`, 일본어권을 읽을 때는
+   `wellnessbox_jp_official`인지 먼저 본다. 두 계정의 목록을 한 배열로 합치지 않는다.
 
    ```js
    [...document.querySelectorAll('div[role="listitem"], a[href^="/direct/t/"]')]
@@ -398,11 +419,11 @@ Google Sheets API 의 `updateCells` 에서 `rows[].values` 사이에 `{}` 를 �
 
    **(다) 저장**
 
-   두 채널의 목록을 `<OPS>/work/<taskId>/unread-before.json` 에,
+   국가별 Instagram과 Gmail 목록을 `<OPS>/work/<taskId>/unread-before.json` 에,
    계정 확인 결과를 `<OPS>/work/<taskId>/unread-before-meta.json` 에 저장한다.
 
    ```json
-   { "instagram": [], "gmail": [] }
+   { "instagram": [], "instagramJapan": [], "gmail": [] }
    ```
 
    ```json
@@ -410,6 +431,11 @@ Google Sheets API 의 `updateCells` 에서 `rows[].values` 사이에 `{}` 를 �
      "instagram": {
        "expectedAccount": "wellnessbox_global_official",
        "observedAccount": "wellnessbox_global_official",
+       "status": "ok"
+     },
+     "instagramJapan": {
+       "expectedAccount": "wellnessbox_jp_official",
+       "observedAccount": "wellnessbox_jp_official",
        "status": "ok"
      },
      "gmail": {
@@ -744,8 +770,12 @@ node "<OPS>/manuals/influencer-seeding/scripts/build-sort-plan.mjs" \
   확정 뒤 남긴 운영 기록은 상태 변경 근거가 아니다
 - `⑤확정=TRUE`는 **한 번 합의했다는 이력**이지 현재 진행 상태를 고정하는 값이 아니다. 활성 `배정 건`과
   현재 일정·조건을 더 최신 증거로 쓴다. `⑤확정`은 상태를 내릴 때도 지우지 않는다
-- 상태가 `확정`이어도 `배정 건`이 비었거나 `미배정`이면 현재 캠페인이 없는 것이다. 메모에 금액·조건
-  미합의가 있으면 `협상중`, 방문·촬영 시기만 남았으면 `일정 보류`, 둘 다 없으면 `보류`로 내린다
+- 상태가 `확정`이고 `배정 건`이 비었거나 `미배정`이어도 **그 이유만으로 보류로 내리지 않는다.** 메모에
+  금액·제품·지급 조건 미합의가 있으면 `협상중`, 현재 한국 미체류·추후 방한·방문 미정처럼 명시적인 일정
+  근거가 있으면 `일정 보류`로 내린다. 반대 근거가 없으면 기존 확정 근거를 보존한다
+- `지금 한국에 계시지 않음`, `서울에 올 계획이 생기면 연락`, `9/4 한국으로 오심`은 `일정 보류` 근거다.
+  `20만 원 가능할까요?`, `원하는 제품이 따로 있음`은 조건이 남은 `협상중` 근거다. `1차 제안 후 답장 없음`은
+  ①DM 발송이 TRUE이고 ②응답이 FALSE일 때 `1차 발송`이다
 - `⑥방문 예정일`의 `미미라인 아님.` 또는 `현재 캠페인 아님`은 `보류`다. 활성 배정이 있지만
   `아직 미정.` 또는 `일정 미정`이면 `일정 보류`다
 - 활성 배정과 구체적인 방문 일시가 있으면 과거 메모의 `조율 중`, `답장 대기`, 지급 수단 문구만으로
@@ -911,7 +941,7 @@ node "<OPS>/manuals/influencer-seeding/checks.mjs" "<진행 중인 task JSON 경
 - 상한을 넘는 금액 요구
 - `배정` 탭에 없는 사람을 어느 캠페인으로 배정할지
 - 계약, 세금, 지급일처럼 합의 안 된 조건
-- 로그인이 만료돼 두 채널 중 하나에 못 들어갈 때, 또는 지메일 계정 목록에
+- 로그인이 만료돼 필요한 국가 채널 중 하나에 못 들어갈 때, 또는 지메일 계정 목록에
   `wellnessbox.global@gmail.com` 이 없을 때
 - `설정` 탭에 남은 죽은 계수(B, C 열)를 지울지
 - 매뉴얼 밖의 시트, 메시지 발송, 결제, 되살릴 수 없는 삭제

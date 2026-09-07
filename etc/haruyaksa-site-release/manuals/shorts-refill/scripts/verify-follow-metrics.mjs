@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { collapse, num } from './follow-metrics.mjs';
+assert.equal(num('0'), 0);
+for (const value of [null, undefined, '', ' ', '-', '1.2만']) assert.equal(num(value), null);
+const record = (id, date, follows, code = 'same') => ({record_id:id, account_handle:'haruyaksa', instagram_shortcode:code, snapshot_date:date, summary:{views:'1,000', follows}});
+const rows = collapse([record('old','2026-08-25','8'),record('new','2026-09-06','0'),record('missing','2026-09-07',null),record('unmatched1','','2',''),record('unmatched2','','3','')]);
+assert.equal(rows.length,3);
+assert.equal(rows.find(r=>r.code==='same').follows,0);
+assert.equal(rows.reduce((sum,r)=>sum+r.follows,0),5);
+assert.equal(collapse([record('a','','2'),record('b','','3')])[0].follows,3);
+console.log('Zero, missing, latest snapshot, same-day duplicates and unmatched identity checks passed.');

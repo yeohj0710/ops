@@ -293,6 +293,7 @@ node "<OPS>/manuals/insta-metrics/scripts/ig-harvest.mjs" --check --cdp
 | 릴스 중앙 조회수 ÷ 팔로워 가 0.05 미만 | 너무 낮다. 타일이 덜 붙었거나 옛 릴스만 봤다 |
 | 릴스 중앙 조회수 ÷ 팔로워 가 20 이상 | 너무 높다. 터진 편 하나만 잡혔을 수 있다 |
 | 릴스 중앙 조회수가 0 | 읽기 실패지 실측이 아니다 |
+| 1차 제안이 20만원 이상 | 잘못 잡은 중앙값이 바로 고액 제안으로 이어지므로 반드시 원본을 다시 본다 |
 
 다시 잴 때는 **표본을 늘려서 잰다.** 릴스 탭을 더 굴리면 타일이 더 붙는다.
 
@@ -314,6 +315,36 @@ node "<OPS>/manuals/insta-metrics/scripts/ig-harvest.mjs" \
 ```
 
 두 값을 보고서에 같이 적는다. 어느 쪽을 썼는지, 몇 배 벌어졌는지다.
+
+숫자가 이미 채워져 있다는 이유로 재조사를 생략하지 않는다. 아래 두 스크립트로 이상치·5편 미만
+표본·20만원 이상 1차 제안을 한 목록으로 만들고, 조사 원장과 시트 결과가 맞는지 검사한다.
+
+```text
+node "<OPS>/manuals/insta-metrics/scripts/build-recheck-targets.mjs" \
+  "<OPS>/work/<taskId>/metrics-audit.json" \
+  "<OPS>/work/<taskId>/recheck-targets.json"
+
+node "<OPS>/manuals/insta-metrics/scripts/audit-research-gates.mjs" \
+  --csv "<OPS>/work/<taskId>/after/인플루언서.csv" \
+  --targets "<OPS>/work/<taskId>/recheck-targets.json" \
+  --instagram "<OPS>/work/<taskId>/instagram-recheck.json" \
+  --xhs "<OPS>/work/<taskId>/xhs-recheck-output.jsonl" \
+  --out "<OPS>/work/<taskId>/research-gate.json"
+```
+
+`조회수 근거` 열에는 드롭다운의 정확한 값만 쓴다. 인스타 실측은 `릴스 조회수 중앙값`,
+샤오홍슈 추정은 `노트 좋아요x50`, 실패 후 보수 추정은 `팔로워 추정`이다. 표본 수, 제외한
+고정 게시물 수, 원숫자는 셀 메모와 조사 원장에 남긴다. `audit-research-gates.mjs`는 다음 오류를
+완료로 인정하지 않는다.
+
+- 재조사 대상인데 조사 원장에 없는 계정
+- `조회수 근거`에 드롭다운 밖의 상세 문구를 직접 넣은 계정
+- 고정 게시물 표본 수와 제외 수가 맞지 않는 계정
+- 조사 원장의 중앙값과 시트 값이 다른 계정
+- 샤오홍슈 일반 노트 좋아요 중앙값 × 50과 시트 값이 다른 계정
+- 재검색 실패를 실측으로 표시하거나 팔로워 추정 공식과 다른 계정
+- 수정 뒤 새로 생긴 비율 이상치·20만원 이상 제안인데 재조사 기록이 없는 계정
+- 1~3차 제안 가격이 공식 결과와 다른 계정
 
 ## 빈 행을 남기지 않는다
 
@@ -724,6 +755,8 @@ node "<OPS>/manuals/insta-metrics/scripts/audit-completeness.mjs" \
 - [ ] (기계) 지표 열 서식이 `#,##0` 으로 통일됐다. 같은 열에 콤마 있는 칸과 없는 칸이 섞여 있지 않다
 - [ ] (기계) 이상치 조건에 걸린 행을 다시 잰 기록이 `harvest-recheck.json` 에 있다.
       한 건도 없으면 걸린 행이 정말 0개였는지 근거를 보고에 적는다
+- [ ] (기계) `research-gate.json`의 `ok`가 true다. 값 존재만으로 통과시키지 않고 재조사 대상 전수,
+      고정 게시물 제외, 샤오홍슈 x50, 조사 원장-시트 일치, 1~3차 가격 공식을 같이 확인한다
 - [ ] (기계) 데이터 가운데 완전히 빈 행이 없다. 있으면 지우고 정렬까지 하고 끝낸다
 - [ ] (기계) `status-audit.json` 이 있고 `자동변경후보`는 모두 반영됐으며,
       `검토후보`는 계정과 근거를 보고에 남겼다
