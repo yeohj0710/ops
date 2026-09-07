@@ -812,6 +812,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeli
 사람 화면을 통째로 뺏지 않으므로 사용자가 원격에서 다른 일을 보고 있어도 된다.
 **게시가 끝나면 `__pop.close()` 로 반드시 닫는다.** 스크립트가 연 창이라 스크립트가 닫을 수 있다.
 
+**`popup=yes` 로 열지 마라. 160x28 짜리 창이 생긴다 (260907 실측).** 배경 탭에서 `popup=yes,width=1200,height=980`
+으로 열면 크롬이 features 를 무시하고 최소 크기 창을 만든다. `innerWidth` 는 1200 으로 정직하게 나오는데
+`outerWidth` 가 **160** 이다. 화면에 사실상 안 보이니 `visibilityState` 가 계속 `hidden` 이고 동영상이 안 붙는다.
+항상 위로 올려도 안 낫는다. `resizeTo` 도 안 먹고, PowerShell 로 `ShowWindow` 를 부르면 **창 핸들이 죽어서**
+제목으로 다시 찾지도 못한다.
+
+**`popup=yes` 를 빼고 이렇게 연다.** 그러면 제대로 된 창이 앞에 뜨고 동영상 메타데이터가 4ms 만에 온다.
+
+```js
+window.open("https://www.instagram.com/", "igpop",
+  "width=1280,height=1000,left=60,top=30,resizable=yes,scrollbars=yes");
+```
+
+**항상 위 고정은 되도록 쓰지 마라 (260907).** 사용자가 다른 일을 하다 창을 뺏겼다고 알려 왔다.
+위 features 로 팝업이 제대로 열리면 핀 없이도 동영상이 붙는다. 핀은 팝업이 정말 가려졌을 때만 쓰고,
+`topmost-guard-ignore.txt` 를 손댔으면 **끝나고 반드시 되돌린다.**
+
 1. `window.open` 을 그냥 부르면 사용자 제스처가 없어서 차단된다. 임시 버튼을 만들고
    그 `click` 리스너 안에서 부른 다음, `computer` 로 **진짜 클릭**한다.
    ```js
@@ -820,7 +837,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeli
    b.style.cssText = 'position:fixed;left:40px;top:200px;z-index:2147483647;padding:28px 60px';
    b.addEventListener('click', () => {
      window.__pop = window.open('https://www.instagram.com/', 'igpop',
-       'popup=yes,width=1200,height=980,left=80,top=40');
+       'width=1280,height=1000,left=60,top=30,resizable=yes,scrollbars=yes');
    });
    document.body.appendChild(b);
    ```
@@ -872,6 +889,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeli
 2. chooser의 `setFiles`에 준비 폴더의 mp4 절대 경로를 넘긴다.
 3. 자르기 화면이 뜨면 `9:16`을 직접 선택하고 계속한다.
 4. chooser를 잡지 못하거나 `setFiles`가 거부될 때만 아래 로컬 서버 대체 절차를 쓴다.
+
+**스크래치패드로 복사하면 확장의 파일 올리기가 받는다 (260907 실측, claude 런너).** 드라이브 mp4 를
+세션 스크래치패드로 복사하고 업로더의 `input[type=file]` 에 올리면 통과한다(350KB, 10MB 제한 안).
+배경 탭이라 업로더는 거기서 멈추지만 **`input.files[0]` 로 File 을 잡을 수 있다.**
+그 `arrayBuffer()` 를 들고 있다가 팝업에서 `new __pop.File([buf], name, {type})` 로 다시 만들어 넣으면
+**로컬 서버와 sender 탭이 아예 필요 없다.** 아래 로컬 서버 절차는 이 길이 막혔을 때만 쓴다.
 
 예전 크롬 익스텐션의 `file_upload` 는 **드라이브 경로를 거부한다.** "사용자가 공유한 파일만 올릴 수 있다" 고 한다.
 `request_directory` 로 그 폴더 권한을 받아도 거부는 그대로다. 그 권한은 Read/Write 용이지 업로드용이 아니다.
@@ -1258,6 +1281,18 @@ j.inbox.threads.slice(0,4).map(t => ({u: t.users.map(x=>x.username).join(), code
   kmin.kyeong 은 약대사람 1번에 하루건강약사 3번, yakdae.saram 은 김민경 2번에 하루건강약사 4번이었다.
   260905 에는 haruyaksa 가 김민경 1번 약대사람 2번, kmin.kyeong 이 약대사람 1번 하루건강약사 2번,
   yakdae.saram 이 김민경 3번 하루건강약사 4번이었다. 자리를 외우지 말고 매번 이름으로 찾는다
+- **팝업을 `popup=yes` 로 열면 `outerWidth` 가 160 인 창이 생긴다 (260907 실측).** `innerWidth` 는 멀쩡해서
+  더 헷갈린다. 항상 위로 올려도, `resizeTo` 로도 안 커지고, `ShowWindow` 를 부르면 창 핸들이 죽는다.
+  `popup=yes` 를 빼고 `width/height/resizable=yes` 로 열면 한 번에 제대로 뜬다
+- **항상 위 고정은 사용자 작업을 뺏는다 (260907).** 팝업만 제대로 열면 핀이 필요 없다.
+  `C:/dev/tools/topmost-guard-ignore.txt` 에 `chrome` 을 넣었으면 끝나고 반드시 빼라
+- **유튜브 watch 주소에 `?pageId=<채널ID>` 를 붙이면 `Oops` 페이지가 뜬다 (260907 실측).**
+  채널 전환은 그 길로 안 된다. 같은 출처 팝업의 아바타 메뉴로 전환하고, 팝업을 잃으면
+  확장 탭에서 주소를 다시 열어 이어 간다. 전환은 프로필 전체에 걸려 있어 그대로 남는다
+- **배경 탭 유튜브에서는 내가 심은 임시 버튼도 첫 클릭이 안 닿는다 (260907 실측).** 클릭 카운터가 0 이다.
+  스크롤을 한 번 굴리고 좌표를 다시 재서 누르면 들어간다. 아바타 메뉴는 그래도 안 열린다
+- **인스타 계정 전환 목록의 첫 클릭도 안 먹는다 (260907 실측).** `elementFromPoint` 로 대상 계정이
+  맞는 것을 확인하고 눌러도 창이 그대로다. 창 안에서 스크롤을 한 번 굴린 뒤 다시 재서 누르면 들어간다
 - **인스타 계정 전환 목록은 스크롤 목록이다 (260905 실측).** 열 개가 넘는데 다섯 줄만 보인다.
   DOM 으로 잰 좌표를 그냥 누르면 보이는 영역 밖이라 **뒷배경을 눌러서 창이 닫힌다.**
   전환이 안 됐는데 창만 사라져서 클릭이 안 먹은 줄 오해한다. 창 안에서 **스크롤을 먼저 굴려
