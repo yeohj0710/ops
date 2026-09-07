@@ -3,9 +3,6 @@
 //
 //   node cardnews-done.mjs "<폴더 경로>" --url https://www.instagram.com/p/XXXX/
 //   node cardnews-done.mjs "<폴더 경로>" --url ... --dry-run
-//   node cardnews-done.mjs "<폴더 경로>" --root "<다른 콘텐츠 폴더>" --url ...
-//
-// --root 를 주면 그 폴더 밑의 `업로드 완료/` 와 `게시기록.jsonl` 을 쓴다 (어라운드팜, 미미팜 운영 폴더).
 //
 // **게시를 눈으로 확인하기 전에 돌리지 마라.** 옮기고 나면 다음 세션은 올린 것으로 본다.
 // 판정은 화면이 아니라 API 다. `/api/v1/media/<pk>/info/` 의 `carousel_media` 길이와
@@ -20,16 +17,15 @@ import path from "node:path";
 const OPS = "C:/dev/ops";
 const MACHINE = JSON.parse(fs.readFileSync(path.join(OPS, "machine.json"), "utf8"));
 const DRIVE = MACHINE.drive_root.replace(/\//g, path.sep);
+const ROOT = path.join(DRIVE, "영상 편집", "AI 크리에이터", "카드뉴스");
+const DONE = path.join(ROOT, "업로드 완료");
+const LOG = path.join(ROOT, "게시기록.jsonl");
+
 const args = process.argv.slice(2);
 const urlIndex = args.indexOf("--url");
 const URL_ = urlIndex >= 0 ? args[urlIndex + 1] : null;
-const rootIndex = args.indexOf("--root");
-const ROOT = rootIndex >= 0 ? path.resolve(args[rootIndex + 1]) : path.join(DRIVE, "영상 편집", "AI 크리에이터", "카드뉴스");
-const DONE = path.join(ROOT, "업로드 완료");
-const LOG = path.join(ROOT, "게시기록.jsonl");
 const DRY = args.includes("--dry-run");
-const skip = new Set([urlIndex >= 0 ? urlIndex + 1 : -1, rootIndex >= 0 ? rootIndex + 1 : -1]);
-const src = args.filter((a, i) => !a.startsWith("--") && !skip.has(i))[0];
+const src = args.filter((a, i) => !a.startsWith("--") && i !== urlIndex + 1)[0];
 
 if (!src || !URL_) {
   console.log('사용법: node cardnews-done.mjs "<폴더 경로>" --url <게시물 주소> [--dry-run]');
