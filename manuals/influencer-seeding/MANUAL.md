@@ -155,6 +155,12 @@ node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
 연결 확장이 있는 별도 프로필에서 사람이 로그인한 뒤 계정명을 먼저 확인한다. 비밀번호·OTP는
 에이전트가 입력하지 않는다.
 
+2026-09-08 최종 확인: 사용자가 `wellnessbox Japan` 프로필에 Codex 연결 확장을 설치한 뒤
+`wellnessbox_jp_official` DM을 직접 열람할 수 있었다. 현재 연결 목록에서 Global과 JP를 각각
+별도 Chrome 프로필로 확인한다. Global은 `프로필 1`, JP는 `wellnessbox Japan`으로 연결됐으며,
+한 프로필 안에서 계정 전환으로 우회하지 않는다. 두 계정의 DM을 읽기 전 Unread 목록을 저장하고,
+읽은 스레드는 원래 상태로 복원한다.
+
 ### 과거 Gmail 회신 대조 (사용자가 명시한 경우만)
 
 정기 실행에서는 이 절을 건너뛴다. 사용자가 과거 샤오홍슈·미모미 회신의 재대조를 명시한 경우에만
