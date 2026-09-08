@@ -27,12 +27,13 @@ const ROOT = process.env.OPS_ROOT || path.resolve(HERE, "..", "..");
 // 세션이 적어 낸 expectedAccount 를 믿지 않는다. 기대값까지 베껴 쓰면 검사가 의미를 잃는다.
 export const CHANNELS = {
   instagram: "wellnessbox_global_official",
-  gmail: "wellnessbox.global@gmail.com",
 };
 
-// 일본어권 Instagram을 확인한 실행만 이 채널을 메타에 넣는다. 기존 실행의 메타 형식도 유지한다.
+// 일본어권 Instagram을 확인한 실행만 이 채널을 메타에 넣는다. Gmail은 샤오홍슈 과거 회신용으로만
+// 남겨 두며, 현재 시딩 갱신에서는 확인하지 않아도 된다. 기존 실행의 메타 형식도 유지한다.
 export const OPTIONAL_CHANNELS = {
   instagramJapan: "wellnessbox_jp_official",
+  gmail: "wellnessbox.global@gmail.com",
 };
 
 function normAccount(v) {
@@ -77,6 +78,8 @@ export function accountProblems(meta, label) {
       out.push(`${where}${channel}: 계정 확인 기록이 없다`);
       continue;
     }
+    const status = String(m.status || "").trim();
+    if (channel === "gmail" && status === "not_applicable") continue;
     const observed = normAccount(m.observedAccount);
     if (!observed) {
       out.push(`${where}${channel}: observedAccount 가 비었다`);
@@ -85,7 +88,6 @@ export function accountProblems(meta, label) {
     if (observed !== normAccount(expected)) {
       out.push(`${where}${channel}: ${expected} 를 봐야 하는데 ${m.observedAccount} 를 봤다`);
     }
-    const status = String(m.status || "").trim();
     if (status !== "ok") {
       out.push(`${where}${channel}: status 가 ok 가 아니다 (${status || "빈칸"})`);
     }
@@ -160,7 +162,16 @@ function selfTest() {
     2,
     "일본 Instagram의 엉뚱한 계정과 status 를 잡아야 한다"
   );
-  assert.equal(accountProblems({ instagram: goodMeta.instagram }).length, 1, "빠진 채널을 잡아야 한다");
+  assert.equal(accountProblems({ instagram: goodMeta.instagram }).length, 0, "현재 미확인 선택 채널은 빠져도 된다");
+  assert.deepEqual(
+    accountProblems({
+      instagram: goodMeta.instagram,
+      instagramJapan: goodMeta.instagramJapan,
+      gmail: { status: "not_applicable", reason: "샤오홍슈 시딩 종료" },
+    }),
+    [],
+    "현재 시딩과 무관한 Gmail은 not_applicable로 통과해야 한다"
+  );
   // 260827 사고 재현: 남의 지메일을 보고 회신 0건으로 끝냈다
   const wrongMeta = {
     instagram: goodMeta.instagram,

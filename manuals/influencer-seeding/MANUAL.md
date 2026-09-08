@@ -1,9 +1,9 @@
 # 인플루언서 시딩 진행 갱신
 
-- **부르는 말**: 시딩 상황 파악해줘, 시딩 진행표 갱신해줘, 섭외 DM 확인하고 시트 갱신해줘, 인플루언서 회신 정리해줘, 진행상황 동기화해줘, 샤오홍슈 회신 확인해줘, 글로벌 메일 회신 정리해줘, 인플루언서 섭외 시트 업무, 인플루언서 시트 정비, 시딩 원장 복구, 진행상황 정렬, 단가 공식 복구
-- **미리 허가**: 인스타 DM 과 지메일 회신 읽기, 지메일 계정 갈아타기, 통합 원장 시트 쓰기, 승인된 정렬, 노션 데스크 현황 숫자 갱신
+- **부르는 말**: 시딩 상황 파악해줘, 시딩 진행표 갱신해줘, 섭외 DM 확인하고 시트 갱신해줘, 인플루언서 회신 정리해줘, 진행상황 동기화해줘, 인플루언서 섭외 시트 업무, 인플루언서 시트 정비, 시딩 원장 복구, 진행상황 정렬, 단가 공식 복구
+- **미리 허가**: 두 Instagram 계정의 DM 읽기, 통합 원장 시트 쓰기, 승인된 정렬, 노션 데스크 현황 숫자 갱신
 - **런너**: codex
-- **제어층**: L3 (DM 과 메일 읽기) → L1 (시트 읽기와 쓰기, 검증)
+- **제어층**: L3 (두 Instagram 계정의 DM 읽기) → L1 (시트 읽기와 쓰기, 검증)
 - **기본 시트 ID**: `1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE`
 - **한 번에 걸리는 시간**: 30~60분 (새 회신 개수에 따라)
 
@@ -44,9 +44,9 @@
 ## 준비물
 
 - 로그인된 인스타 `@wellnessbox_global_official` (중화권, 프로필 `사용자 이름1`)
-- 로그인된 인스타 `@wellnessbox_jp_official` (일본어권). 2026-09-07 크롬 프로필 2에서 로그인 상태를 확인했다
-- 로그인된 지메일 **`wellnessbox.global@gmail.com`**. 260820 실측 구글 계정 인덱스 **`u/6`**.
-  기본 계정(`u/0`)이 아니고 지메일 커넥터(L1)도 이 주소가 아니다. **갈아타고 시작한다**
+- 로그인된 인스타 `@wellnessbox_jp_official` (일본어권). 계정이 표시되는 별도 Chrome 프로필에서 확인한다
+- 과거 샤오홍슈 회신 원문이 필요할 때만 로그인된 지메일 **`wellnessbox.global@gmail.com`**을 참고한다.
+  샤오홍슈 시딩은 종료됐으므로 정기 실행에서는 Gmail을 열지 않는다
 - 통합 원장 시트 `1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE`
 - `<OPS>/AGENTS.md`, `<OPS>/runners/codex.md`, `<OPS>/abilities/구글시트.md`, `<OPS>/abilities/인스타그램.md`
 - 이번 실행의 `<OPS>/work/<taskId>/` 폴더
@@ -97,29 +97,21 @@ node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
   `미미라인`, `OWM 신사`, `성수퓨어약국` 세 값만 드롭다운으로 입력한다. `배정` 탭과 값이 충돌하면
   `배정` 탭을 정본으로 삼아 확인한다
 
-## 채널은 국가별로 나누고, 지메일은 갈아타야 보인다
+## 채널은 국가별 Instagram DM으로 나눈다
 
 | 채널 | 어디를 보나 | 계정 |
 | --- | --- | --- |
 | 인스타 DM (중화권) | `https://www.instagram.com/direct/inbox/` | `@wellnessbox_global_official` |
 | 인스타 DM (일본어권) | `https://www.instagram.com/direct/inbox/` | `@wellnessbox_jp_official` |
-| 지메일 (중국·샤오홍슈) | `https://mail.google.com/mail/u/6/#search/is%3Aunread` | `wellnessbox.global@gmail.com` |
-| 지메일 (일본어권, 메일 회신을 실제로 보낸 경우만) | 확인된 일본 계정의 받은함 | `wellnesbox.jp@gmail.com` |
+일본어권 후보의 Instagram 회신은 `@wellnessbox_jp_official`에서 읽고, 중화권 후보의 회신은
+`@wellnessbox_global_official`에서 읽는다. 두 목록을 한 배열로 합치지 않는다.
 
-일본어권 후보의 Instagram 회신은 `@wellnessbox_jp_official`에서 읽는다. 일본어권 메일을
-`wellnessbox.global@gmail.com`에서 대신 찾지 않는다. `wellnesbox.jp@gmail.com`은 최신 일본
-매뉴얼의 표기이며, 로그인 여부를 확인하지 못했으면 메일을 열지 말고 미확인으로 기록한다.
-일본 계정과 중화권 계정을 전환할 때는 다른 업무가 같은 크롬 프로필을 쓰는지 먼저 확인한다.
+**샤오홍슈 시딩은 종료됐다.** 과거 미모미 캠페인에서 샤오홍슈 앱 쪽지 대신
+`wellnessbox.global@gmail.com`으로 주고받은 메일은 역사 자료로만 남긴다. 정기 시딩 갱신에서는
+샤오홍슈 앱과 Gmail을 열지 않는다. 사용자가 과거 샤오홍슈·미모미 회신의 재대조를 명시한 경우에만
+해당 Gmail을 별도 범위로 읽고, 그 실행의 메모와 보고서에 역사 자료 확인이라고 적는다.
 
-**샤오홍슈는 앱 쪽지가 아니라 메일이다.** 260820 에 샤오홍슈 직접 탐색 후보 55명에게 1차 제안을
-`wellnessbox.global@gmail.com` 으로 보냈다. 앱 쪽지로는 보낸 적이 없으니 받을 것도 없다.
-**샤오홍슈 앱을 열지 마라.** 그쪽 회신은 전부 그 지메일 받은함에 있다.
-
-260827 실행이 여기서 샜다. 샤오홍슈 로그인 화면을 보고 "못 읽었다" 로 적고 끝냈는데 애초에 볼 곳이
-아니었고, 같은 실행이 지메일도 `wellnessbox.me@gmail.com` 을 보고 "회신 0건" 으로 끝냈다.
-**빈 받은함은 회신이 없다는 뜻도 되고 남의 받은함이라는 뜻도 된다.**
-
-### 크롬 프로필을 바꾸지 말고 구글 계정만 갈아탄다
+### 크롬 프로필을 바꾸지 말고 계정별 별도 프로필을 쓴다
 
 둘은 다른 것이다. 헷갈리면 다른 세션의 인스타 로그인까지 날아간다.
 
@@ -128,28 +120,36 @@ node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
 - **구글 다계정 전환은 해도 된다.** 주소의 `/u/N` 만 바뀔 뿐 로그아웃이 아니고 다른 서비스에 영향이 없다
 - **로그아웃 버튼을 누르지 마라.** 한 번 누르면 그 프로필의 구글 세션이 전부 풀린다
 
-갈아타는 순서는 이렇다.
+### 인스타 계정별 Chrome 프로필 격리
 
-1. `https://mail.google.com/mail/u/6/` 를 연다. 260820 실측 인덱스다
-2. **연 다음 주소가 맞는지 눈으로 확인한다.** 인덱스는 계정을 넣고 빼면 밀린다
+중화권과 일본어권은 반드시 `@wellnessbox_global_official`, `@wellnessbox_jp_official` 두 계정에서
+각각 확인한다. 연결된 Chrome 프로필에 다른 계정이나 다른 세션의 탭이 보이면 Instagram 계정 전환을
+누르지 않는다. 같은 프로필의 다른 세션까지 계정이 바뀔 수 있다.
 
-   ```js
-   document.querySelector('a[aria-label*="@"]')?.getAttribute("aria-label")
-   ```
+1. 연결된 브라우저 목록에서 기대 계정이 실제로 표시되는 프로필을 찾는다.
+2. 기대 계정이 없거나 다른 세션이 사용 중이면, 이미 로그인된 별도 Chrome 프로필을 선택해 그 프로필에서
+   작업한다.
+3. 별도 프로필이 없으면 새 Chrome 프로필을 만들고 사람이 해당 계정에 로그인한다. 에이전트는 비밀번호·OTP를
+   입력하지 않는다.
+4. 별도 프로필이 로컬에 있어도 자동화 브라우저 연결이 확인되지 않으면 계정 전환으로 우회하지 않는다.
+   `unread-before-meta.json`에 `status`와 실제로 관찰한 계정·프로필을 기록하고, 이 매뉴얼의 알려진 함정에도
+   연결 상태를 남긴다.
 
-   `wellnessbox.global@gmail.com` 이 안 보이면 이 인덱스가 아니다
-3. 틀렸으면 `https://mail.google.com/mail/u/0/?authuser=wellnessbox.global@gmail.com` 으로 연다.
-   구글이 맞는 인덱스로 넘겨준다. **넘어간 주소의 `u/N` 을 읽어 이번 실행의 인덱스로 쓴다**
-4. 그래도 안 되면 오른쪽 위 계정 아이콘을 눌러 목록에서 고른다
-5. 목록에 그 계정이 아예 없으면 **거기서 멈춘다.** 사람에게 그 크롬에 한 번 로그인해 달라고 적는다.
-   비밀번호를 대신 넣지 않는다
+2026-09-08 확인: 자동화에 연결된 Chrome은 `프로필 2` 하나였고 Instagram 화면은 `haruyaksa`였다.
+같은 프로필에 다른 세션의 Notion·Instagram 탭이 있어 계정 전환을 하지 않았다. 로컬 Chrome에는
+`Profile 10 (wellnessbox Japan)`과 `Profile 5`가 있었지만 자동화 연결은 확인하지 못했다. Chrome 마스터가
+실행 중일 때 `--profile-directory`로 별도 프로필을 띄우는 시도는 기존 세션으로 재사용될 수 있으므로,
+연결된 브라우저 목록에서 실제 프로필과 계정을 확인하기 전에는 유효한 격리로 보지 않는다.
 
-확인한 인덱스와 실제로 보인 주소를 `<OPS>/work/<taskId>/unread-before-meta.json` 에 적는다.
-**안 적으면 완료 검사가 통과하지 않는다.**
+2026-09-08 사용자 확인: `wellnessbox_global_official`, `wellnessbox_jp_official`, Gmail 로그인 화면을
+각각 확보했다. 이후 실행은 두 Instagram 탭의 계정명을 직접 확인해 진행하고, Gmail은 과거 샤오홍슈
+대조를 명시한 경우에만 사용한다.
 
-**지메일 커넥터(L1)를 이 업무에 쓰지 마라.** 실측에서 `contact@wellnessbox.kr` 과
-`wellnessbox.me@gmail.com` 으로 붙었다. 둘 다 우리가 보낸 계정이 아니라 받은함이 통째로 비어 보인다.
-지메일은 L3 으로 본다.
+### 과거 Gmail 회신 대조 (사용자가 명시한 경우만)
+
+정기 실행에서는 이 절을 건너뛴다. 사용자가 과거 샤오홍슈·미모미 회신의 재대조를 명시한 경우에만
+`wellnessbox.global@gmail.com`에서 대상 메일을 확인한다. 로그인한 계정과 실제 주소를 화면에서 확인하고,
+읽기 전 안 읽음 목록을 저장하며, 읽은 스레드는 원래 상태로 되돌린다. Gmail 커넥터(L1)는 사용하지 않는다.
 
 ## 대상과 자리
 
@@ -157,7 +157,7 @@ node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
 | --- | --- |
 | 통합 원장 시트 | `1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE` |
 | 후보 원본 | 통합 컨택 리스트 `1tC4xdmK_Q4kF4PQfPyoRDC_gLTutfw6_7sBRHkJdsCc` |
-| 샤오홍슈 55명 발송 이력 | 지메일 `u/6` 에서 `in:sent newer_than:60d` |
+| 과거 샤오홍슈 발송 이력 | 사용자가 재대조를 명시한 경우에만 Gmail의 보낸편지함에서 확인 |
 | 섭외 기본서 | https://app.notion.com/p/3c73b1f9b9ae81169df7e75876d71299 |
 | 중화권 데스크 | https://app.notion.com/p/3c73b1f9b9ae8130b1eed67470cbd749 |
 | 일본 데스크 | https://app.notion.com/p/3c73b1f9b9ae81369e1dd9194a8cd190 |
@@ -208,9 +208,9 @@ node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
    1만~3만 미만 ×0.69, 3만~5만 미만 ×0.6, 5만 이상 ×0.55다.
 6. 팔로워도 없으면 최저 1차 제안가를 역산한 조회수 6,000과 팔로워 7,895를 쓴다.
 
-샤오홍슈 지표 조사는 연결된 안드로이드 폰과
-`manuals/insta-metrics/scripts/xhs-probe.py`를 쓴다. 샤오홍슈 회신을 확인할 때만 앱을 열지 않는
-것이다. 지표 조사에는 앱이 정본이다. 화면의 실제 ID가 후보 ID와 일치할 때만 값을 쓴다.
+샤오홍슈 지표 조사는 과거 자료를 재대조하라는 사용자의 명시 요청이 있을 때만 연결된 안드로이드
+폰과 `manuals/insta-metrics/scripts/xhs-probe.py`를 쓴다. 정기 시딩 갱신에서는 샤오홍슈 앱과 지표를
+확인하지 않는다.
 
 `1차 제안`이 20만원 이상이거나 조회수÷팔로워가 0.05 미만 또는 20 이상이면 이상치다. 이상치 행은
 `확인 필요`로 바꾸고 `추천 액션`에 재확인 전 발송 금지를 적는다. 인스타그램은 일반 릴스 9편,
@@ -396,30 +396,9 @@ Google Sheets API 의 `updateCells` 에서 `rows[].values` 사이에 `{}` 를 �
    **DM 목록은 가상 스크롤이다.** 화면에 보이는 방만 DOM 에 있다. 아래로 내리면서 모아야 전체가 나온다.
    표시가 안 잡히면 화면을 캡처해 파란 점이 붙은 방 이름을 눈으로 적는다.
 
-   **(나) 지메일**
+   **(나) 저장**
 
-   위에서 확인한 인덱스로 `#search/is%3Aunread` 를 연다. **스레드를 열지 말고 목록만 읽는다.**
-
-   ```js
-   [...document.querySelectorAll("tr.zA")].map(function (r) {
-     var from = r.querySelector(".yW span[email], .yX span[email]");
-     return {
-       방: (r.querySelector(".bog") || {}).innerText || "",
-       보낸사람: from ? from.getAttribute("email") : "",
-       스레드: r.getAttribute("id") || "",
-       링크: location.origin + location.pathname + "#all/" + (r.getAttribute("id") || ""),
-       안읽음: r.classList.contains("zE")
-     };
-   })
-   ```
-
-   `tr.zE` 가 안 읽음이고 `tr.yO` 가 읽음이다.
-   **보낸 사람 주소를 반드시 같이 적는다.** 7단계에서 이 주소로 시트 행을 찾는다.
-   **한 화면을 넘으면 다음 장까지 간다.** 지메일은 한 장에 50건까지만 그린다.
-
-   **(다) 저장**
-
-   국가별 Instagram과 Gmail 목록을 `<OPS>/work/<taskId>/unread-before.json` 에,
+   중화권·일본어권 Instagram 목록을 `<OPS>/work/<taskId>/unread-before.json` 에,
    계정 확인 결과를 `<OPS>/work/<taskId>/unread-before-meta.json` 에 저장한다.
 
    ```json
@@ -440,25 +419,21 @@ Google Sheets API 의 `updateCells` 에서 `rows[].values` 사이에 `{}` 를 �
      },
      "gmail": {
        "expectedAccount": "wellnessbox.global@gmail.com",
-       "observedAccount": "wellnessbox.global@gmail.com",
-       "userIndex": "u/6",
-       "status": "ok"
+       "status": "not_applicable",
+       "reason": "샤오홍슈 시딩 종료"
      }
    }
    ```
 
    `observedAccount` 는 **화면에서 실제로 읽은 값**을 적는다. 기대값을 그대로 베끼지 마라.
-   계정을 못 맞췄으면 `status` 에 사유를 적는다. **`ok` 가 아니면 완료 검사가 실패한다.**
-   고장이 아니라 "그 채널은 안 본 것" 을 기록으로 남기는 것이다.
+   Gmail은 정기 실행에서 `status: "not_applicable"`, `reason: "샤오홍슈 시딩 종료"`로 기록하고
+   `observedAccount`를 비워 둔다. Instagram 계정을 못 맞추면 `status`에 사유를 적고 완료를 막는다.
 
-   **저장을 확인하고 나서 첫 방과 첫 메일을 연다.**
+   **저장을 확인하고 나서 첫 DM 방을 연다.**
 
 5. **회신을 읽고 갈래를 나눈다 (L3)**
 
    지난번 실행 이후에 온 것만 보면 된다. 그 날짜는 드라이브 `에이전트/보고/` 의 마지막 보고에 있다.
-
-   **메일은 스레드를 열어야 본문이 보이고, 여는 순간 읽음이 된다.** 4단계 목록을 저장했는지
-   다시 확인하고 열어라. 다 읽으면 8단계에서 되돌린다.
 
    | 갈래 | 무엇 | 원장에 어떻게 |
    | --- | --- | --- |
@@ -510,9 +485,8 @@ Google Sheets API 의 `updateCells` 에서 `rows[].values` 사이에 `{}` 를 �
 
    **DM 방 이름은 표시 이름이지 핸들이 아니다.** 방을 열어 프로필에서 핸들을 확인하고 나서 원장을 뒤진다.
 
-   **메일 회신은 보낸 사람 주소로 찾는다.** 메일에는 샤오홍슈 ID 가 안 적혀 있다.
-   `공개 연락처` 열을 주소로 뒤져 행을 찾고, 그 행의 `계정` 을 열쇠로 다시 확인하고 나서 쓴다.
-   주소가 원장에 없으면 서명의 이름이나 계정명으로 다시 찾고, 그래도 없으면 새 줄을 만든다.
+   정기 실행의 회신은 Instagram DM에서만 찾는다. 과거 Gmail 회신을 사용자가 명시한 경우에만
+   보낸 사람 주소로 `공개 연락처` 열을 뒤져 행을 찾고, 그 행의 `계정`을 열쇠로 다시 확인한다.
 
    한 행에 대해 이 순서로 한다.
 
@@ -543,20 +517,11 @@ Google Sheets API 의 `updateCells` 에서 `rows[].values` 사이에 `{}` 를 �
    **인스타.** 방 목록에서 그 방을 오른쪽 클릭하면 "읽지 않음으로 표시" 가 나온다.
    메뉴가 안 뜨면 방 줄 오른쪽 끝의 점 세 개 버튼을 눌러도 같은 메뉴가 나온다.
 
-   **지메일.** 스레드 안에서 하지 말고 **목록으로 돌아와서** 한다.
-   목록에서 그 스레드의 체크박스를 켜고 툴바의 봉투 아이콘("읽지 않음으로 표시") 을 누른다.
-   여러 건을 한꺼번에 켜서 한 번에 눌러도 된다.
-   단축키 `Shift+U` 도 같은 일을 하는데 **단축키가 꺼진 계정에서는 아무 일도 안 일어난다.**
-   눌러 놓고 됐다고 치지 마라. 화면으로 확인한다.
-
-   되돌린 뒤 **채널마다 목록을 다시 읽어** 4단계 목록이 전부 다시 안 읽음으로 나오는지 확인한다.
-   지메일은 `is:unread` 를 다시 검색한다.
+   되돌린 뒤 **두 Instagram 채널의 목록을 다시 읽어** 4단계 목록이 전부 다시 안 읽음으로 나오는지 확인한다.
+   Gmail은 정기 실행에서 열지 않았으므로 복원 대상이 없다.
 
    결과를 `unread-after.json` 에, 되돌릴 때 본 계정을 `unread-after-meta.json` 에 저장한다.
    형식은 4단계와 같다. **읽을 때와 되돌릴 때가 같은 계정이어야 한다.**
-
-   **한 스레드에 안 읽은 메일이 여러 개였어도 되돌리면 스레드 하나가 안 읽음이 된다.**
-   개수까지는 복원되지 않는다. 그건 그대로 두고 스레드 단위로만 맞춘다.
 
 9. **원장을 다시 읽어 한 칸씩 대조한다 (L1)**
 
@@ -780,7 +745,7 @@ node "<OPS>/manuals/influencer-seeding/scripts/build-sort-plan.mjs" \
   `아직 미정.` 또는 `일정 미정`이면 `일정 보류`다
 - 활성 배정과 구체적인 방문 일시가 있으면 과거 메모의 `조율 중`, `답장 대기`, 지급 수단 문구만으로
   `확정`을 내리지 않는다. 이번 캠페인 취소·철회가 있으면 원문과 배정 상태를 확인할 `검토후보`로 남긴다
-- **합의 단가나 수락처럼 보이는 메모만 보고 확정으로 바꾸지 않는다.** DM이나 메일의 수락 원문과
+- **합의 단가나 수락처럼 보이는 메모만 보고 확정으로 바꾸지 않는다.** Instagram DM의 수락 원문과
   `⑤확정`을 확인한다. 원문을 못 찾으면 `확인 필요` 후보로 보고한다
 - 명시적 거절이나 이번 캠페인 참여 불가는 `거절`이다. 단순 무응답은 거절이 아니며 기존 발송 단계를 유지한다
 - 하고 싶지만 귀국·방문·촬영 시기만 미뤄진 것은 `일정 보류`다
@@ -850,7 +815,8 @@ node "<OPS>/manuals/influencer-seeding/scripts/build-sort-plan.mjs" \
 - [ ] (기계) 작업 전후 CSV 와 `write-plan.validated.json` 이 있고 계획 해시가 그대로다
 - [ ] (기계) `diff.json` 의 `clean` 이 true 다. 허용 범위 밖 변경 0건
 - [ ] (기계) 값이 있던 칸을 비운 것 0건, 사라진 행 0건, 머리글 변경 0건, 열쇠 중복 0건
-- [ ] (기계) 채널마다 `observedAccount` 가 기대 계정과 같고 `status` 가 `ok` 다
+- [ ] (기계) 두 Instagram 채널의 `observedAccount` 가 기대 계정과 같고 `status` 가 `ok` 다. Gmail은
+      샤오홍슈 시딩 종료 시 `status: "not_applicable"`로 기록한다
 - [ ] (기계) `unread-before.json` 의 방과 스레드가 **전부** `unread-after.json` 에 안 읽음으로 있다
 - [ ] (기계) 갱신 갈래는 행 수가 새로 만든 줄만큼만 늘었다. 정비 갈래는 행 수가 그대로고,
       상태별 건수 변화는 `result.json`의 `statusAuditApplied`와 정확히 일치한다
@@ -883,19 +849,11 @@ node "<OPS>/manuals/influencer-seeding/checks.mjs" "<진행 중인 task JSON 경
 
 - **옛 탭 이름으로 찾지 마라.** 260828 통합으로 중국, 일본, 샤오홍슈 진행표는 `구_` 보관본이 됐다.
   거기에 쓰면 오류도 없이 아무도 안 보는 곳에 쓴 것이다
-- **샤오홍슈는 앱 쪽지가 아니라 메일이다.** 쪽지로 보낸 적이 없으니 받은 것도 없다. 앱을 열지 마라.
-  260827 실행이 샤오홍슈 로그인 화면에서 막혔다고 적고 끝냈는데 애초에 볼 곳이 아니었다
-- **지메일 기본 계정에는 이 업무의 회신이 하나도 없다.** `wellnessbox.global@gmail.com`(실측 `u/6`)
-  으로 갈아타고 시작한다. 260827 실행이 `wellnessbox.me@gmail.com` 을 보고 "회신 0건" 으로 끝냈다
-- **지메일 커넥터(L1)는 이 업무에 못 쓴다.** 실측에서 `contact@wellnessbox.kr` 과
-  `wellnessbox.me@gmail.com` 으로 붙었다. 지메일은 L3 으로 본다
-- **받은함이 비었으면 계정부터 의심한다.** 회신이 없는 것과 남의 받은함을 보는 것은 화면이 똑같다
-- **`u/6` 은 외운 숫자다. 계정을 넣고 빼면 밀린다.** 열고 나서 주소를 눈으로 확인하고,
-  틀렸으면 `?authuser=` 로 넘겨받아 실제 인덱스를 다시 읽는다
-- **메일은 스레드를 여는 순간 읽음이 된다.** 미리보기 창이 켜져 있으면 목록에서 화살표만 움직여도 읽힌다.
-  4단계 목록을 저장하기 전에는 아무것도 열지 마라
+- **샤오홍슈 시딩은 종료됐다.** 과거 미모미 회신을 재대조하라는 사용자의 명시 요청이 없으면
+  샤오홍슈 앱과 Gmail을 열지 않는다
 - **읽기 전에 안 읽은 것을 안 적으면 되돌릴 수가 없다.** 이 업무에서 제일 잘 나는 사고다
-- **메일 회신에는 샤오홍슈 ID 가 안 적혀 있다.** 보낸 사람 주소로 `공개 연락처` 열을 뒤져 행을 찾는다
+- **과거 Gmail 회신에는 샤오홍슈 ID 가 안 적혀 있을 수 있다.** 역사 대조를 명시한 경우에만 보낸 사람
+  주소로 `공개 연락처` 열을 뒤져 행을 찾는다
 - **크롬 프로필을 바꾸지 마라.** 로그인이 프로필 단위라 같은 크롬을 쓰는 다른 세션도 같이 바뀐다.
   **구글 다계정 전환(`/u/N`)은 이것과 다르다.** 로그아웃이 아니고 다른 서비스에 영향이 없으니 그건 한다
 - **받은함을 먼저 읽고 시트를 나중에 읽으면 같은 회신을 두 번 적는다.** 시트가 먼저다
@@ -941,7 +899,6 @@ node "<OPS>/manuals/influencer-seeding/checks.mjs" "<진행 중인 task JSON 경
 - 상한을 넘는 금액 요구
 - `배정` 탭에 없는 사람을 어느 캠페인으로 배정할지
 - 계약, 세금, 지급일처럼 합의 안 된 조건
-- 로그인이 만료돼 필요한 국가 채널 중 하나에 못 들어갈 때, 또는 지메일 계정 목록에
-  `wellnessbox.global@gmail.com` 이 없을 때
+- 로그인이 만료돼 필요한 Instagram 계정 중 하나에 못 들어갈 때
 - `설정` 탭에 남은 죽은 계수(B, C 열)를 지울지
 - 매뉴얼 밖의 시트, 메시지 발송, 결제, 되살릴 수 없는 삭제
