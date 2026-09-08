@@ -145,6 +145,10 @@ node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
 각각 확보했다. 이후 실행은 두 Instagram 탭의 계정명을 직접 확인해 진행하고, Gmail은 과거 샤오홍슈
 대조를 명시한 경우에만 사용한다.
 
+2026-09-08 추가 확인: Playwright의 별도 `seeding-probe` 세션에서 Instagram DM 주소를 열면
+`/accounts/login/`으로 이동했다. 이 세션은 사용자 Chrome의 로그인 쿠키를 상속하지 않으므로
+기존 계정 확인 경로로 쓰지 않는다.
+
 ### 과거 Gmail 회신 대조 (사용자가 명시한 경우만)
 
 정기 실행에서는 이 절을 건너뛴다. 사용자가 과거 샤오홍슈·미모미 회신의 재대조를 명시한 경우에만
