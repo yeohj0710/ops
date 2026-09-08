@@ -149,6 +149,12 @@ node "<OPS>/manuals/influencer-seeding/scripts/audit-legacy-tabs.mjs" \
 `/accounts/login/`으로 이동했다. 이 세션은 사용자 Chrome의 로그인 쿠키를 상속하지 않으므로
 기존 계정 확인 경로로 쓰지 않는다.
 
+2026-09-08 추가 실행: 새 연결 세션에서 `wellnessbox_global_official` DM은 직접 열람할 수 있었다.
+로컬 `Profile 10 (wellnessbox Japan)`에는 Codex 연결 확장이 없어 `wellnessbox_jp_official` DM은
+자동화로 열 수 없었다. JP 확인이 필요하면 사람이 JP 프로필에 연결 확장을 설치·연결하거나,
+연결 확장이 있는 별도 프로필에서 사람이 로그인한 뒤 계정명을 먼저 확인한다. 비밀번호·OTP는
+에이전트가 입력하지 않는다.
+
 ### 과거 Gmail 회신 대조 (사용자가 명시한 경우만)
 
 정기 실행에서는 이 절을 건너뛴다. 사용자가 과거 샤오홍슈·미모미 회신의 재대조를 명시한 경우에만
