@@ -15,7 +15,7 @@
 끝나면 이 넷이 있어야 한다.
 
 - 피그마 파일에 카드 4~6장 (1080x1350)
-- `<드라이브>/영상 편집/AI 크리에이터/카드뉴스/<YYMMDDhhmm 제목 (판이름) (계정)>/` 에 PNG
+- `<드라이브>/영상 편집/AI 크리에이터/카드뉴스/<YYMMDDhhmm 제목 (판이름) (계정)>/` 에 PNG (4x, 4320x5400)
 - 같은 폴더에 `캡션.txt` 와 `캡션.html`
 - **인스타에 올라간 캐러셀 하나.** 올린 폴더는 `업로드 완료/` 로 옮겨져 있다
 
@@ -386,7 +386,7 @@ document.body.appendChild(a); a.click(); a.remove();
 - **한 줄(카드 5장)을 스크립트 하나로 짓는다.** 한 장씩 짓지 마라
 - 헬퍼(`card`, `T`, `hi`, `table`)를 스크립트 맨 위에 두고 돌려 쓴다
 - 확인은 그 줄에서 **한두 장만** `frame.screenshot({scale:0.32})` 로 본다
-- 최종 PNG 뽑기만 카드마다 `get_screenshot` 을 부른다
+- 최종 PNG 뽑기만 카드마다 `download_assets` 를 `defaultScale 4` 로 부른다(아래 9)
 - 스크립트 한 개 상한은 5만 자다. 넘으면 줄을 쪼갠다
 
 - 프레임 1080x1350, 가로 1220 간격으로 깐다
@@ -401,9 +401,9 @@ document.body.appendChild(a); a.click(); a.remove();
 curl -s -X POST "<submitUrl>" -F "file=@shot.png;type=image/png"
 ```
 
-### 9. PNG 로 뽑아 드라이브에 둔다 (L1)
+### 9. PNG 를 4x 로 뽑아 드라이브에 둔다 (L1)
 
-`get_screenshot` 에 `maxDimension: 1350` 을 주면 1080x1350 원본 크기로 나온다.
+**최소 4x 로 뽑는다.** 사용자(260911): "내보내기는 최소 4x로 부탁해. 2x로도 이미지 화질이 깨지더라". 카드 프레임마다 피그마 MCP `download_assets(fileKey, nodeId, defaultFormat 'png', defaultScale 4)` 를 부르면 4320x5400 이 나온다. 4 가 최대값이고, 12장을 한 번에 병렬로 불러도 됐다. 주소는 10분 안팎만 산다. `get_screenshot` 은 노드 원래 크기보다 크게 안 그려서 내보내기에 쓰지 않는다.
 반환된 주소를 `curl` 로 받아 드라이브 폴더에 넣는다.
 
 ### 10. 캡션을 쓴다 (L1)
@@ -658,7 +658,7 @@ a.href = 'http://127.0.0.1:8791/sender.html'; a.target = '_blank'; a.rel = 'open
 ```js
 const j = await fetch("/api/v1/feed/user/<id>/?count=2", {headers:{"x-ig-app-id":"936619743392459"}}).then(r=>r.json());
 const it = j.items[0];
-// carousel_media.length 가 장수와 같은가, 전부 1080x1350 인가
+// carousel_media.length 가 장수와 같은가, 전부 4:5 비율인가
 ```
 
 ## U4-1. 캡션은 게시 뒤 수정 화면에서 넣는다 (L3)
@@ -699,7 +699,7 @@ node "<OPS>/manuals/card-news/scripts/cardnews-done.mjs" "<폴더>" --url https:
 ```
 <드라이브>/영상 편집/AI 크리에이터/카드뉴스/
 ├─ <YYMMDDhhmm 제목 (판이름) (계정)>/     올릴 차례를 기다리는 벌
-│  ├─ 01~06.png          1080x1350
+│  ├─ 01~06.png          4320x5400 (4x)
 │  ├─ 캡션.txt           ← 타이핑해 넣을 원문. 이게 없으면 후보에서 빠진다
 │  ├─ 캡션.html
 │  └─ _생성 원본 사진/     (이미지를 생성했으면)
@@ -712,7 +712,7 @@ node "<OPS>/manuals/card-news/scripts/cardnews-done.mjs" "<폴더>" --url https:
 
 ## 완료 검사
 
-- [ ] (기계) PNG 가 전부 1080x1350 인가
+- [ ] (기계) PNG 가 전부 4320x5400(4x) 인가. 1x, 2x 로 뽑은 것이면 다시 뽑는다
 - [ ] (기계) 장수가 뼈대에 적은 것과 같은가
 - [ ] (사람) **제목이 전부 복합명사인가.** 문장형이나 관형절이 하나라도 있으면 다시 쓴다
 - [ ] (사람) **`maxDimension: 430` 으로 뽑아 폰 크기에서 읽히는가.** 안 읽히면 행을 줄이고 글자를 키운다
@@ -730,7 +730,7 @@ node "<OPS>/manuals/card-news/scripts/cardnews-done.mjs" "<폴더>" --url https:
 **올렸으면 여기까지 본다.**
 
 - [ ] (기계) `carousel_media` 길이가 만든 장수와 같은가
-- [ ] (기계) 캐러셀 전 장이 `1080x1350` 인가
+- [ ] (기계) 캐러셀 전 장이 4:5 비율인가(인스타가 돌려주는 크기로 본다)
 - [ ] (기계) `caption.text` 길이가 `캡션.txt` 와 맞는가. **0 이면 캡션 없이 나간 것이다.**
       게시 직후에는 늘 `0` 이다. U4-1 을 하고 나서 다시 본다
 - [ ] (기계) `caption.text` 를 `캡션.txt` 와 글자 단위로 대조했는가. 길이만 보면 줄바꿈이 뭉개진 걸 놓친다
