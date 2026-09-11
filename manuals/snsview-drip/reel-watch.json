@@ -1,0 +1,8 @@
+{
+  "account": "kimjejo_pharma",
+  "checkTimes": ["08:00", "12:00", "16:00", "17:00", "18:00", "19:00", "20:00", "23:00"],
+  "order": { "qty": 100, "runs": 100, "every": "5m" },
+  "dailyMax": 2,
+  "maxAgeHours": 72,
+  "failAlertAfter": 2
+}
