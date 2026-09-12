@@ -319,6 +319,37 @@ Claude 나 Codex 새 세션에 이렇게 말하면 됩니다.
 **시작 전에 숫자로 알리고 바로 실행한다. 답을 기다리지 않는다.** 회로 한 번이 KIE 크레딧
 (이미지 + BGM)을 쓰고 **공개 유튜브 영상을 올린다.** 두 채널이니 두 번이다.
 
+### 카드 색과 배경은 편마다 바뀐다 (260912 설정)
+
+회로가 카드 패널 색, 강조색, 위아래 빈 띠에 깔리는 배경을 편마다 다르게 잡는다.
+색 12벌에 배경 7가지고, 직전 4벌과 직전 배경 3가지는 빼고 뽑으니 연달아 같은 색이 안 나온다.
+구조는 그대로다. 패널 하나에 등수 배지, 4행, 마지막 팔로우 한 줄은 안 바뀌고 색만 돈다.
+**평소에는 아무것도 안 해도 된다.** 회로가 알아서 돌린다.
+
+한 편만 색을 지정하고 싶으면 실행 입력에 넣는다.
+
+```json
+{ "card_palette": "mint_teal", "card_backdrop": "linen_cloth" }
+```
+
+색 이름과 배경 이름은 여기 있다. 이 파일을 고치면 두 채널에 같이 적용된다.
+
+```text
+C:\dev\n8n-youtube-shorts-automation\scripts\lib\card-colour-variation.mjs
+```
+
+고친 뒤에는 아래 둘을 순서대로 돌린다. 워크플로우 JSON을 직접 고치면 다음 생성기 실행에 지워진다.
+
+```bash
+node "C:/dev/n8n-youtube-shorts-automation/scripts/simplify-legacy-editorial-flow.mjs"
+cd "C:/dev/n8n-youtube-shorts-automation" && npm run build:reference-card && npm test
+```
+
+어느 색으로 나갔는지는 업로드 기록의 `card_palette_id`, `card_backdrop_id` 에 남는다.
+**색이 또 똑같이 나오면 프롬프트를 의심하기 전에 발행본 PNG 를 먼저 본다.** 값은 매번 달랐는데
+그림이 같던 게 260912 에 고친 그 문제다. 경위는 n8n 저장소 `AGENTS.md` 의
+"Five Varying Style Axes Still Produced One Look" 에 있다.
+
 ### KIE 크레딧
 
 **잔액은 화면으로 재지 마라. 이 명령 하나로 끝난다 (L1).**
