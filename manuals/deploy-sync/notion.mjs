@@ -6,6 +6,16 @@
 // 노션에 직접 쓰지 않는다. work/deploy-sync/notion-new.md 를 만들어 놓을 뿐이다.
 // 그 파일로 페이지 윗부분을 갈아끼우는 것은 노션을 만질 수 있는 런너가 한다.
 //
+// 본문 원본은 여기가 아니라 <DEV>/dev-hub/notion.mjs 다
+//   링크 목록, 설명, 배포 나이, 루프 현황은 전부 그쪽이 links.json 하나에서 찍는다.
+//   여기서 같은 것을 다시 찍으면 두 벌이 되고, 한쪽만 고친 날 페이지가 망가진다.
+//   260912 에 실제로 그랬다. 여기서 찍은 본문은 휴면 링크 21개가 (undefined) 로 나왔고
+//   설명도 전부 빠져 있었다. 그대로 넣었으면 페이지가 통째로 퇴화했다.
+//   그래서 이 스크립트는 dev-hub 본문을 받아 "사이트 점검" 한 덩어리만 끼워 넣는다.
+//
+// 이 스크립트가 만드는 것은 "사이트 점검" 절뿐이다
+//   scan.json 의 판정을 사람 말로 옮긴다. dev-hub 는 이 절을 만들지 않는다.
+//
 // 페이지를 통째로 덮어쓰지 않는다
 //   아래쪽 "진행 상황 브리핑" 은 사람과 다른 업무가 쌓아 온 기록이다.
 //   통째로 덮어쓰면 옮겨 적다 한 글자만 틀려도 그 기록이 조용히 바뀐다.
@@ -44,51 +54,22 @@ function 말로바꾼다(s) {
   return String(s ?? "")
     .replace(/\s+[—–]\s+/g, ", ")
     .replace(/[—–]/g, ", ")
-    .replace(/\s*·\s*/g, ", ")
-    .replace(/,\s*,/g, ",")
-    .trim();
+    .replace(/\s*·\s*/g, ", ");
 }
 
 const KST = (d) => {
-  const f = new Intl.DateTimeFormat("ko-KR", {
+  const p = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Seoul",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
-  }).formatToParts(d);
-  const g = (t) => f.find((p) => p.type === t)?.value ?? "";
-  return `${g("year")}-${g("month")}-${g("day")} ${g("hour")}:${g("minute")} KST`;
+  }).format(d);
+  return p.replace(" ", " ") + " KST";
 };
 
-// ── 원자료 ──────────────────────────────────────────────────────
-
-const links = JSON.parse(fs.readFileSync(path.join(HUB, "links.json"), "utf8").replace(/^﻿/, ""));
-
-let loops = [];
-try {
-  const { SHOW } = await import("file:///" + path.join(HUB, "loops.mjs").replace(/\\/g, "/"));
-  const raw = execFileSync(process.execPath, [path.join(DEV, "loop-status.mjs"), "--json"], {
-    encoding: "utf8",
-    timeout: 300000,
-    maxBuffer: 32 * 1024 * 1024,
-  });
-  const j = JSON.parse(raw);
-  loops = j.loops
-    .filter((r) => SHOW[r.key])
-    .map((r) => {
-      const s = SHOW[r.key];
-      let detail = "";
-      try {
-        detail = s.pick(r) || "";
-      } catch {}
-      return { title: 말로바꾼다(s.title), url: s.url, state: r.상태 ?? "알 수 없음", detail: 말로바꾼다(detail) };
-    });
-} catch (e) {
-  console.warn("루프 상태를 못 읽었다:", String(e.message ?? e).slice(0, 160));
-}
+fs.mkdirSync(OUT_DIR, { recursive: true });
 
 let scan = null;
 try {
@@ -98,46 +79,58 @@ try {
 const 옛윗부분파일 = path.join(OUT_DIR, "notion-current-top.md");
 const 옛윗부분 = fs.existsSync(옛윗부분파일) ? fs.readFileSync(옛윗부분파일, "utf8") : null;
 
-// ── 본문 ────────────────────────────────────────────────────────
+// ── dev-hub 가 찍은 본문을 받는다 ────────────────────────────────
 
-const L = [];
-const 표 = (헤더, 줄들) => {
-  L.push('<table fit-page-width="true" header-row="true">');
-  L.push("<tr>");
-  for (const h of 헤더) L.push(`<td>${h}</td>`);
-  L.push("</tr>");
-  for (const r of 줄들) {
-    L.push("<tr>");
-    for (const c of r) L.push(`<td>${c}</td>`);
-    L.push("</tr>");
-  }
-  L.push("</table>");
-};
-
-L.push('<callout icon="🔗">');
-L.push(`\t**공개 링크판 **[**yeohj.vercel.app**](https://yeohj.vercel.app)`);
-L.push("\t배포 링크의 기준은 `C:\\dev\\dev-hub\\links.json` 입니다. 이 페이지는 그것을 옮겨 적고 지금 상태를 덧붙입니다.");
-L.push(`\t최종 동기화: **${KST(new Date())}**`);
-L.push("\t로그인 표시는 계정이 있어야 열린다는 뜻입니다. 비밀번호와 토큰, 대외비 자료는 적지 않습니다.");
-L.push("</callout>");
-L.push("<empty-block/>");
-
-if (loops.length) {
-  L.push("### **루프 현황**");
-  표(
-    ["루프", "상태", "현재 수치", "링크"],
-    loops.map((l) => [l.title, l.state, l.detail || "확인 중", l.url ? `[열기](${l.url})` : "사이트 없음"])
-  );
-  L.push("<empty-block/>");
+const 허브생성기 = path.join(HUB, "notion.mjs");
+if (!fs.existsSync(허브생성기)) {
+  console.error(`멈춘다. 본문 생성기가 없다: ${허브생성기}`);
+  console.error("  링크 목록은 dev-hub 가 원장이다. 저장소를 먼저 받아 온다.");
+  process.exit(1);
 }
 
+let 허브본문;
+try {
+  허브본문 = execFileSync(process.execPath, [허브생성기], {
+    cwd: HUB,
+    encoding: "utf8",
+    timeout: 300000,
+    maxBuffer: 32 * 1024 * 1024,
+  });
+} catch (e) {
+  console.error(`멈춘다. dev-hub/notion.mjs 가 실패했다: ${e.message}`);
+  process.exit(1);
+}
+
+const 줄 = 허브본문.replace(/\r\n/g, "\n").split("\n");
+if (!줄.some((l) => l.startsWith("### **"))) {
+  console.error("멈춘다. dev-hub 본문에 절 제목이 하나도 없다. 빈손으로 나온 것이다.");
+  process.exit(1);
+}
+
+// ── 사이트 점검 절만 여기서 만든다 ──────────────────────────────
+
+const 점검 = [];
 if (scan) {
+  const 표 = (헤더, 줄들) => {
+    점검.push('<table fit-page-width="true" header-row="true">');
+    점검.push("<tr>");
+    for (const h of 헤더) 점검.push(`<td>${h}</td>`);
+    점검.push("</tr>");
+    for (const r of 줄들) {
+      점검.push("<tr>");
+      for (const c of r) 점검.push(`<td>${c}</td>`);
+      점검.push("</tr>");
+    }
+    점검.push("</table>");
+  };
+
   const 판정별 = scan.요약 ?? {};
   const 손볼것 = (scan.프로젝트 ?? []).filter((p) => p.판정 !== "최신" && p.판정 !== "휴면");
-  L.push("### **사이트 점검**");
-  L.push(
-    // 노션은 제목 아래 들여쓴 줄의 탭을 지우고 저장한다. 여기서 탭을 넣으면
-    // 다음번에 "찾을 것" 이 페이지와 안 맞아 바꾸기가 실패한다. 그래서 안 넣는다.
+
+  점검.push("### **사이트 점검**");
+  // 노션은 제목 아래 들여쓴 줄의 탭을 지우고 저장한다. 여기서 탭을 넣으면
+  // 다음번에 "찾을 것" 이 페이지와 안 맞아 바꾸기가 실패한다. 그래서 안 넣는다.
+  점검.push(
     `${KST(new Date(scan.찍은시각))} 기준. 등록된 사이트 ${scan.프로젝트?.length ?? 0}개를 셌습니다. ` +
       Object.entries(판정별)
         .map(([k, v]) => `${k} ${v}개`)
@@ -150,43 +143,36 @@ if (scan) {
       손볼것.map((p) => [p.프로젝트, p.판정, p.마지막배포 ?? "모름", 말로바꾼다(p.경고?.[0] ?? p.메모 ?? "")])
     );
   } else {
-    L.push("손볼 것이 없습니다. 전부 최신입니다.");
+    점검.push("손볼 것이 없습니다. 전부 최신입니다.");
   }
   if (scan.유휴?.length) {
-    L.push(
+    점검.push(
       `쓰지 않는 Vercel 프로젝트가 ${scan.유휴.length}개 남아 있습니다. 되살리지 않고 그대로 둡니다. 지울지는 사람이 정합니다.`
     );
   }
-  L.push("<empty-block/>");
+  점검.push("<empty-block/>");
 }
 
-for (const g of links.groups ?? []) {
-  const 실을것 = (g.items ?? []).filter((i) => i.access !== "private");
-  if (!실을것.length) continue;
-  L.push(`### **${말로바꾼다(g.title)}**`);
-  for (const i of 실을것) {
-    const 뒤 = [];
-    if (i.access === "internal") 뒤.push("로그인 필요");
-    if (i.note) 뒤.push(말로바꾼다(i.note));
-    const 꼬리 = 뒤.length ? ` (${뒤.join(", ")})` : "";
-    L.push(`- ${i.icon ? i.icon + " " : ""}[**${말로바꾼다(i.name)}**](${i.url})${꼬리}`);
-  }
+// ── 루프 현황 다음, 첫 링크 묶음 앞에 끼운다 ────────────────────
+
+let 자리 = 줄.findIndex((l) => l.startsWith("### **"));
+const 루프 = 줄.findIndex((l) => l.startsWith("### **루프 현황"));
+if (루프 >= 0) {
+  const 다음 = 줄.findIndex((l, i) => i > 루프 && l.startsWith("### **"));
+  자리 = 다음 >= 0 ? 다음 : 줄.length;
 }
+if (자리 < 0) 자리 = 줄.length;
 
-const 제외 = (links.groups ?? []).flatMap((g) => (g.items ?? []).filter((i) => i.access === "private"));
-if (제외.length) {
-  L.push("### **공개 제외**");
-  for (const i of 제외) L.push(`- **${말로바꾼다(i.name)}** (${말로바꾼다(i.note) || "대외비"})`);
-}
+const 본문 = [...줄.slice(0, 자리), ...점검, ...줄.slice(자리)].join("\n").replace(/\n+$/, "\n");
+fs.writeFileSync(path.join(OUT_DIR, "notion-new.md"), 본문, "utf8");
 
-L.push("<empty-block/>");
-
-const body = L.join("\n") + "\n";
-fs.mkdirSync(OUT_DIR, { recursive: true });
-fs.writeFileSync(path.join(OUT_DIR, "notion-new.md"), body, "utf8");
-
+const 링크수 = 줄.filter((l) => /^- /.test(l)).length;
 console.log(`새 윗부분을 만들었다: ${path.join(OUT_DIR, "notion-new.md")}`);
-console.log(`  루프 ${loops.length}줄, 링크 ${(links.groups ?? []).reduce((n, g) => n + (g.items?.length ?? 0), 0)}개`);
+console.log(`  dev-hub 본문 ${줄.length}줄, 링크 줄 ${링크수}개, 사이트 점검 ${점검.length ? "넣음" : "못 넣음(scan.json 없음)"}`);
+
+if (!점검.length) {
+  console.log("  scan.json 이 없어 사이트 점검 절이 빠졌다. scan.mjs 를 먼저 돌린다.");
+}
 
 if (!옛윗부분) {
   console.log(`\n아직 못 바꾼다. ${path.basename(옛윗부분파일)} 가 없다.`);

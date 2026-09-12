@@ -57,6 +57,29 @@ function 해시있음(파일이름) {
   return (숫자 && (대문자 || 소문자)) || (대문자 && 소문자);
 }
 
+// 이름이 안 바뀌어도 부르는 쪽이 ?v=<판 번호> 를 붙이면 주소가 바뀐다. 그건 immutable 이 맞다.
+// chaenggil 이 c/<n>.json?v=<빌드 해시> 로 부르는데 이름만 보고 "해시 없음" 으로 잘못 잡았다 (260912).
+// 이름이 아니라 부르는 코드를 본다. 확장자와 폴더 이름이 같은 파일에서 함께 보여야 인정한다.
+function 판번호쿼리있음(대상, 앞자리, 확장자들) {
+  if (!확장자들.size) return false;
+  const 확장 = [...확장자들].map((e) => e.replace(/^\./, "").replace(/[^a-z0-9]/gi, "")).filter(Boolean);
+  if (!확장.length) return false;
+  const 판번호 = new RegExp(`\\.(${확장.join("|")})\\?(v|ver|version|t|h|rev|hash)=`, "i");
+  const 조각 = (앞자리.split("/").filter(Boolean).pop() ?? 앞자리) + "/";
+  for (const f of walk(대상, 3)) {
+    if (!/\.(html?|m?js|cjs|ts|tsx|jsx)$/i.test(f.path)) continue;
+    if (f.size > 16 * 1024 * 1024) continue;
+    let 글;
+    try {
+      글 = fs.readFileSync(f.path, "utf8");
+    } catch {
+      continue;
+    }
+    if (판번호.test(글) && 글.includes(조각)) return true;
+  }
+  return false;
+}
+
 const 이미지확장자 = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".bmp", ".tiff"]);
 const 미디어확장자 = new Set([".mp4", ".mov", ".webm", ".mp3", ".wav", ".m4a"]);
 
@@ -205,7 +228,10 @@ for (const [name, spec] of Object.entries(REG.프로젝트)) {
       const 안의파일 = fs.existsSync(폴더) && fs.statSync(폴더).isDirectory() ? walk(폴더, 3) : [];
       if (!안의파일.length) continue;
       const 이름없는것 = 안의파일.filter((f) => !해시있음(path.basename(f.path)));
-      if (이름없는것.length / 안의파일.length > 0.3) {
+      if (이름없는것.length / 안의파일.length <= 0.3) continue;
+      const 확장자들 = new Set(이름없는것.map((f) => path.extname(f.path).toLowerCase()).filter(Boolean));
+      if (판번호쿼리있음(대상, 앞자리, 확장자들)) continue;
+      {
         적는다(
           "높음",
           name,

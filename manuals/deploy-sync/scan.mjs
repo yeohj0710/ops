@@ -60,6 +60,26 @@ function git(args, cwd) {
   }
 }
 
+// git status 는 git() 으로 부르면 안 된다. 앞 두 칸이 상태 기호라 ` M data/x.json` 처럼
+// 빈칸으로 시작하는데, git() 의 trim 이 첫 줄의 그 빈칸을 먹는다. 그러면 slice(3) 이
+// 경로 첫 글자까지 잘라 data/ 가 ata/ 로 보이고, 자료 판정이 통째로 어긋난다 (260912 실측).
+// quotepath=false 를 줘야 한글 경로가 \354\235\270 같은 8진 escape 로 안 온다.
+function gitStatus(cwd) {
+  try {
+    return execFileSync("git", ["-c", "core.quotepath=false", "status", "--porcelain"], {
+      cwd,
+      encoding: "utf8",
+      timeout: 20000,
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .split("\n")
+      .map((l) => l.replace(/\r$/, ""))
+      .filter((l) => l.trim());
+  } catch {
+    return null;
+  }
+}
+
 // 폴더 안에서 가장 최근에 손댄 파일 시각. 루프가 데이터를 채웠는지 보는 가장 싼 방법이다.
 function newest(target, depth = 3) {
   let best = null;
@@ -207,14 +227,14 @@ for (const [name, spec] of Object.entries(REG.프로젝트)) {
     row.올릴것 = fmt([dataAt, buildAt].filter(Boolean).sort((a, b) => b - a)[0] ?? null);
 
     if (fs.existsSync(path.join(dir, ".git"))) {
-      const 줄들 = (git(["status", "--porcelain"], dir) || "").split("\n").filter((l) => l.trim());
+      const 줄들 = gitStatus(dir) || [];
       row.미커밋 = 줄들.length;
       // 자료가 미커밋인 것과 소스가 미커밋인 것은 뜻이 다르다.
       // 자료는 루프가 계속 쌓으니 미커밋이 정상이다. 소스가 미커밋이면
       // 다른 세션이 고치는 중일 수 있고, 그대로 올리면 남의 미완성이 프로덕션에 뜬다.
       const 자료자리 = /^(data|state|work|logs?|etc|dist|out|build|public\/(data|frames|thumbs))\//;
       row.소스미커밋 = 줄들
-        .map((l) => l.slice(3).replace(/^"|"$/g, "").split(" -> ").pop().replace(/\\/g, "/"))
+        .map((l) => l.slice(3).split(" -> ").pop().replace(/^"|"$/g, ""))
         .filter((f) => f && !자료자리.test(f) && !f.startsWith("node_modules/"))
         .slice(0, 200);
       const last = git(["log", "-1", "--format=%ci"], dir);

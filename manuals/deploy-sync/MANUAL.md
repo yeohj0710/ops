@@ -147,14 +147,18 @@ node "<OPS>/manuals/deploy-sync/prune.mjs" --apply   # 실제로 지운다
 1. 페이지를 열어 **맨 위 callout 부터 "진행 상황 브리핑" 바로 앞까지**를 그대로
    `<OPS>/work/deploy-sync/notion-current-top.md` 에 저장한다.
    브리핑 제목이 그 파일에 들어가면 안 된다. 들어가면 스크립트가 멈춘다
-2. 새 윗부분을 만든다
+2. 새 윗부분을 만든다. **Vercel 목록을 먼저 다시 센다.** 안 세면 맨 아래 프로젝트 수가
+   지난번 기준으로 굳어 있다
 
    ```bash
+   cd <DEV>/dev-hub && node projects.mjs
    node "<OPS>/manuals/deploy-sync/notion.mjs"
    ```
 
-   `work/deploy-sync/notion-new.md` 가 생긴다. 링크는 `<DEV>/dev-hub/links.json` 에서,
-   루프 숫자는 `loop-status.mjs` 에서, 배포 상태는 `scan.json` 에서 그 자리에서 가져온다.
+   `work/deploy-sync/notion-new.md` 가 생긴다. **본문 원본은 `<DEV>/dev-hub/notion.mjs` 다.**
+   ops 쪽 `notion.mjs` 는 그것을 불러다 "사이트 점검" 한 덩어리만 끼워 넣는다.
+   링크와 설명은 `links.json` 에서, 루프 숫자는 `loop-status.mjs` 에서,
+   배포 상태는 `scan.json` 에서 그 자리에서 가져온다.
    **숫자를 손으로 옮겨 적지 마라.** 옮겨 적으면 반드시 어긋난다
 3. 노션에서 한 번 바꾼다. 찾아 바꾸기 한 번이다
 
@@ -294,6 +298,27 @@ node "<OPS>/manuals/deploy-sync/scan.mjs" --fast    # 안 해도 된다. 그냥 
 - **`dist/` 만 줄이면 다음 빌드에 원래대로 돌아온다.** 원본이 있는 `public/` 을 줄여야 남는다
 - **`zipgap-exchange` 는 push 안 한 커밋이 3만 개 넘는다.** 루프가 매 회차 커밋만 하고
   push 를 안 한다. 한 번에 밀면 오래 걸리니 사람이 정한다. 배포 자체는 CLI 라 push 와 무관하다
+- **노션 본문 생성기를 두 벌로 두지 마라.** 260912 까지 `dev-hub/notion.mjs` 와
+  `deploy-sync/notion.mjs` 가 같은 본문을 각자 찍고 있었다. 페이지에 실제로 올라간 것은
+  dev-hub 쪽인데, ops 쪽만 낡아서 휴면 링크 21개가 `(undefined)` 로 나오고 설명이 전부 빠졌다.
+  그대로 넣었으면 페이지가 통째로 퇴화했다. 지금은 ops 쪽이 dev-hub 를 불러다 "사이트 점검" 만
+  끼워 넣는다. **본문 모양을 고칠 일이 생기면 dev-hub 쪽을 고친다.**
+- **바꾸기 전에 옛 본문과 새 본문의 링크를 대조한다.** 링크가 빠지면 눈으로는 안 보인다.
+  ```bash
+  cd <OPS>/work/deploy-sync
+  grep -o "https\?://[^)]*" notion-current-top.md | sort -u > /tmp/old.txt
+  grep -o "https\?://[^)]*" notion-new.md          | sort -u > /tmp/new.txt
+  comm -23 /tmp/old.txt /tmp/new.txt   # 빠진 것. 한 줄이라도 나오면 넣지 마라
+  ```
+- **`git status --porcelain` 을 출력 전체를 trim 하는 함수로 부르면 첫 줄이 한 글자 밀린다.**
+  앞 두 칸이 상태 기호라 ` M data/x.json` 처럼 빈칸으로 시작하는데, trim 이 그 빈칸을 먹고
+  `slice(3)` 이 경로 첫 글자까지 자른다. `data/` 가 `ata/` 로 보여 자료 판정이 통째로 어긋나고,
+  chaenggil 이 며칠째 "소스 미커밋" 으로 자동 배포에서 빠져 있었다. 260912 에 `scan.mjs` 에
+  `gitStatus()` 를 따로 뒀다. 한글 경로가 `\354\235\270` 으로 오면 `core.quotepath=false` 가 빠진 것이다
+- **이름이 안 바뀌어도 부르는 쪽이 `?v=<판 번호>` 를 붙이면 immutable 이 맞다.**
+  chaenggil 은 `c/<n>.json?v=<빌드 해시>` 로 부르고 그 해시는 카드 내용의 sha256 이라
+  자료가 바뀌면 주소가 바뀐다. `weight.mjs` 가 파일 이름만 보고 [높음] 으로 잘못 잡았다.
+  260912 에 부르는 코드를 같이 보도록 고쳤다. **캐시 경고가 뜨면 고치기 전에 부르는 쪽을 먼저 grep 한다**
 - **노션 페이지를 통째로 덮어쓸 때 브리핑을 먼저 떠 오지 않으면 날아간다.**
   `notion.mjs` 가 `notion-current.md` 를 못 찾으면 경고를 찍는다. 그 경고가 보이면 덮어쓰지 마라
 
