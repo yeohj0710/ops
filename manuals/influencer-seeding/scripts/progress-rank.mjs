@@ -27,6 +27,12 @@ const STAGES = Object.freeze([
   ["dm", 1, "DM 발송", "boolean"],
 ]);
 
+const STAGE_HEADERS = Object.freeze({
+  paid: '⑫지급', settlement: '⑪정산자료', upload: '⑩업로드', draft: '⑨초안 검수',
+  shoot: '⑧촬영', guide: '⑦가이드 전달', visitDate: '⑥방문 예정일',
+  confirmed: '⑤확정', agreement: '④합의 단가', response: '②응답', dm: '①DM 발송',
+});
+
 const isTrue = (value) => value === true || value === 1 || String(value).toUpperCase() === "TRUE";
 const isPresent = (value) => value !== undefined && value !== null && value !== "" && value !== false;
 
@@ -73,7 +79,7 @@ function visitSort(value) {
   if (typeof value === "number" && Number.isFinite(value)) return { present: 0, time: value, text: String(value) };
   const text = String(value).trim();
   const match = text.match(/(\d{1,2})\s*[\/-]\s*(\d{1,2})(?:[^\d]+(\d{1,2})(?::(\d{2}))?)?/);
-  if (!match) return { present: 0, time: Number.MAX_SAFE_INTEGER - 1, text };
+  if (!match) return { present: 1, time: Number.MAX_SAFE_INTEGER, text };
   const [, month, day, hour = "23", minute = "59"] = match;
   return { present: 0, time: Number(month) * 1_000_000 + Number(day) * 10_000 + Number(hour) * 100 + Number(minute), text };
 }
@@ -93,8 +99,10 @@ export function rankProgress(row) {
   let completed = 0;
 
   for (const [name, score, label, type] of STAGES) {
-    const value = field(row, name);
-    const done = type === "boolean" ? isTrue(value) : isPresent(value);
+    const value = firstField(row, [name, STAGE_HEADERS[name], label]);
+    const done = type === "boolean" ? isTrue(value)
+      : name === 'agreement' ? numberValue(value) > 0
+      : name === 'visitDate' ? visitSort(value).present === 0 : isPresent(value);
     if (!done) continue;
     completed += 1;
     if (score > stage) {
@@ -127,6 +135,10 @@ export function sortKeys(row) {
     language: orderOf(language, LANGUAGE_ORDER),
     platform: orderOf(platform, PLATFORM_ORDER),
     source: orderOf(source, SOURCE_ORDER),
+    // 과거 확정 체크로 보류·거절을 활성 건보다 앞세우지 않는다.
+    operationalStage: ['확정', '협상중'].includes(progress.status)
+      ? -Math.max(progress.stage, progress.status === '확정' ? 5 : 0) : 0,
+    stage: -progress.stage,
     visitPresent: visit.present,
     visitTime: visit.time,
     agreementMissing: agreement > 0 ? 0 : 1,
@@ -139,7 +151,7 @@ export function sortKeys(row) {
 export function compareRows(a, b) {
   const x = a.sortKeys || sortKeys(a);
   const y = b.sortKeys || sortKeys(b);
-  for (const key of ["language", "platform", "status", "source", "visitPresent", "visitTime", "agreementMissing", "followerFit", "followers"]) {
+  for (const key of ["language", "platform", "operationalStage", "status", "stage", "visitPresent", "visitTime", "agreementMissing", "source", "followerFit", "followers"]) {
     if (x[key] !== y[key]) return x[key] - y[key];
   }
   return x.account.localeCompare(y.account, "en");
@@ -221,9 +233,15 @@ function selfTest() {
       { row: 6, key: "response", status: "미접촉", dm: true, response: true },
     ],
   });
-  assert.deepEqual(plan.sortedRowOrder, [4, 3, 5, 6]);
+  assert.deepEqual(plan.sortedRowOrder, [4, 3, 6, 5]);
   assert.ok(plan.inversionsBefore > 0);
-  console.log("progress-rank self-test: 14/14 passed");
+  assert.equal(rankProgress({ '진행 상태': '확정', '⑧촬영': 'TRUE' }).stage, 8);
+  assert.equal(rankProgress({ '⑥방문 예정일': '답장 없음' }).stage, 0);
+  assert.ok(compareRows({status:'확정',source:'AI 에이전트','⑧촬영':true}, {status:'확정',source:'직접 조사','⑤확정':true}) < 0);
+  assert.ok(compareRows({status:'협상중','⑧촬영':true}, {status:'확정','⑤확정':true}) < 0);
+  assert.ok(compareRows({status:'확정','⑤확정':true}, {status:'거절','⑫지급':true}) < 0);
+  assert.ok(compareRows({status:'확정',source:'AI 에이전트',visitDate:'9/1 10:00'}, {status:'확정',source:'직접 조사',visitDate:'9/2 10:00'}) < 0);
+  console.log("progress-rank self-test: passed (native headers, operational stage, source tie-break, inactive status)");
 }
 
 function parseArgs(argv) {
