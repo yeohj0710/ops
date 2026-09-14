@@ -458,7 +458,10 @@ const url = (cm[i].image_versions2?.candidates||[]).sort((a,b)=&gt;b.width-a.wid
 <p>캡션도 저장을 부르는 말로 끝낸다. &quot;저장해두시고 필요할 때 꺼내 보세요&quot;.</p>
 <p><strong>행 수는 6~8이 상한이다.</strong> 13행짜리를 만들면 글자가 너무 작아진다. 내용이 넘치면 장을 나눈다. 한 장에 밀어 넣지 마라.</p>
 <h4>2-2. 어라운드팜, 미미팜은 노션 기획안의 레퍼런스를 그대로 뜬다 (L1)</h4>
-<p>두 계정은 판 목록이 아니라 <strong>노션 카드뉴스 기획안의 &quot;형식:&quot; 링크</strong>가 레퍼런스다. 사용자(260912, 260914): &quot;레퍼런스 링크 보고 그 디자인 그대로 해. 너가 스스로 고안한 디자인은 하지 마.&quot; 캐러셀 전 장을 <code>&lt;드라이브&gt;/에이전트/기억/SNS 계정 운영/카드뉴스/도구 260914/fetch_refs3.py</code> 로 받아 <code>measure.py</code> 로 재고, 좌표와 글자 크기를 그대로 옮긴 뒤 <strong>색만 계정 팔레트로</strong> 바꾼다. 받은 원본과 제품 사진은 <code>&lt;드라이브&gt;/[운영] &lt;계정&gt; 인스타그램/디자인 소스/</code> 에 모으고 README 에 적는다. 다음 벌은 거기부터 본다. 기획안이 가리키는 제품이 실제로 없으면(260914 &quot;톰 CPR 마스크&quot;) 같은 브랜드의 맞는 제품으로 바꾸고 노션 비고에 적는다. 절차 상세는 <code>&lt;OPS&gt;/abilities/카드뉴스.md</code> 의 &quot;디자인 소스 폴더&quot;.</p>
+<p>두 계정은 판 목록이 아니라 <strong>노션 카드뉴스 기획안의 &quot;형식:&quot; 링크</strong>가 레퍼런스다. 사용자(260912, 260914): &quot;레퍼런스 링크 보고 그 디자인 그대로 해. 너가 스스로 고안한 디자인은 하지 마.&quot; 캐러셀 전 장을 <code>&lt;드라이브&gt;/에이전트/기억/SNS 계정 운영/카드뉴스/도구 260914/fetch_refs3.py</code> 로 받아 <code>measure.py</code> 로 재고, 좌표와 글자 크기를 그대로 옮긴 뒤 <strong>색만 계정 팔레트로</strong> 바꾼다. 받은 원본과 제품 사진은 <code>&lt;드라이브&gt;/[운영] &lt;계정&gt; 인스타그램/디자인 소스/</code> 에 모으고 README 에 적는다. 다음 벌은 거기부터 본다. 기획안이 가리키는 제품이 실제로 없거나 계정 목록 밖이면 목록 안의 맞는 제품으로 바꾸고 노션 비고에 적는다. 절차 상세는 <code>&lt;OPS&gt;/abilities/카드뉴스.md</code> 의 &quot;디자인 소스 폴더&quot;.</p>
+<h4>2-3. 두 계정은 제품 목록 안에서만 고른다 (L1)</h4>
+<p>사용자(260914 밤): &quot;어라운드팜 샵인샵 제품들과 미미팜 약국 제품들로만 해야 한다니까요. 폴더에 제품 다 줬잖아요.&quot; 미미팜 S4 에 어라운드팜 샵인샵 브랜드(톰) 마스크를 넣었고, 남은 기획안을 &quot;타사 제품 수치 검증 필요&quot; 로 미뤘다가 나온 지적이다.</p>
+<ul><li>목록: <code>&lt;드라이브&gt;/에이전트/기억/SNS 계정 운영/제품 목록 미미팜.md</code>, <code>제품 목록 어라운드팜.md</code>. 제품 이름, 사진 경로, 확인한 값, 쓴 벌이 표로 있다.</li><li>미미팜은 약국 주요 제품 목록 8개 브랜드와 약국 사이니지 제품이다. 어라운드팜은 가격표 26종(A)과 <code>G:\공유 드라이브\샵인샵자료\이미지\</code> 에 누끼, 상세페이지, 약국 와블러가 있는 제품(B, 가격은 안 쓴다)이다.</li><li>기획안에 타사 제품 비교(메디큐브, 아누아 같은)나 다른 계정 제품이 적혀 있으면 목록의 같은 성격 제품으로 바꾸고 노션 편집 비고에 무엇을 무엇으로 바꿨는지 적는다.</li><li>본문이 빈 기획안도 레퍼런스 형식에 목록 제품을 채워 짓는다.</li><li>숫자(ppm, 용량, 매수)는 목록의 &quot;확인한 값&quot; 만 쓴다. 없으면 상세페이지를 열어 확인하고 목록에 한 줄 보탠다.</li></ul>
 <h4>3. 소재를 고른다 (L1)</h4>
 <p><strong>소재 대장에서 고른다. 안 쓴 것만 쓴다.</strong></p>
 <pre><code>python C:/dev/cardnews-refs/scripts/pick_topic.py            # 안 쓴 소재 보기
@@ -552,7 +555,7 @@ document.body.appendChild(a); a.click(); a.remove();</code></pre>
 <h4>10-1. 어라운드팜과 미미팜은 홍보 층을 반드시 넣는다 (L1)</h4>
 <p>사용자(260912): &quot;이 계정의 운영 목적 자체가 어라운드팜에 대해서 알리는 거다. 샵인샵 제품 홍보, 그리고 샵인샵 매대가 들어간 약국들 홍보. 이게 잘 되어야 브랜드사에 대해서도 어라운드팜이 갑이 될 수 있다.&quot;</p>
 <p><strong>한 벌에 네 자리를 채운다.</strong> 하나라도 비면 그 벌은 안 끝난 것이다.</p>
-<ol><li><p><strong>표지에 <code>AROUNDPHARM</code> 워드마크.</strong> 피드 격자에서는 첫 장만 보인다. 표지에 표시가 없으면 홍보가 0이다. Pretendard ExtraBold 28, <code>#09B9BA</code>, 자간 -1%. 자리는 표지마다 빈 구석이 달라서 좌표를 재고 놓는다.</p></li><li><p><strong>본문 장마다 같은 워드마크.</strong> 캡처해서 퍼가도 출처가 남는다.</p></li><li><p><strong>마지막 장은 CTA 카드.</strong> 워드마크, 약국 찾기 줄, 팔로우 카드. 벌마다 있어야 한다.</p></li><li><p><strong>캡션은 첫 줄에 브랜드, 끝에 약국 찾기와 팔로우.</strong></p></li></ol>
+<ol><li><p><strong>표지에 <code>AROUNDPHARM</code> 워드마크.</strong> 피드 격자에서는 첫 장만 보인다. 표지에 표시가 없으면 홍보가 0이다. Pretendard ExtraBold 28, <code>#09B9BA</code>, 자간 -1%. 자리는 표지마다 빈 구석이 달라서 좌표를 재고 놓는다.</p></li><li><p><strong>본문 장마다 같은 워드마크.</strong> 캡처해서 퍼가도 출처가 남는다.</p></li><li><p><strong>마지막 장은 CTA 카드.</strong> 워드마크, 약국 찾기 줄, 팔로우 카드. 벌마다 있어야 한다.</p></li><li><p><strong>캡션은 첫 줄에 브랜드, 끝에 약국 찾기와 팔로우.</strong> 팔로우 태그는 언어마다 다르다: KR <code>@aroundpharm_official</code>, EN <code>@aroundpharm_global</code>, CN <code>@aroundpharm_cn</code>, JP <code>@aroundpharm_jp</code>. 캡션 팔로우 줄, CTA 팔로우 카드, 표지 핸들 모두 해당한다. 한글판을 복제해 언어판을 만들면 여기부터 바꾼다(260914). 브랜드 이름은 한글 음차 대신 포장 영문 표기로 쓴다(<code>톰</code> 말고 <code>THOME</code>).</p></li></ol>
 <p><strong>&quot;매대&quot; 라는 말은 쓰지 않는다. &quot;샵인샵&quot; 이라고 쓰고 브랜드 이름을 앞에 둔다.</strong> 사용자(260914): &quot;'매대'라는 표현 쓰지 마세요. 한국에서 그런 표현 안 씁니다. 샵인샵 제품이라고 해야 합니다. 약국 안에 있는 브랜드 제품들을 모아놓은 곳입니다.&quot; 260912 에 &quot;소비자는 샵인샵을 모른다&quot; 며 매대로 바꿨던 규칙을 뒤집었다. KR 카드 <code>가까운 어라운드팜 샵인샵은 프로필 링크에서</code>, KR 캡션 <code>어라운드팜 샵인샵이 있는 가까운 약국은 프로필 링크에서 찾아요 📍</code> / EN <code>AroundPharm shelves near you, link in bio</code> / CN <code>设有AroundPharm专柜的药局请看主页链接</code> / JP <code>AroundPharm取扱薬局はプロフィールから</code>. 외국어 문구는 사용자가 확정한 언어판이라 그대로 둔다.</p>
 <p><strong>샵인샵 목록에 없는 제품을 샵인샵에 있다고 쓰지 않는다.</strong> 목록은 <code>G:\내 드라이브\에이전트\기억\SNS 계정 운영\샵인샵 제품 가격 0902.json</code> 26종이다. 기획안 목적 3이 &quot;샵인샵 아닌 인기 제품도 섞어 광고 티를 희석&quot; 이라 벌마다 섞여 있다. &quot;올리브영엔 없고 어라운드팜 약국에만 있는&quot; 훅은 그 벌 제품이 전부 샵인샵 전용일 때만 쓴다. 샵인샵 수, 약국 수 같은 숫자는 바로팜 확인 전에 쓰지 않는다.</p>
 <p>규칙 전문은 <code>G:\내 드라이브\에이전트\기억\SNS 계정 운영\어라운드팜.md</code> 의 &quot;콘텐츠에 넣는 홍보 층&quot; 절이다.</p>
@@ -1641,7 +1644,7 @@ RCMS에 사용등록한다. 끝났을 때 세 가지가 남아 있어야 한다.
           <a href="https://wellnessbox.kr/about/privacy">개인정보처리방침</a>
           <a href="https://wellnessbox.kr/about/contact">문의하기</a>
         </div>
-        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-09-14 18:55</span></p>
+        <p class="copy"><span>© <span id="year">2026</span> 웰니스박스. All rights reserved.</span><span class="upd">마지막 갱신 2026-09-14 20:42</span></p>
       </div>
 
       <div class="fcol">
