@@ -21,6 +21,8 @@
 | CN | aroundpharm_cn | mimipharm_cn |
 | EN | aroundpharm_global | mimipharm_global |
 
+미미팜 언어별 계정이 전환 목록에 보이지 않으면 먼저 `mimipharm01`로 계정을 전환한 뒤 전환 메뉴를 다시 연다. 그 목록에서 위 미미팜 4개 계정을 선택한다. `mimipharm01`은 계정 전환 경유 계정이며 게시 대상이 아니다. 2026-09-14 사용자 안내로 확인한 경로다.
+
 반응 계정은 kmin.kyeong, yakdae.saram이다. 브랜드 8개 계정이 로그인된 Chrome 프로필을 현재 목록과 계정 전환 메뉴로 찾는다. 숫자 ID만 믿지 않는다. 반응 계정은 다른 프로필에 있을 수 있다. 기존 로그인 세션을 사용하며 비밀번호를 추출하거나 프로필을 복제하지 않는다.
 
 ## 절차
