@@ -11,6 +11,7 @@ export function plan(brand) {
     for (const actor of owners) if (actor !== owner) add('mutual-like',actor,owner);
     for (const actor of ['kmin.kyeong','yakdae.saram']) for (const kind of ['like','save','repost','comment']) add(kind,actor,owner);
   }
+  for (const a of actions) if (a.actor === 'kmin.kyeong' && a.kind === 'repost') { a.status='skipped'; a.evidence='2026-09-15 사용자 확인: kmin.kyeong 리포스트·재공유 기능 없음. 수행 대상 제외.'; }
   return {brand,posts:{},actions};
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
