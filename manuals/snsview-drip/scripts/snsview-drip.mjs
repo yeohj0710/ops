@@ -641,19 +641,29 @@ async function runLoop(id) {
 
   let consecutiveErrors = 0;
   let shortWaits = 0;
-  // 이어 받을 때 곧바로 넣지 않는다. 직전 주문 또는 실패한 시도에서 간격만큼 지난 뒤가 다음 회차다.
+  // link_duplicate 는 같은 링크의 앞 주문이 서버에서 아직 도는 중이라는 거절이다. 들어간 주문이 없고 돈도 안 나간다.
+  // 간격(5분)을 통째로 다시 기다리면 회차 사이가 평균 9분으로 벌어진다 (260915 실측, 23회차에 11번 거절).
+  // 그래서 짧게(dupRetrySec) 다시 넣는다. 성공한 주문 사이 간격은 그대로 지킨다
+  const dupRetrySec = s.dupRetrySec ?? 60;
+  const DUP_MAX_STREAK = 90;
+  const isDuplicate = (msg) => /link_duplicate/.test(msg || "");
+  let dupStreak = 0;
+  // 이어 받을 때 곧바로 넣지 않는다. 직전 주문에서 간격만큼, 직전 실패에서 간격만큼 지난 뒤가 다음 회차다.
   // 실패 직후 프로세스가 다시 뜨면 직전 주문만 봐서는 곧바로 재시도해 `link_duplicate` 가 반복된다 (260905 실측)
+  // 직전 실패가 link_duplicate 면 그 실패에서는 dupRetrySec 만 기다린다
   let next = Date.now();
-  const lastAt = [s.orders.at(-1)?.at, s.errors.at(-1)?.at]
-    .filter(Boolean)
-    .sort((a, b) => new Date(a.replace(" ", "T")) - new Date(b.replace(" ", "T")))
-    .at(-1);
-  if (lastAt) {
-    const due = new Date(lastAt.replace(" ", "T")).getTime() + s.everySec * 1000;
-    if (Number.isFinite(due) && due > next) {
-      next = due;
-      log(id, `직전 시도가 ${lastAt} 이라 다음 회차는 ${stamp(new Date(next))} 부터다`);
-    }
+  const toMs = (t) => new Date(String(t).replace(" ", "T")).getTime();
+  const lastOrderAt = s.orders.at(-1)?.at;
+  const lastErr = s.errors.at(-1);
+  const dues = [];
+  if (lastOrderAt) dues.push(toMs(lastOrderAt) + s.everySec * 1000);
+  if (lastErr?.at) dues.push(toMs(lastErr.at) + (isDuplicate(lastErr.msg) ? dupRetrySec : s.everySec) * 1000);
+  if (s.lastDupAt) dues.push(toMs(s.lastDupAt) + dupRetrySec * 1000);
+  const due = Math.max(0, ...dues.filter(Number.isFinite));
+  if (due > next) {
+    next = due;
+    const lastAt = [lastOrderAt, lastErr?.at, s.lastDupAt].filter(Boolean).sort().at(-1);
+    log(id, `직전 시도가 ${lastAt} 이라 다음 회차는 ${stamp(new Date(next))} 부터다`);
   }
 
   while (true) {
@@ -735,12 +745,37 @@ async function runLoop(id) {
     try {
       const orderId = await addOrder(s.service, s.link, s.qty, id);
       consecutiveErrors = 0;
+      dupStreak = 0;
       s = loadState(id);
       s.orders.push({ n, orderId, at: stamp(), balanceBefore: bal.balance, charge: s.unitCost });
       s.lastOrderAt = stamp();
       saveState(s);
       log(id, `${n}/${s.runs} 주문번호 ${orderId}, ${num(s.qty)}회, ${won(s.unitCost)}, 잔액 ${won(bal.balance)} → ${won(bal.balance - s.unitCost)}`);
     } catch (e) {
+      if (isDuplicate(e.message)) {
+        // 앞 주문이 끝나는 대로 들어가게 짧게 다시 넣는다. API 는 살아 있다는 뜻이니 오류 연속 횟수는 0 으로 돌린다.
+        // 오류 목록에는 연속의 첫 번째만 적고 나머지는 lastDupAt, dupCount 로 남긴다. 1분마다 쌓으면 수백 건으로 불어난다
+        dupStreak++;
+        consecutiveErrors = 0;
+        s = loadState(id);
+        if (dupStreak === 1) s.errors.push({ at: stamp(), n, msg: e.message });
+        s.lastDupAt = stamp();
+        s.dupCount = (s.dupCount || 0) + 1;
+        saveState(s);
+        if (dupStreak === 1 || dupStreak % 10 === 0) {
+          log(id, `${n}/${s.runs} 앞 주문이 아직 돌아서 거절됐다 (link_duplicate). ${fmtDur(dupRetrySec)}마다 다시 넣는다 (연속 ${dupStreak})`);
+        }
+        if (dupStreak >= DUP_MAX_STREAK) {
+          s.paused = `같은 링크 앞 주문이 ${fmtDur(dupStreak * dupRetrySec)} 넘게 안 끝남 (link_duplicate 반복)`;
+          s.pid = null;
+          saveState(s);
+          log(id, "같은 링크의 앞 주문이 너무 오래 안 끝나 멈춘다. 사이트 주문내역을 보고 resume 으로 이어 간다");
+          process.exitCode = 4;
+          return;
+        }
+        next = Date.now() + dupRetrySec * 1000;
+        continue;
+      }
       consecutiveErrors++;
       s.errors.push({ at: stamp(), n, msg: e.message });
       saveState(s);
