@@ -554,6 +554,24 @@ function cmdGuard() {
   }
   const pending = pendingBatches();
   console.log(`되살릴 묶음 ${pending.length}개` + (pending.length ? ": " + pending.map((b) => `${b.id} ${b.orders.length}/${b.runs}${ownerAlive(b) ? " 진행" : " 끊김"}`).join(", ") : ""));
+  // stop 으로 세운 미완료 묶음은 예약이 안 살린다. 모르고 두면 그대로 멈춰 있다 (260917 실측)
+  const halted = listBatches().filter((b) => !b.done && b.stopped && b.orders.length < b.runs);
+  if (halted.length) {
+    console.log(`stop 으로 멈춘 미완료 ${halted.length}개 (예약이 안 살린다, 이어 가려면 resume): ` +
+      halted.map((b) => `${b.id} ${b.orders.length}/${b.runs}${b.stopBy ? ` ${b.stopBy.at} ${b.stopBy.reason || ""}` : ""}`).join(", "));
+  }
+}
+
+function parentCommandLine() {
+  if (process.platform !== "win32") return null;
+  try {
+    const out = execFileSync("powershell", ["-NoProfile", "-Command",
+      `$p=Get-CimInstance Win32_Process -Filter "ProcessId=${process.ppid}"; $g=Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ParentProcessId)"; "$($p.CommandLine) <- $($g.Name)"`],
+      { encoding: "utf8", timeout: 15000, windowsHide: true });
+    return out.trim().slice(0, 300) || null;
+  } catch {
+    return null;
+  }
 }
 
 async function cmdStart() {
@@ -645,9 +663,11 @@ async function runLoop(id) {
   // 간격(5분)을 통째로 다시 기다리면 회차 사이가 평균 9분으로 벌어진다 (260915 실측, 23회차에 11번 거절).
   // 그래서 짧게(dupRetrySec) 다시 넣는다. 성공한 주문 사이 간격은 그대로 지킨다
   const dupRetrySec = s.dupRetrySec ?? 60;
-  const DUP_MAX_STREAK = 90;
+  const dupPollSec = Math.min(s.dupPollSec ?? 15, dupRetrySec);
+  const DUP_MAX_SEC = 90 * 60;
   const isDuplicate = (msg) => /link_duplicate/.test(msg || "");
   let dupStreak = 0;
+  let dupSince = 0;
   // 이어 받을 때 곧바로 넣지 않는다. 직전 주문에서 간격만큼, 직전 실패에서 간격만큼 지난 뒤가 다음 회차다.
   // 실패 직후 프로세스가 다시 뜨면 직전 주문만 봐서는 곧바로 재시도해 `link_duplicate` 가 반복된다 (260905 실측)
   // 직전 실패가 link_duplicate 면 그 실패에서는 dupRetrySec 만 기다린다
@@ -757,23 +777,42 @@ async function runLoop(id) {
         // 오류 목록에는 연속의 첫 번째만 적고 나머지는 lastDupAt, dupCount 로 남긴다. 1분마다 쌓으면 수백 건으로 불어난다
         dupStreak++;
         consecutiveErrors = 0;
+        if (dupStreak === 1) dupSince = Date.now();
         s = loadState(id);
         if (dupStreak === 1) s.errors.push({ at: stamp(), n, msg: e.message });
         s.lastDupAt = stamp();
         s.dupCount = (s.dupCount || 0) + 1;
         saveState(s);
         if (dupStreak === 1 || dupStreak % 10 === 0) {
-          log(id, `${n}/${s.runs} 앞 주문이 아직 돌아서 거절됐다 (link_duplicate). ${fmtDur(dupRetrySec)}마다 다시 넣는다 (연속 ${dupStreak})`);
+          log(id, `${n}/${s.runs} 앞 주문이 아직 돌아서 거절됐다 (link_duplicate). 앞 주문 상태를 ${fmtDur(dupPollSec)}마다 보고 끝나면 바로 넣는다 (연속 ${dupStreak})`);
         }
-        if (dupStreak >= DUP_MAX_STREAK) {
-          s.paused = `같은 링크 앞 주문이 ${fmtDur(dupStreak * dupRetrySec)} 넘게 안 끝남 (link_duplicate 반복)`;
+        if (Date.now() - dupSince >= DUP_MAX_SEC * 1000) {
+          s.paused = `같은 링크 앞 주문이 ${fmtDur(Math.round((Date.now() - dupSince) / 1000))} 넘게 안 끝남 (link_duplicate 반복)`;
           s.pid = null;
           saveState(s);
           log(id, "같은 링크의 앞 주문이 너무 오래 안 끝나 멈춘다. 사이트 주문내역을 보고 resume 으로 이어 간다");
           process.exitCode = 4;
           return;
         }
-        next = Date.now() + dupRetrySec * 1000;
+        // 1분을 그냥 기다리지 않고 앞 주문 상태를 짧게 본다. 끝났으면 곧바로 다시 넣는다 (260917, 거절 뒤 평균 5분이 더 붙었다).
+        // 상태 조회는 돈이 안 나간다. 조회가 실패하거나 dupRetrySec 가 지나면 예전처럼 그냥 다시 넣는다
+        const prevId = s.orders.at(-1)?.orderId;
+        const waitUntil = Date.now() + dupRetrySec * 1000;
+        while (Date.now() < waitUntil) {
+          await sleep(dupPollSec * 1000);
+          const fresh = readJson(statePath(id));
+          if (fresh?.stopped) break; // 위쪽 루프 머리에서 멈춤을 처리한다
+          s.heartbeatAt = Date.now();
+          saveState(s);
+          if (!prevId) continue;
+          try {
+            const st = (await getStatuses([prevId], id))[prevId];
+            if (st?.status && !/pending|in progress|processing/i.test(st.status)) break;
+          } catch {
+            // 조회 실패는 무시하고 시간만 채운다
+          }
+        }
+        next = Date.now();
         continue;
       }
       consecutiveErrors++;
@@ -853,8 +892,12 @@ function cmdStop() {
   const s = loadState(id);
   if (s.done) return console.log("이미 끝난 묶음이다");
   s.stopped = true;
+  // 누가 세웠는지 남긴다. 260917 에 55/100 에서 stop 이 들어왔는데 어느 세션이 쳤는지 알 길이 없었다
+  s.stopBy = { at: stamp(), reason: flag("reason", null), parent: parentCommandLine() };
   saveState(s);
+  log(id, `stop 명령 받음. 사유 ${s.stopBy.reason || "안 적음"}, 부른 쪽 ${s.stopBy.parent || "모름"}`);
   console.log(`${id} 에 멈춤 표식을 적었다. 돌고 있으면 15초 안에 멈춘다. (${s.orders.length}/${s.runs})`);
+  if (!s.stopBy.reason) console.log("다음부터는 --reason \"<왜>\" 를 붙인다. 되살리기 예약은 stop 한 묶음을 안 살린다");
 }
 
 async function cmdResume() {
