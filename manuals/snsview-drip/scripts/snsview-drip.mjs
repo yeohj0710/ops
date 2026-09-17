@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // 릴스 조회수를 잘게 나눠 일정 간격으로 반복 주문한다. SNS서포터 표준 API 로 셸에서 끝까지 돈다.
 // 브라우저도, 에이전트도 붙어 있을 필요가 없다. start 가 배경 프로세스를 띄우고 그 프로세스가 혼자 돈다.
+// 팔로워 분할 주문(snsfollow-drip 업무)도 이 루프로 돈다. 그쪽은 --link 대신 --handle 에 인스타 아이디를 준다.
 //
 //   node snsview-drip.mjs check                                    키, 잔액, 상품 단가와 최소 수량을 본다
 //   node snsview-drip.mjs plan  --link <URL> --qty 100 --runs 100 --every 5m    비용과 소요 시간만 계산한다
 //   node snsview-drip.mjs start --link <URL> --qty 100 --runs 100 --every 5m    묶음을 만들고 배경에서 돌린다
+//   node snsview-drip.mjs start --handle <아이디> --service 1279 --qty 10 --runs 10 --every 30m   팔로워 묶음
 //   node snsview-drip.mjs status [묶음id]                           진행 상황. 묶음id 없으면 최근 것
 //   node snsview-drip.mjs stop <묶음id>                              다음 회차부터 멈춘다
 //   node snsview-drip.mjs resume <묶음id>                            멈춘 묶음을 이어서 돌린다
@@ -15,10 +17,13 @@
 //
 // 옵션
 //   --link     주문할 게시물 주소. 릴스면 https://www.instagram.com/reel/<코드>/ 꼴
-//   --qty      한 번에 주문할 조회수. 기본 100. 상품 최소 수량(50) 밑으로는 못 넣는다
+//   --handle   팔로워 상품에 넣을 인스타 아이디. @ 나 프로필 주소를 붙여도 아이디만 남긴다. --service 를 같이 준다
+//   --qty      한 번에 주문할 수량. 기본 100. 상품 최소 수량 밑으로는 못 넣는다
 //   --runs     총 주문 횟수. 기본 100
 //   --every    간격. 5m, 300s, 1h, 숫자만 쓰면 분. 기본 5m. 60초 밑으로는 못 내린다
 //   --service  상품 번호. 기본 813 ([동영상] 한국인 조회수, 1,000회에 100원)
+//   --dup-poll, --dup-retry, --dup-max   같은 대상 앞 주문이 안 끝나 거절될 때 상태를 보는 간격, 다시 넣는 간격,
+//              기다리는 한도. 기본 15s, 60s, 90m. 팔로워는 앞 주문이 오래 걸려서 snsfollow-drip.mjs 가 길게 준다
 //   --jitter   간격 흔들기 비율. 0.1 이면 간격의 ±10% 안에서 매번 조금씩 다르게. 기본 0
 //   --allow-short  잔액이 총액보다 적어도 시작한다. 잔액이 떨어지면 거기서 멈춰 기다린다
 //   --foreground   start 에서 배경으로 띄우지 않고 이 창에서 돈다
@@ -79,7 +84,8 @@ const p2 = (n) => String(n).padStart(2, "0");
 function stamp(d = new Date()) {
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
 }
-const won = (n) => "₩" + Math.round(n).toLocaleString("ko-KR");
+// 모자랄 때 "₩-97,828" 이 아니라 "-₩97,828" 로 찍는다
+const won = (n) => (Math.round(n) < 0 ? "-" : "") + "₩" + Math.abs(Math.round(n)).toLocaleString("ko-KR");
 const num = (n) => Number(n).toLocaleString("ko-KR");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -219,9 +225,9 @@ async function getService(id) {
   if (!Array.isArray(list)) throw new Error("services 응답이 배열이 아니다");
   const s = list.find((x) => String(x.service) === String(id));
   if (!s) {
-    const views = list.filter((x) => /조회수|view/i.test(x.name || "")).slice(0, 10);
+    const views = list.filter((x) => /조회수|팔로워|view|follow/i.test(`${x.name} ${x.category}`)).slice(0, 12);
     throw new Error(
-      `상품 ${id} 가 목록에 없다. 조회수 상품 후보: ` +
+      `상품 ${id} 가 목록에 없다. 조회수, 팔로워 상품 후보: ` +
         views.map((x) => `${x.service} ${x.name} (${x.rate}/1000, 최소 ${x.min})`).join(" / ")
     );
   }
@@ -286,10 +292,32 @@ function listBatches() {
     .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
 }
 function linkCode(link) {
+  // 팔로워 묶음은 주소가 아니라 아이디다. 폴더 이름 끝의 점은 윈도우가 떼어 버려서 미리 뗀다
+  if (isHandle(link)) return "follow-" + link.replace(/\.+$/, "");
   const m = link.match(/\/(?:reel|reels|p|tv|shorts|video)\/([A-Za-z0-9_-]+)/);
   if (m) return m[1];
   return link.replace(/^https?:\/\//, "").replace(/[^A-Za-z0-9]+/g, "-").slice(-24) || "link";
 }
+// 인스타 아이디. 영문 소문자, 숫자, 점, 밑줄로 30자까지
+const HANDLE_RE = /^[a-z0-9._]{1,30}$/;
+function isHandle(s) {
+  return HANDLE_RE.test(String(s || ""));
+}
+// "@abc", "https://www.instagram.com/abc/?hl=ko", "ABC" 를 모두 "abc" 로 맞춘다. 게시물 주소면 null
+function normalizeHandle(raw) {
+  let t = String(raw || "").trim();
+  const u = t.match(/^(?:https?:\/\/)?(?:www\.|m\.)?instagram\.com\/([^/?#]+)/i);
+  if (u) t = u[1];
+  t = t.replace(/^@+/, "").replace(/[/?#].*$/, "").toLowerCase();
+  if (/^(reel|reels|p|tv|stories|explore|accounts)$/.test(t)) return null;
+  return isHandle(t) ? t : null;
+}
+// 상품이 무엇을 파는지. 팔로워 상품은 주문 대상에 주소가 아니라 인스타 아이디를 받는다
+// (상품 설명 "주문링크 기입방법: 인스타그램 아이디를 입력해주세요", 260917 실측)
+function productKind(svc) {
+  return /팔로워|follower/i.test(`${svc.name} ${svc.category}`) ? "follower" : "post";
+}
+const unitOf = (s) => s?.unit || "회";
 function newBatchId(link) {
   const d = new Date();
   const base = `${String(d.getFullYear()).slice(2)}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}-${linkCode(link)}`;
@@ -333,17 +361,25 @@ function pendingBatches() {
 
 // ── 입력 검증과 계획 ─────────────────────────────────────────────────────────────
 function readPlanArgs(existing = null) {
+  const handleRaw = flag("handle");
   let link = flag("link", existing?.link);
   // 인스타 주소는 /reel/<코드>/ 꼴로 맞춘다. 계정명이 낀 주소도 같은 게시물이다
   const ig = link && link.match(/^https?:\/\/(?:www\.)?instagram\.com\/(?:[A-Za-z0-9_.]+\/)?(reel|reels|p|tv)\/([A-Za-z0-9_-]+)/);
   if (ig) link = `https://www.instagram.com/${ig[1] === "reels" ? "reel" : ig[1]}/${ig[2]}/`;
+  if (handleRaw !== null) {
+    link = normalizeHandle(handleRaw);
+    if (!link) fail(`--handle 에는 인스타 아이디를 넣는다. "${handleRaw}" 는 아이디 꼴이 아니다. 예: --handle kimjejo_pharma`);
+    // 상품 번호를 안 주면 기본 813(조회수)이 아이디로 나간다. 그 사고를 막는다
+    if (flag("service") === null) fail("--handle 을 쓸 때는 --service 로 팔로워 상품 번호를 같이 준다. 보통은 snsfollow-drip.mjs 로 부른다 (한국 1279, 해외 354)");
+  }
   const qty = Number(flag("qty", existing?.qty ?? 100));
   const runs = Number(flag("runs", existing?.runs ?? 100));
   const everySec = existing?.everySec ?? parseEvery(flag("every", "5m"));
   const service = Number(flag("service", existing?.service ?? DEFAULT_SERVICE));
   const jitter = Number(flag("jitter", existing?.jitter ?? 0));
 
-  if (!link || !/^https?:\/\/\S+$/.test(link)) fail("--link 에 게시물 주소를 넣는다. 예: --link https://www.instagram.com/reel/XXXX/");
+  if (!link || !(/^https?:\/\/\S+$/.test(link) || isHandle(link)))
+    fail("--link 에 게시물 주소를 넣는다. 예: --link https://www.instagram.com/reel/XXXX/ (팔로워는 --handle <아이디>)");
   if (!Number.isInteger(qty) || qty <= 0) fail("--qty 는 양의 정수다. 예: --qty 100");
   if (!Number.isInteger(runs) || runs <= 0) fail("--runs 는 양의 정수다. 예: --runs 100");
   if (!Number.isFinite(everySec) || everySec < MIN_EVERY_SEC)
@@ -352,24 +388,66 @@ function readPlanArgs(existing = null) {
   return { link, qty, runs, everySec, service, jitter };
 }
 
+// 상품과 주문 대상이 맞는지 본다. 팔로워 상품에 게시물 주소를 넣거나, 조회수 상품에 아이디를 넣으면 돈만 나간다
+function fitTarget(a, svc) {
+  const kind = productKind(svc);
+  if (kind === "follower") {
+    if (!isHandle(a.link)) {
+      const h = /instagram\.com\/(?:reel|reels|p|tv)\//i.test(a.link) ? null : normalizeHandle(a.link);
+      if (!h) fail(`상품 ${svc.id} 는 팔로워 상품이라 게시물 주소가 아니라 인스타 아이디를 받는다. --handle <아이디> 로 준다`);
+      a.link = h;
+    }
+    a.kind = "follower";
+    a.unit = "명";
+  } else {
+    if (!/^https?:\/\//.test(a.link)) fail(`상품 ${svc.id} (${svc.name}) 는 게시물 주소를 받는다. 아이디 "${a.link}" 로는 못 넣는다`);
+    a.kind = "post";
+    a.unit = "회";
+  }
+}
+
+// 돌고 있는 다른 묶음이 앞으로 더 쓸 돈. 잔액이 총액보다 많아도 이걸 빼면 모자랄 수 있다
+function committedSpend() {
+  return pendingBatches().reduce((sum, b) => sum + Math.max(0, b.runs - b.orders.length) * (b.unitCost || 0), 0);
+}
+
+// 같은 대상 앞 주문이 안 끝나 거절될 때의 대기 설정. 준 것만 묶음 상태에 적는다. 안 주면 루프 기본값(15초, 60초, 90분)
+function readDupArgs() {
+  const out = {};
+  for (const [name, key] of [["dup-poll", "dupPollSec"], ["dup-retry", "dupRetrySec"], ["dup-max", "dupMaxSec"]]) {
+    const v = flag(name);
+    if (v === null) continue;
+    const sec = parseEvery(v);
+    if (!Number.isFinite(sec) || sec < 5) fail(`--${name} 는 5초 이상이다. 예: --${name} 5m`);
+    out[key] = sec;
+  }
+  return out;
+}
+
 async function makePlan(a) {
   const [svc, bal] = await Promise.all([getService(a.service), getBalance()]);
-  if (a.qty < svc.min) fail(`상품 최소 수량이 ${num(svc.min)} 이다. --qty ${a.qty} 로는 못 넣는다`);
-  if (a.qty > svc.max) fail(`상품 최대 수량이 ${num(svc.max)} 이다. --qty ${a.qty} 는 너무 크다`);
+  fitTarget(a, svc);
+  const u = a.unit;
+  if (a.qty < svc.min) fail(`상품 ${svc.id} 는 한 번에 최소 ${num(svc.min)}${u}부터 넣는다. --qty ${a.qty} 로는 못 넣는다`);
+  if (a.qty > svc.max) fail(`상품 ${svc.id} 는 한 번에 최대 ${num(svc.max)}${u}까지 넣는다. --qty ${a.qty} 는 너무 크다`);
   const unitCost = (a.qty * svc.rate) / 1000;
   const total = unitCost * a.runs;
   const duration = (a.runs - 1) * a.everySec;
-  return { svc, bal, unitCost, total, duration };
+  return { svc, bal, unitCost, total, duration, committed: committedSpend() };
 }
 
 function planLines(a, p) {
   const end = new Date(Date.now() + p.duration * 1000);
+  const u = unitOf(a);
+  // 팔로워는 한 명 값이 원 단위라 한 명 가격으로, 조회수는 1회가 0.1원이라 1,000회 가격으로 적는다
+  const price = a.kind === "follower" ? `1${u} ${won(p.svc.rate / 1000)}` : `1,000${u} ${won(p.svc.rate)}`;
   return [
-    `대상   ${a.link}`,
-    `상품   ${p.svc.id} ${p.svc.name} (1,000회 ${won(p.svc.rate)}, 최소 ${num(p.svc.min)})`,
-    `주문   ${num(a.qty)}회 × ${num(a.runs)}번 = 총 ${num(a.qty * a.runs)}회, ${fmtDur(a.everySec)} 간격` +
+    `대상   ${a.kind === "follower" ? `인스타 아이디 ${a.link} (https://www.instagram.com/${a.link}/)` : a.link}`,
+    `상품   ${p.svc.id} ${p.svc.name} (${price}, 최소 ${num(p.svc.min)}${u})`,
+    `주문   ${num(a.qty)}${u} × ${num(a.runs)}번 = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
       (a.jitter ? ` (±${Math.round(a.jitter * 100)}% 흔들림)` : ""),
-    `비용   회당 ${won(p.unitCost)}, 총 ${won(p.total)}. 잔액 ${won(p.bal.balance)} → ${won(p.bal.balance - p.total)}`,
+    `비용   회당 ${won(p.unitCost)}, 총 ${won(p.total)}. 잔액 ${won(p.bal.balance)} → ${won(p.bal.balance - p.total)}` +
+      (p.committed ? ` (돌고 있는 다른 묶음이 앞으로 ${won(p.committed)} 더 쓴다)` : ""),
     `시간   첫 주문은 바로, 마지막 주문은 ${fmtDur(p.duration)} 뒤 (${stamp(end)} 무렵)`,
   ];
 }
@@ -433,7 +511,7 @@ const TASK_XML = () => {
   return `<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>ops snsview-drip: 끊긴 조회수 분할 주문 묶음을 남은 회차부터 되살린다. 할 일이 없으면 스스로 지워진다.</Description>
+    <Description>ops snsview-drip: 끊긴 분할 주문 묶음(조회수, 팔로워)을 남은 회차부터 되살린다. 할 일이 없으면 스스로 지워진다.</Description>
   </RegistrationInfo>
   <Triggers>
     <TimeTrigger>
@@ -488,6 +566,11 @@ function guardInstalled() {
 function guardInstall({ log: verbose = false } = {}) {
   if (process.platform !== "win32") {
     if (verbose) console.log("되살리기 예약은 윈도우에서만 건다. 이 기계에서는 건너뛴다");
+    return false;
+  }
+  // 임시 폴더로 start 를 시험할 때 작업 스케줄러에 시험용 예약이 남지 않게 한다
+  if (process.env.SNSVIEW_DRIP_NO_GUARD === "1") {
+    if (verbose) console.log("되살리기 예약은 시험이라 건너뛴다 (SNSVIEW_DRIP_NO_GUARD=1)");
     return false;
   }
   const xml = path.join(WORK, ".watch-task.xml");
@@ -576,6 +659,7 @@ function parentCommandLine() {
 
 async function cmdStart() {
   const a = readPlanArgs();
+  const dupArgs = readDupArgs();
   const p = await makePlan(a);
   const lines = planLines(a, p);
   if (p.total > p.bal.balance && !has("allow-short")) {
@@ -590,6 +674,7 @@ async function cmdStart() {
   const state = {
     id,
     ...a,
+    ...dupArgs,
     serviceName: p.svc.name,
     rate: p.svc.rate,
     unitCost: p.unitCost,
@@ -627,10 +712,16 @@ async function cmdStart() {
     const s = readJson(statePath(id));
     if (s?.orders?.length) {
       const o = s.orders[0];
-      console.log(`첫 주문 들어감: 주문번호 ${o.orderId}, ${num(s.qty)}회, ${won(s.unitCost)}`);
+      console.log(`첫 주문 들어감: 주문번호 ${o.orderId}, ${num(s.qty)}${unitOf(s)}, ${won(s.unitCost)}`);
       return;
     }
     if (s?.paused || s?.errors?.length) {
+      // 같은 대상에 묶음을 겹쳐 걸면 첫 주문이 link_duplicate 로 거절되는 게 정상이다. 루프가 앞 주문이 끝나길 기다렸다 넣는다.
+      // 실패로 내면 reel-watch 가 "첫 회차에서 멈춤" 알림을 띄운다 (260917 시험)
+      if (!s.paused && /link_duplicate/.test(s.errors.at(-1)?.msg || "")) {
+        console.log("첫 주문은 같은 대상의 앞 주문이 서버에서 끝나길 기다린다 (link_duplicate). 끝나는 대로 배경에서 넣는다. 돈은 아직 안 나갔다");
+        return;
+      }
       console.log(`첫 주문에서 걸렸다: ${s.paused || s.errors.at(-1)?.msg}. 기록 파일을 본다`);
       process.exitCode = 4;
       return;
@@ -655,7 +746,7 @@ async function runLoop(id) {
   s.paused = null;
   if (!s.startedAt) s.startedAt = stamp();
   saveState(s);
-  log(id, `시작. ${num(s.qty)}회 × ${num(s.runs)}번, ${fmtDur(s.everySec)} 간격, 이미 들어간 주문 ${s.orders.length}건, pid ${process.pid}`);
+  log(id, `시작. ${num(s.qty)}${unitOf(s)} × ${num(s.runs)}번, ${fmtDur(s.everySec)} 간격, 이미 들어간 주문 ${s.orders.length}건, pid ${process.pid}`);
 
   let consecutiveErrors = 0;
   let shortWaits = 0;
@@ -664,7 +755,8 @@ async function runLoop(id) {
   // 그래서 짧게(dupRetrySec) 다시 넣는다. 성공한 주문 사이 간격은 그대로 지킨다
   const dupRetrySec = s.dupRetrySec ?? 60;
   const dupPollSec = Math.min(s.dupPollSec ?? 15, dupRetrySec);
-  const DUP_MAX_SEC = 90 * 60;
+  // 팔로워 주문은 한 건이 몇 시간씩 걸려서 묶음마다 한도를 따로 둔다 (snsfollow-drip, 260917)
+  const DUP_MAX_SEC = s.dupMaxSec ?? 90 * 60;
   const isDuplicate = (msg) => /link_duplicate/.test(msg || "");
   let dupStreak = 0;
   let dupSince = 0;
@@ -701,7 +793,7 @@ async function runLoop(id) {
       s.pid = null;
       saveState(s);
       const spent = s.orders.reduce((a, o) => a + (o.charge ?? s.unitCost), 0);
-      log(id, `묶음 완료. ${s.orders.length}번, 총 ${num(s.orders.length * s.qty)}회, ${won(spent)}. 마지막 주문번호 ${s.orders.at(-1)?.orderId}`);
+      log(id, `묶음 완료. ${s.orders.length}번, 총 ${num(s.orders.length * s.qty)}${unitOf(s)}, ${won(spent)}. 마지막 주문번호 ${s.orders.at(-1)?.orderId}`);
       return;
     }
 
@@ -770,7 +862,7 @@ async function runLoop(id) {
       s.orders.push({ n, orderId, at: stamp(), balanceBefore: bal.balance, charge: s.unitCost });
       s.lastOrderAt = stamp();
       saveState(s);
-      log(id, `${n}/${s.runs} 주문번호 ${orderId}, ${num(s.qty)}회, ${won(s.unitCost)}, 잔액 ${won(bal.balance)} → ${won(bal.balance - s.unitCost)}`);
+      log(id, `${n}/${s.runs} 주문번호 ${orderId}, ${num(s.qty)}${unitOf(s)}, ${won(s.unitCost)}, 잔액 ${won(bal.balance)} → ${won(bal.balance - s.unitCost)}`);
     } catch (e) {
       if (isDuplicate(e.message)) {
         // 앞 주문이 끝나는 대로 들어가게 짧게 다시 넣는다. API 는 살아 있다는 뜻이니 오류 연속 횟수는 0 으로 돌린다.
@@ -796,15 +888,19 @@ async function runLoop(id) {
         }
         // 1분을 그냥 기다리지 않고 앞 주문 상태를 짧게 본다. 끝났으면 곧바로 다시 넣는다 (260917, 거절 뒤 평균 5분이 더 붙었다).
         // 상태 조회는 돈이 안 나간다. 조회가 실패하거나 dupRetrySec 가 지나면 예전처럼 그냥 다시 넣는다
+        // 멈춤 표식은 상태 조회 간격과 상관없이 15초마다 본다. 팔로워 묶음은 조회 간격이 1분이라
+        // 그대로 두면 stop 이 1분 넘게 안 먹는다 (260917 시험)
         const prevId = s.orders.at(-1)?.orderId;
         const waitUntil = Date.now() + dupRetrySec * 1000;
+        let pollAt = prevId ? Date.now() + dupPollSec * 1000 : waitUntil;
         while (Date.now() < waitUntil) {
-          await sleep(dupPollSec * 1000);
+          await sleep(Math.max(250, Math.min(15000, pollAt - Date.now(), waitUntil - Date.now())));
           const fresh = readJson(statePath(id));
           if (fresh?.stopped) break; // 위쪽 루프 머리에서 멈춤을 처리한다
           s.heartbeatAt = Date.now();
           saveState(s);
-          if (!prevId) continue;
+          if (!prevId || Date.now() < pollAt) continue;
+          pollAt = Date.now() + dupPollSec * 1000;
           try {
             const st = (await getStatuses([prevId], id))[prevId];
             if (st?.status && !/pending|in progress|processing/i.test(st.status)) break;
@@ -845,10 +941,11 @@ async function cmdStatus() {
   const s = loadState(id);
   const alive = pidAlive(s.pid);
   const spent = s.orders.reduce((a, o) => a + (o.charge ?? s.unitCost), 0);
+  const u = unitOf(s);
   console.log(`묶음   ${s.id}`);
-  console.log(`대상   ${s.link}`);
-  console.log(`설정   ${num(s.qty)}회 × ${num(s.runs)}번, ${fmtDur(s.everySec)} 간격, 상품 ${s.service} ${s.serviceName}`);
-  console.log(`진행   ${s.orders.length}/${s.runs} 주문, ${num(s.orders.length * s.qty)}회, ${won(spent)} 씀`);
+  console.log(`대상   ${s.kind === "follower" ? `인스타 아이디 ${s.link}` : s.link}`);
+  console.log(`설정   ${num(s.qty)}${u} × ${num(s.runs)}번, ${fmtDur(s.everySec)} 간격, 상품 ${s.service} ${s.serviceName}`);
+  console.log(`진행   ${s.orders.length}/${s.runs} 주문, ${num(s.orders.length * s.qty)}${u}, ${won(spent)} 씀`);
   console.log(
     `상태   ` +
       (s.done
@@ -872,12 +969,19 @@ async function cmdStatus() {
     const st = await getStatuses(ids, id);
     const byStatus = {};
     let charged = 0;
+    let remains = 0;
     for (const oid of ids) {
       const r = st[oid] || {};
       byStatus[r.status || r.error || "?"] = (byStatus[r.status || r.error || "?"] || 0) + 1;
       charged += Number(r.charge || 0);
+      // 취소와 부분 완료의 remains 는 환불된 수량이라 앞으로도 안 들어온다. 도는 주문의 것만 센다
+      if (!/^(Canceled|Partial)$/i.test(r.status || "")) remains += Math.max(0, Number(r.remains || 0));
     }
-    console.log(`서버   ` + Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(", ") + `, 청구 합계 ${won(charged)}`);
+    console.log(`서버   ` + Object.entries(byStatus).map(([k, v]) => `${k} ${v}`).join(", ") + `, 청구 합계 ${won(charged)}` +
+      (remains ? `, 아직 안 들어온 수량 ${num(remains)}${u}` : ""));
+    // 팔로워 주문은 서버가 첫 주문을 받을 때의 팔로워 수를 start_count 로 남긴다. A/S 를 물을 때 기준이 된다
+    const first = st[ids[0]];
+    if (s.kind === "follower" && first?.start_count !== undefined) console.log(`시작수 첫 주문 때 팔로워 ${num(first.start_count)}명 (서버 기록)`);
     try {
       const bal = await getBalance(id);
       console.log(`잔액   ${won(bal.balance)}`);
@@ -905,10 +1009,13 @@ async function cmdResume() {
   if (!id) fail("이어 갈 묶음 id 가 필요하다. 목록은 list");
   const s = loadState(id);
   if (s.done) return console.log("이미 끝난 묶음이다");
-  if (pidAlive(s.pid)) return console.log(`이미 돌고 있다 (pid ${s.pid})`);
+  const wasStopped = s.stopped;
   s.stopped = false;
   s.paused = null;
   saveState(s);
+  // stop 직후에는 루프가 아직 표식을 못 봤을 수 있다. 전에는 여기서 "이미 돌고 있다" 로 돌아서고
+  // 루프는 조금 뒤 표식을 보고 멈춰서, resume 한 묶음이 멈춘 채 남았다 (260917 시험). 표식을 먼저 지우면 그 루프가 그대로 이어 간다
+  if (ownerAlive(s)) return console.log(`이미 돌고 있다 (pid ${s.pid}).` + (wasStopped ? " 멈춤 표식을 지웠으니 그 프로세스가 그대로 이어 간다" : ""));
   if (has("foreground")) return runLoop(id);
   const pid = spawnRun(id);
   s.pid = pid;
@@ -923,7 +1030,7 @@ function cmdList() {
   if (!all.length) return console.log("묶음이 없다");
   for (const b of all) {
     const st = b.done ? "완료" : b.stopped ? "멈춤" : b.paused ? "멈춤(" + b.paused + ")" : pidAlive(b.pid) ? "진행" : "끊김";
-    console.log(`${b.id}  ${st}  ${b.orders.length}/${b.runs} × ${num(b.qty)}회  ${b.link}`);
+    console.log(`${b.id}  ${st}  ${b.orders.length}/${b.runs} × ${num(b.qty)}${unitOf(b)}  ${b.link}`);
   }
 }
 

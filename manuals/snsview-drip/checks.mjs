@@ -34,6 +34,8 @@ const batches = fs.existsSync(WORK)
       .readdirSync(WORK)
       .map((d) => readJSON(path.join(WORK, d, "state.json")))
       .filter(Boolean)
+      // 팔로워 묶음(snsfollow-drip)도 같은 폴더에 쌓인다. 그쪽 완료 검사는 그 매뉴얼의 checks.mjs 가 본다
+      .filter((b) => b.kind !== "follower")
       .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
   : [];
 
