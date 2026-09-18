@@ -95,9 +95,27 @@ function grab(id) {
   fs.mkdirSync(dir, { recursive: true });
 
   const mp4 = path.join(dir, `${name}.mp4`);
-  sh(["-f", "bv*+ba/b", "--merge-output-format", "mp4", "-o", mp4,
-      `https://www.youtube.com/watch?v=${id}`], { stdio: "inherit" });
-  if (!fs.existsSync(mp4)) throw new Error("영상이 안 만들어졌다");
+  const downloaded = path.join(dir, `.${name}.download.mp4`);
+  try {
+    sh(["-f", "bv*+ba/b", "--merge-output-format", "mp4", "-o", downloaded,
+        `https://www.youtube.com/watch?v=${id}`], { stdio: "inherit" });
+    if (!fs.existsSync(downloaded)) throw new Error("영상이 안 만들어졌다");
+
+    // YouTube may choose AV1+Opus. Instagram can publish it but may generate
+    // a black profile-grid cover. Normalize the upload asset to H.264+AAC.
+    execFileSync("ffmpeg", [
+      "-y", "-i", downloaded,
+      "-map", "0:v:0", "-map", "0:a:0?",
+      "-vf", "format=yuv420p", "-r", "30",
+      "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+      "-profile:v", "high", "-level", "4.0",
+      "-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2",
+      "-movflags", "+faststart", mp4,
+    ], { stdio: "inherit", maxBuffer: 1 << 26 });
+  } finally {
+    fs.rmSync(downloaded, { force: true });
+  }
+  if (!fs.existsSync(mp4)) throw new Error("정규화된 영상이 안 만들어졌다");
 
   const now = new Date().toISOString();
   const write = (f, o) => fs.writeFileSync(path.join(dir, f), JSON.stringify(o, null, 2) + "\n", "utf8");

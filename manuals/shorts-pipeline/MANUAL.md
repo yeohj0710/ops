@@ -685,6 +685,7 @@ window.open = function(u, ...r){ if(u) window.__opened.push(String(u)); return {
 
    남의 채널 영상이면 거부한다(채널 ID 두 개만 허용).
    추출기 exe 를 열 필요 없다. 같은 로직을 `yt-dlp` 로 직접 쓴다. `yt-dlp` `ffmpeg` 는 이미 깔려 있다.
+   다운로드 뒤 `ffmpeg`로 Instagram 호환 포맷인 `H.264(yuv420p)+AAC`, `faststart` MP4로 정규화한다.
 
 3. **이번 호출에서는 폴더 하나에 다섯 개를 만든다.** 기존 폴더를 그대로 본뜬다.
    | 파일 | 무엇 |
@@ -699,7 +700,8 @@ window.open = function(u, ...r){ if(u) window.__opened.push(String(u)); return {
    ```bash
    node "<OPS>/manuals/shorts-pipeline/scripts/shorts-preflight.mjs" --dir "<준비 폴더>"
    ```
-   게이트가 `PASS — 업로드 가능`을 출력하지 않으면 게시하지 않는다.
+   게이트가 `PASS — 업로드 가능`을 출력하지 않으면 게시하지 않는다. 게이트는 9:16뿐 아니라
+   영상 `h264`, 음성 `aac`도 확인한다. `av1/opus` 파일은 프로필 그리드 커버가 검게 생성될 수 있어 게시하지 않는다.
    `source_ownership.allowed_channel_ids` 에 두 채널 ID 를 넣어 남의 영상을 안 올리게 막는다.
 
 ## P5. 인스타그램 캡션 쓰기

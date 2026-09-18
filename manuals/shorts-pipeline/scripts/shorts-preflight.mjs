@@ -75,11 +75,13 @@ function latestUploads() {
 
 function probeMedia(file) {
   const raw = execFileSync("ffprobe", [
-    "-v", "error", "-select_streams", "v:0",
-    "-show_entries", "stream=width,height,duration",
+    "-v", "error",
+    "-show_entries", "stream=index,codec_type,codec_name,width,height,duration",
     "-of", "json", file,
   ], { encoding: "utf8" });
-  const stream = JSON.parse(raw).streams?.[0] || {};
+  const streams = JSON.parse(raw).streams || [];
+  const stream = streams.find((row) => row.codec_type === "video") || {};
+  const audio = streams.find((row) => row.codec_type === "audio") || {};
   const width = Number(stream.width);
   const height = Number(stream.height);
   const duration = Number(stream.duration);
@@ -87,6 +89,8 @@ function probeMedia(file) {
     width,
     height,
     duration,
+    videoCodec: stream.codec_name || null,
+    audioCodec: audio.codec_name || null,
     ratio: width > 0 && height > 0 ? width / height : NaN,
   };
 }
@@ -95,7 +99,8 @@ function mediaText(media) {
   if (!media || !Number.isFinite(media.width) || !Number.isFinite(media.height)) return "ffprobe 실패";
   const ratio = Number.isFinite(media.ratio) ? ` (${media.ratio.toFixed(4)})` : "";
   const duration = Number.isFinite(media.duration) ? `, ${media.duration.toFixed(3)}초` : "";
-  return `${media.width}x${media.height}${ratio}${duration}`;
+  const codecs = `${media.videoCodec || "?"}/${media.audioCodec || "없음"}`;
+  return `${media.width}x${media.height}${ratio}${duration}, ${codecs}`;
 }
 
 function inspectPreparedDir(dir) {
@@ -129,6 +134,12 @@ function inspectPreparedDir(dir) {
   }
   if (!media || !Number.isFinite(media.ratio) || Math.abs(media.ratio - EXPECTED_ASPECT) > ASPECT_TOLERANCE) {
     errors.push(`MP4 비율=${media?.width || "?"}x${media?.height || "?"} (9:16 필요)`);
+  }
+  if (media?.videoCodec !== "h264") {
+    errors.push(`영상 코덱=${media?.videoCodec || "없음"} (Instagram 업로드용 h264 필요)`);
+  }
+  if (media?.audioCodec !== "aac") {
+    errors.push(`음성 코덱=${media?.audioCodec || "없음"} (Instagram 업로드용 aac 필요)`);
   }
   return {
     ok: errors.length === 0,
