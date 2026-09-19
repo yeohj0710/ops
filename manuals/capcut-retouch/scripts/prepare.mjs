@@ -35,12 +35,13 @@ for(const source of await walk(root)){
  }
  const prior=ledger.findIndex(x=>x.relative===rel);if(prior>=0)ledger[prior]=item;else ledger.push(item);await fs.writeFile(ledgerPath,JSON.stringify(ledger,null,2));
 }
-const projects=path.join(process.env.LOCALAPPDATA,'CapCut/User Data/Projects/com.lveditor.draft');
+if(projectNames.length&&!process.env.LOCALAPPDATA)throw Error('프로젝트 백업에는 LOCALAPPDATA 경로가 필요합니다.');
+const projects=projectNames.length?path.join(process.env.LOCALAPPDATA,'CapCut/User Data/Projects/com.lveditor.draft'):null;
 const projectBackup=path.join(work,'backup','capcut-projects');
 await fs.mkdir(projectBackup,{recursive:true});
 const projectManifest=[];
 async function backupTree(src,dest){for(const e of await fs.readdir(src,{withFileTypes:true})){const a=path.join(src,e.name),b=path.join(dest,e.name);if(e.isDirectory()){await fs.mkdir(b,{recursive:true});await backupTree(a,b);}else{const sha256=await hash(a);try{await fs.copyFile(a,b,constants.COPYFILE_EXCL);}catch(e){if(e.code!=='EEXIST')throw e;}if(await hash(b)!==sha256)throw Error('Project backup differs: '+a);projectManifest.push({relative:path.relative(projects,a),sha256});}}}
 for(const name of projectNames){await fs.mkdir(path.join(projectBackup,name),{recursive:true});await backupTree(path.join(projects,name),path.join(projectBackup,name));}
-const index=path.join(projects,'root_meta_info.json');if(projectNames.length)try{await fs.copyFile(index,path.join(projectBackup,'root_meta_info.json'),constants.COPYFILE_EXCL);}catch(e){if(e.code!=='EEXIST')throw e;}
+const index=projects?path.join(projects,'root_meta_info.json'):null;if(projectNames.length)try{await fs.copyFile(index,path.join(projectBackup,'root_meta_info.json'),constants.COPYFILE_EXCL);}catch(e){if(e.code!=='EEXIST')throw e;}
 if(projectNames.length)await fs.writeFile(path.join(work,'project-backup.json'),JSON.stringify(projectManifest,null,2));
 console.log(JSON.stringify({sources:ledger.length,bytes:ledger.reduce((s,x)=>s+x.bytes,0),sampleBackups:ledger.filter(x=>x.backup).length,projectFiles:projectManifest.length,retouched:0}));
