@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {spawnSync} from 'node:child_process';
+const task=JSON.parse(await fs.readFile(process.argv[2],'utf8'));
+const root=task.input?.root;
+if(!root||!path.isAbsolute(root))throw Error('큐 입력 input.root에 원본 폴더 절대경로가 필요합니다.');
+const script=path.join(path.dirname(fileURLToPath(import.meta.url)),'scripts/check-completion.mjs');
+const result=spawnSync(process.execPath,[script,root],{stdio:'inherit',windowsHide:true});
+if(result.error)throw result.error;process.exitCode=result.status??1;
