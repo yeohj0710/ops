@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {plan} from './plan.mjs';
 export function verify(state) {
   const expected = plan(state.brand);
-  if (!Array.isArray(state.actions) || state.actions.length !== 52) throw Error('행동은 52건이어야 합니다.');
+  if (!Array.isArray(state.actions) || state.actions.length !== 56) throw Error('행동은 56건이어야 합니다.');
   const seen = new Set();
   for (const item of expected.actions) {
     const matches = state.actions.filter(a=>a.id===item.id);
@@ -19,6 +19,6 @@ export function verify(state) {
       seen.add(url);
     }
   }
-  return `기록 검사 통과: 게시물 4개, 기록 52건, 완료 ${state.actions.filter(a=>a.status==='done').length}건, 제외 ${state.actions.filter(a=>a.status==='skipped').length}건. 실제 UI 근거도 검토하세요.`;
+  return `기록 검사 통과: 게시물 4개, 기록 56건, 완료 ${state.actions.filter(a=>a.status==='done').length}건, 제외 ${state.actions.filter(a=>a.status==='skipped').length}건. 실제 UI 근거도 검토하세요.`;
 }
 if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) console.log(verify(JSON.parse(fs.readFileSync(process.argv[2],'utf8'))));

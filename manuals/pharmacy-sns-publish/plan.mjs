@@ -8,6 +8,7 @@ export function plan(brand) {
   const add = (kind, actor, target) => actions.push({id:`${kind}:${actor}:${target}`,kind,actor,target,status:'pending',evidence:''});
   for (const owner of owners) {
     add('post',owner,owner); add('story',owner,owner);
+    add('self-like',owner,owner);
     for (const actor of owners) if (actor !== owner) add('mutual-like',actor,owner);
     for (const actor of ['kmin.kyeong','yakdae.saram']) for (const kind of ['like','save','repost','comment']) add(kind,actor,owner);
   }
