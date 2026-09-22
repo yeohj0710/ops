@@ -1,0 +1,31 @@
+{
+  "_읽어라": [
+    "lovellliiil 이 바깥으로 DM 공유할 때 고르는 후보 명단이다 (260922 사용자 지시).",
+    "게시물마다 이 명단에서 10개를 무작위로 뽑는다. 매번 같은 사람에게 보내지 않는다.",
+    "브랜드 8개 계정과 반응 계정 yakdae.saram, kmin.kyeong 은 여기 넣지 않는다. 그 둘은 삼각형 공유로 따로 받는다.",
+    "명단은 lovellliiil 의 팔로워와 그동안 DM 을 주고받은 계정에서 뽑았다. 오래되면 /api/v1/friendships/<uid>/followers/ 로 다시 채운다.",
+    "공유 창 기본 격자에 없는 아이디는 검색 칸에 그대로 쳐서 고른다. 결과 줄은 아이디가 정확히 일치하는 것만 누른다."
+  ],
+  "lovellliiil": {
+    "뽑을_수": 10,
+    "후보": [
+      "rasheed_mika_635",
+      "yannikrui",
+      "sson.sam",
+      "yaima_lyshrm",
+      "promod8955",
+      "pavunraj98",
+      "hitesh_kudiym",
+      "basirubin.yakub",
+      "josue_maconde",
+      "josecarlos.ofumane",
+      "sterieomazy",
+      "baby_sneey_",
+      "almashrqi77",
+      "kamalkumar1234498",
+      "ceo_empekempek",
+      "10vishvas",
+      "dybalakasime"
+    ]
+  }
+}
