@@ -51,6 +51,16 @@
 - lovellliiil 바깥 공유에 브랜드 8개 계정이나 나머지 반응 계정 2곳 섞기. 그 둘은 삼각형 공유로 이미 받는다
 - 이미 눌린 좋아요, 저장, 공유를 다시 눌러 취소하기
 
+### DM 공유 창 다루는 법 (260922 실측)
+
+- **수신자는 검색으로 고른다.** 공유 창 기본 격자에는 최근에 주고받은 사람 20명쯤만 나온다. 그 밖의 계정은 `검색` 칸에 **아이디를 그대로 쳐서** 결과 줄을 눌러야 한다. 한 번 보내고 나면 다음부터는 격자에 올라온다.
+- 검색 결과 줄은 `div[role="button"]` 이 아니라 그냥 `div` 다. 줄 안의 `img` 에서 부모를 타고 올라가 너비 300 이상, 높이 40~120 인 칸을 잡는다. 줄 글자는 "표시이름 + 아이디" 라서 **`textContent.endsWith(아이디)` 로 맞춰야** 엉뚱한 사람에게 안 간다. 검색은 팔로우 관계를 안 가리고 전 세계 계정을 다 보여 준다.
+- 검색 칸은 React 라 `value` 를 네이티브 setter 로 넣고 `input` 이벤트를 쏜다. 한 명 고른 뒤에는 칸을 비우고 다음 아이디를 넣는다.
+- **"따로 보내기" 버튼은 보통 합성 클릭을 안 받는데, 포인터 이벤트를 다 갖춰 주면 받는다.** `pointerover, pointerenter, pointermove, pointerdown` 을 `PointerEvent` 로, 이어서 `mousedown, pointerup, mouseup, click` 을 보낸다. `MouseEvent` 만으로 만든 `pointerdown` 은 안 먹는다. 이 방법은 탭이 숨어 있어도 된다.
+- **보냈는지는 창이 닫히는 걸로 판단하지 마라.** 보내도 창이 그대로 있다. `/api/v1/direct_v2/threads/<id>/` 의 `original_media_igid` 로 확인한다.
+- **`/api/v1/direct_v2/ranked_recipients/` 가 200 인데 본문이 비면 그 계정은 공유가 막힌 것이다.** 공유 창이 회전만 하고 안 그려지고, 계정 전환 창까지 안 열린다. 받은 목록은 멀쩡히 오니 로그인 문제로 오해하기 쉽다. 260922 에 lovellliiil 로 하루 100건 가까이 보내다 걸렸다. **여기서 더 누르지 말고 멈춘다.** 몇 시간 뒤에 다시 본다.
+- 한 계정이 하루에 보내는 DM 은 100건 근처에서 막혔다. 게시물 8개에 10명씩이면 80건이라 한 계정으로 하루에 다 돌리기는 빠듯하다. 세 계정에 나눠 돌린다.
+
 **얼마나 됐는지는 화면 말고 API 로 센다.** shortcode 를 base64 알파벳 `A-Za-z0-9-_` 로 되돌려 pk 를 얻고 `/api/v1/media/<pk>/info/` 를 부르면 지금 로그인한 계정의 `has_liked`, `has_viewer_saved` 와 `like_count`, `comment_count` 가 한 번에 나온다. DM 공유는 `/api/v1/direct_v2/threads/<id>/` 의 `original_media_igid` 로 센다. 받은 목록(inbox)은 스레드마다 두 건까지만 보여 줘서 못 쓴다.
 
 ## kmin.kyeong 기능 예외
