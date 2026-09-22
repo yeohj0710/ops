@@ -1,0 +1,35 @@
+Vercel CLI 58.5.1 (Node.js 24.12.0)
+Retrieving project…
+Deploying yeohj0710s-projects/wnbx
+  Inspect         https://vercel.com/yeohj0710s-projects/wnbx/E8dd8WhPgmgbg3XLetrv5GhVzWwB
+  Production      https://wnbx-4qcrnyg4f-yeohj0710s-projects.vercel.app
+Building…
+[2K[1A[2K[G  Production      https://wnbx-4qcrnyg4f-yeohj0710s-projects.vercel.app
+Running Checks…
+▲ Aliased         https://ops-ten-bice.vercel.app
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_E8dd8WhPgmgbg3XLetrv5GhVzWwB",
+    "url": "https://wnbx-4qcrnyg4f-yeohj0710s-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/yeohj0710s-projects/wnbx/E8dd8WhPgmgbg3XLetrv5GhVzWwB",
+    "readyState": "READY",
+    "target": "production",
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_E8dd8WhPgmgbg3XLetrv5GhVzWwB"
+  },
+  "message": "Deployment wnbx-4qcrnyg4f-yeohj0710s-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel curl https://wnbx-4qcrnyg4f-yeohj0710s-projects.vercel.app",
+      "when": "Verify deployment, including when Deployment Protection is enabled"
+    },
+    {
+      "command": "vercel inspect wnbx-4qcrnyg4f-yeohj0710s-projects.vercel.app",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod",
+      "when": "Promote to production"
+    }
+  ]
+}

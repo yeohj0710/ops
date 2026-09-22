@@ -1,0 +1,130 @@
+{
+  "scope": "두 업무의 변경 파일만 복사. 전체 매뉴얼 삭제와 무관한 설정 백업을 피하기 위해 ops.mjs sync의 복사를 제한했다.",
+  "files": [
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-pipeline\\MANUAL.md",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-pipeline\\MANUAL.md",
+      "sha256": "5b2775682eeaa2a22c968e80e98657568bfc86b882ea07d1c186f250e7e55964"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\MANUAL.md",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\MANUAL.md",
+      "sha256": "0cea439878da1f7f21598c739ae2c94bff7e4af8dabdc771a4dab5b2171d2c41"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\수집목록.json",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\수집목록.json",
+      "sha256": "f15df42fa6906865cda0bb6e2d0660e2d90a86d220051aaa7faae2668ece9b76"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\수집목록.md",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\수집목록.md",
+      "sha256": "48be70853c2604cbf52c22d12c113cfa240347913075b775abc6ae802111d20a"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드.md",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드.md",
+      "sha256": "67887cbf70c84a37db4dc9642abbdef9004a82ccfe16c5cce552182480a777df"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\scripts\\collect-winning-cards.mjs",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\scripts\\collect-winning-cards.mjs",
+      "sha256": "2fc554db88ffbc0d90c3341a8b5d7b2c85ac136bca00251692d8b4b5eddb05c0"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\scripts\\follow-strategy.mjs",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\scripts\\follow-strategy.mjs",
+      "sha256": "4653d65ceeebf05b2be893ba506fe936c9ae26e9c880bb86722c7bf6287ece23"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\scripts\\follow-metrics.mjs",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\scripts\\follow-metrics.mjs",
+      "sha256": "24a40d2758f59f04aa6ce7dc8caeeddbba02b066613371feb3589b6d0d640c2f"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\scripts\\verify-follow-metrics.mjs",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\scripts\\verify-follow-metrics.mjs",
+      "sha256": "7c3e49c257db2f8b975d30a68d2ab415860a2e2ae695a91a9162245fb8939af6"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\01-DbnqRH2gSmH.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\01-DbnqRH2gSmH.webp",
+      "sha256": "70fecc200672d2b8fbfa5604639cd481ec587a6282bff9c3cd9bf55d49b10455"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\02-Dcd6BwugjaR.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\02-Dcd6BwugjaR.webp",
+      "sha256": "fec031b67d27f4d90ad939dab89d117c7991aeb0ec88d98f4bf37a58fb70c135"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\03-DaVDSpfgJ0e.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\03-DaVDSpfgJ0e.webp",
+      "sha256": "d5f224c4753a811b3e8492e0c85d345352eed6f59e8fd6ea688c45ee5efdb738"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\04-DcfAK9lgTrf.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\04-DcfAK9lgTrf.webp",
+      "sha256": "dad509a78bd91a6d68cb17243925eddc9b9c70af5f0dbd9b15d79f9559248fdd"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\05-DaVGFFCggv4.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\05-DaVGFFCggv4.webp",
+      "sha256": "4983cdab42f233ea01875320ef1f0d277fd9f00f6d8e43b79c75e5b3f8b9eb54"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\06-DaVFKt2Azna.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\06-DaVFKt2Azna.webp",
+      "sha256": "28dc5f8b68f532ef1e0c661b1ed5ea7bbd1951a838e0884eb410a965eedf8c88"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\07-DbvNnfbgApc.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\07-DbvNnfbgApc.webp",
+      "sha256": "886e2597869c0b9d509a35a7a6783c8d54346d96d44ad05507ee471fe837d597"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\08-DbrefEOA1Rz.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\08-DbrefEOA1Rz.webp",
+      "sha256": "0b863ce110729d357ede32ba93da7cf56889c8638d968a916d2ff6d72a9a17d6"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\09-DbuX089gBjg.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\09-DbuX089gBjg.webp",
+      "sha256": "c66f97ff36e72420dea771a2eabf855f99bb46c467f6b46aeaa51e3283f25046"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\10-DaaCjQrAzSI.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\10-DaaCjQrAzSI.webp",
+      "sha256": "580a58c5a58e9f3cda801a90b632c3d2c56e75425d66b2e77f0929a7600e0ab5"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\11-DbNcTo1gKHz.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\11-DbNcTo1gKHz.webp",
+      "sha256": "4f588569ceb7917b6934e709ab3957d45812c895f08fc55c5e3eb2de5b3a2826"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\12-DccmkoHALdZ.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\12-DccmkoHALdZ.webp",
+      "sha256": "f03f4bfba8cfb7be235485ddc815261438d995549dc57bba30b0433a8e0edb15"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\78-Dc6GgU5A2H_.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\78-Dc6GgU5A2H_.webp",
+      "sha256": "402bfa00e9afdb11d2f3b428ea305ae1a1ed23e976a67877838054942788c748"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\77-Dc3YAXagqBe.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\77-Dc3YAXagqBe.webp",
+      "sha256": "a57619054cd33850fdfa9616b9fcd516236a09850a1cc9970a5c69b8b5a44cb0"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\76-Dc2d3a5Ao-_.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\76-Dc2d3a5Ao-_.webp",
+      "sha256": "a874e3e94ab02ddb0042da1e659506948c155311d5edcf54965d2a24da4b7038"
+    },
+    {
+      "source": "C:\\dev\\ops\\manuals\\shorts-refill\\references\\이긴카드\\75-Dcxfr8pAQVS.webp",
+      "destination": "G:\\내 드라이브\\에이전트\\매뉴얼\\shorts-refill\\references\\이긴카드\\75-Dcxfr8pAQVS.webp",
+      "sha256": "72150529386af6c671b8c1abedd55669b722685753b78d65365152da25e0cae8"
+    }
+  ]
+}

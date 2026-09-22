@@ -22,6 +22,27 @@ const ALLOWED = Object.keys(CHANNELS);
 const sh = (args, opts = {}) =>
   execFileSync("yt-dlp", args, { encoding: "utf8", maxBuffer: 1 << 26, ...opts });
 
+function removeDownloaded(file) {
+  // Google Drive for desktop can crash Node when fs.rmSync touches a synced
+  // file. Use a separate PowerShell process on Windows so extraction can still
+  // finish writing the metadata files.
+  if (process.platform === "win32") {
+    const env = { ...process.env, SHORTS_EXTRACT_TMP: file };
+    execFileSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Remove-Item -LiteralPath $env:SHORTS_EXTRACT_TMP -Force -ErrorAction Stop",
+      ],
+      { stdio: "ignore", env },
+    );
+    return;
+  }
+  fs.rmSync(file, { force: true });
+}
+
 // 파일 이름에 못 쓰는 글자를 뺀다. 폴더 이름 규칙은 `YYMMDDHHMMSS 제목`.
 const safe = (s) => s.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim();
 
@@ -113,7 +134,7 @@ function grab(id) {
       "-movflags", "+faststart", mp4,
     ], { stdio: "inherit", maxBuffer: 1 << 26 });
   } finally {
-    fs.rmSync(downloaded, { force: true });
+    if (fs.existsSync(downloaded)) removeDownloaded(downloaded);
   }
   if (!fs.existsSync(mp4)) throw new Error("정규화된 영상이 안 만들어졌다");
 

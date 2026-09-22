@@ -1,0 +1,23 @@
+{
+  "spreadsheetId": "1heUo8C09kEHMQo7qOTYC5bMOCSMTHCvb-m7O3tm2BOE",
+  "backupRoot": "work/_sheet-backups/influencer-seeding",
+  "minIntervalHours": 20,
+  "retentionDays": 45,
+  "tabs": [
+    "캠페인",
+    "약국",
+    "배정",
+    "유입",
+    "인플루언서",
+    "약사 진행표",
+    "시딩 현황",
+    "구_국내 진행표",
+    "구_중국 진행표",
+    "구_직접 탐색 후보",
+    "구_샤오홍슈 진행표",
+    "구_샤오홍슈 직접 탐색 후보",
+    "구_일본 진행표",
+    "구_일본 직접 탐색 후보",
+    "설정"
+  ]
+}

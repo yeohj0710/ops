@@ -1,0 +1,9 @@
+{
+  "revision": "0408a8dd21aca50d5fc84add659d1af52667abb1",
+  "exit_code": 0,
+  "source": "C:\\dev\\ops\\etc\\레퍼런스 매뉴얼 사이트 배포\\source",
+  "deployment_log": "C:\\dev\\ops\\etc\\레퍼런스 매뉴얼 사이트 배포\\deploy.log",
+  "uncommitted_site_preserved": true,
+  "live_http_verified": true,
+  "live_sha256": "467d093a4b948c69f1a511cd70754bc32ba8c68dd5ebe2381d5463ec84be689a"
+}

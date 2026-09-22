@@ -1,0 +1,22 @@
+{
+  "id": "260831-1120-freelancer-payroll",
+  "manual": "freelancer-payroll",
+  "title": "권성은 편집자 26년 8월 편집비 등록",
+  "runner": "claude",
+  "est_minutes": 30,
+  "needs_screen": true,
+  "resource": null,
+  "priority": 5,
+  "input": {},
+  "created": "2026-08-31T11:20:03+09:00",
+  "lease": null,
+  "log": [
+    {
+      "at": "2026-08-31T11:29:58+09:00",
+      "what": "done",
+      "note": "권성은 편집자 8월분 12편 180,000원 등록. 누적 29편 중 7월 17편은 이미 지급돼 차감"
+    }
+  ],
+  "finished": "2026-08-31T11:29:58+09:00",
+  "status": "done"
+}
