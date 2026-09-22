@@ -4,14 +4,16 @@ import {verify} from './verify.mjs';
 for(const brand of ['aroundpharm','mimipharm']) {
   const s=plan(brand);
   assert.equal(s.actions.filter(a=>a.status==='skipped').length,4);
-  assert.equal(new Set(s.actions.map(a=>a.id)).size,68);
+  assert.equal(new Set(s.actions.map(a=>a.id)).size,84);
   assert.equal(s.actions.filter(a=>a.kind==='mutual-like').length,12);
   assert.equal(s.actions.filter(a=>a.kind==='story').length,4);
-  assert.equal(s.actions.filter(a=>a.actor==='lovellliiil').length,12);
+  assert.equal(s.actions.filter(a=>a.actor==="lovellliiil").length,20);
+  assert.equal(s.actions.filter(a=>a.kind==="share").length,12);
+  assert.equal(s.actions.filter(a=>a.kind==="share-out").length,4);
   assert.equal(s.actions.filter(a=>a.kind==='comment').length,12);
   assert.throws(()=>verify(s));
   for(const a of s.actions) { if(a.status!=='skipped') a.status='done';a.evidence='테스트용 근거, 실기 증빙 아님'; if(a.kind==='post') s.posts[a.target]=`https://www.instagram.com/p/test_${a.target}/`; }
-  assert.match(verify(s),/68/);
+  assert.match(verify(s),/84/);
   // 스토리 막힘과 게시물당 댓글 1건만 남기는 것은 정상 종료 상태다.
   const real=structuredClone(s);
   for(const a of real.actions) if(a.kind==='story') a.status='blocked';
