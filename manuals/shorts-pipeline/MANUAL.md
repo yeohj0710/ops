@@ -481,9 +481,34 @@ API 키가 필요하면 `api-key` 페이지에서 복사해 쓴다.
    고칠 때는 **먼저 로컬 DB 에서 현재 회로를 내보내 읽고** 그걸 고친다.
    `workflows/*.json` 을 다시 import 하지 마라. 사람이 잡아둔 노드 배치가 날아간다.
 
+### n8n 화면이 로그인으로 떨어졌을 때 (260923 실측)
+
+`localhost:5678` 이 `signin` 으로 떨어졌고, 크롬 두 프로필 어디에도 n8n 계정이 저장돼 있지 않았다
+(아이디 칸 클릭, 한 글자 입력 뒤 아래 화살표 모두 제안 없음). 비밀번호는 치지 않는다.
+**회로 실행은 화면 없이 된다.** 서버는 그대로 두고 같은 DB 를 쓰는 CLI 로 한 번 돌린다.
+
+```bash
+node "<OPS>/manuals/shorts-pipeline/scripts/n8n-cli-execute.mjs" mxrYb3maJS31gEYC
+```
+
+- CLI 가 `Execution was successful` 을 찍고 끝나도 **성공이 아니다.** 회로의 `Wait BGM Retry 90s` 처럼
+  65초 넘는 대기에 들어가면 DB 에 `status=waiting`, `mode=cli` 로 저장하고 CLI 는 그냥 끝난다.
+  떠 있는 서버가 `waitTill` 에 이어서 돌린다. 판정은 `execution_entity` 의 `success`/`error` 로만 한다
+- 서버가 떠 있으면 태스크 브로커 포트 5679 가 겹친다. 스크립트가 5691 로 돌린다
+- **credential 재연결은 CLI 로 안 된다.** 아래 절의 OAuth 는 n8n 화면이 필요하다.
+  로그인이 풀린 상태에서 credential 까지 만료되면 사람이 n8n 에 한 번 로그인해야 한다
+
 ### credential 에러가 났을 때 (자주 난다)
 
 유튜브 토큰이 만료되면 업로드 노드에서 인증 오류가 난다. 고치는 법은 정해져 있다.
+
+**판정 (260923 실측).** 실행은 `error`, 마지막 노드 `YouTube Upload Public`, 메시지
+`The credential "YouTube account" needs to be reconnected.` 이다. 이미지와 음악은 이미 만들어져
+KIE 18 크레딧이 빠졌고, 렌더본 `renders/health_<시각>_<id>.mp4` 가 남는다. **소재는 소비되지 않는다**
+(큐에 그대로, `사용완료/` 로 안 옮겨짐). 업로드 잠금 `업로드기록.jsonl.upload.lock` 은 10분 뒤 저절로 풀린다.
+사람을 기다리는 동안 인스타는 그 렌더본으로 먼저 올린다(P4 대신 렌더본을 규격 폴더로 옮긴다.
+`metadata.json` 에 `youtube_video_id: null`, `local_render`, `n8n_execution_id` 를 남긴다).
+credential 을 고친 뒤 회로를 다시 돌리면 같은 소재로 **새로 렌더**한다(색이 달라질 수 있다). 18 크레딧이 또 든다.
 
 1. **http://localhost:5678/home/credentials** 로 간다 (L3)
 2. 해당 credential 을 누른다. **이름이 채널을 가른다.**
@@ -1050,6 +1075,20 @@ const j = await fetch(`/api/v1/media/${pk}/info/`, {headers:{'x-ig-app-id':'9366
 `chrome-front.ps1` 로 창을 세우고, 그래도 배경 탭이면 MSAA 로 그 탭을 고르는 것이다
 (기억 `chrome-hidden-tab-breaks-media-and-first-click` 의 260914 절).
 
+**MSAA 탭 고르기는 명령 하나다 (260923 실측).** 탭 제목을 표식으로 바꾸고 부른다.
+
+```bash
+# 인스타 탭에서 먼저: document.title = 'WBREEL haruyaksa'
+powershell -NoProfile -ExecutionPolicy Bypass -File "<OPS>/manuals/shorts-pipeline/scripts/chrome-tab-select.ps1" -Tab WBREEL
+```
+
+고른 뒤 `outerWidth` 가 0 에서 2560 으로 돌아오면 활성 탭이 된 것이다. 그래도 창이 다른 크롬 창에
+완전히 가려 있으면 `hidden` 이고 동영상이 안 붙는다. 260923 에 창을 항상 위로 고정해 붙이긴 했는데
+**사용자가 다른 일을 하다가 화면이 가려진다고 멈추게 했다.** 가드가 1초마다 핀을 떼므로
+`topmost-guard-ignore.txt` 까지 손대야 했고, 그게 화면 전체를 덮었다. 사용자가 PC 를 쓰는 중이면
+**핀을 쓰지 말고 팝업 길로 간다.** 핀을 썼으면 영상이 붙는 즉시 풀고 ignore 파일을 되돌린다.
+영상이 한 번 붙은 뒤로는 `hidden` 이어도 자르기, 커버, 캡션 타이핑, 공유까지 다 됐다.
+
 그래서 팝업으로 갔을 때는 순서를 이렇게 나눈다.
 
 1. **게시는 팝업에서** 한다(동영상이 붙어야 하니까). 캡션 칸은 비워 둔 채 공유한다.
@@ -1393,6 +1432,23 @@ j.inbox.threads.slice(0,4).map(t => ({u: t.users.map(x=>x.username).join(), code
   `success`/`error` 만 끝으로 본다
 - **캡션 수정 화면의 `완료` 는 눌린 뒤 몇 초 늦게 닫힌다.** 바로 확인하면 창이 그대로라
   안 눌린 줄 알고 또 누르게 된다. 3~5초 기다렸다가 `div[role="dialog"]` 이 사라졌는지 본다
+
+- **크롬 확장이 두 브라우저에 붙어 있으면 세션끼리 선택을 뺏는다 (260923 실측).** 다른 세션이
+  다른 프로필(어라운드팜 & 미미팜)을 쓰는 중이면 `select_browser` 가 앱 전체에 걸려 호출마다
+  `Tab ... is not in Claude's tab group` 이 난다. 호출 바로 앞에 매번 `select_browser` 를 다시 부르고,
+  묶음 호출과 몇 초씩 기다리는 스크립트를 피한다(그 사이에 뺏긴다). 어느 쪽이 `haruyaksa` 인지는
+  쿠키 `ds_user_id` 로 가린다. 이름(Browser 1/2, Chrome 2)은 수시로 바뀐다
+- **n8n 화면이 로그인으로 떨어져도 회로는 CLI 로 돈다.** P2 의 "n8n 화면이 로그인으로 떨어졌을 때".
+  CLI 의 `successful` 은 대기 진입일 수 있으니 DB 상태로 판정한다
+- **`pick-next-reel.mjs` 에 피드를 짧게 주면 이미 올린 편을 미게시로 고른다 (260923).** 피드 7개만 줬더니
+  12번째에 있던 `돈 내고 버리던 것` 을 후보로 냈다. 피드 JSON 은 12개 이상 넘긴다
+- **사용자가 반응 계정을 따로 지정하면 그 계정으로 한다 (260923).** 그날은 `kmin.kyeong`, `lovellliiil`,
+  `yakdae.saram` 을 지정했다. `lovellliiil` 도 이 프로필 계정 전환 목록에 있고 리포스트 버튼이 있다.
+  공유는 지정한 세 계정끼리 나머지 둘에게 보낸다
+- **리포스트 svg 개수는 남이 먼저 리포스트했으면 2 부터 시작한다 (260923).** 개수로 "이미 눌림" 을 판정하면
+  안 눌린 계정을 건너뛴다. 액션바 옆 숫자(`좋아요수|리포스트수`)가 늘었는지로 본다
+- **공유 창 `따로 보내기` 는 DOM `.click()` 이 안 먹었다 (260923).** 받은함 API 에 안 찍혔다.
+  좌표로 진짜 클릭하니 바로 갔다. 사람 고르기는 `.click()` 으로 됐다
 
 ## 사람에게 알려야 하는 지점
 
