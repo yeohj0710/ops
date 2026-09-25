@@ -4,7 +4,9 @@ import {verify} from './verify.mjs';
 for(const brand of ['aroundpharm','mimipharm']) {
   const s=plan(brand);
   assert.equal(s.actions.filter(a=>a.status==='skipped').length,4);
-  assert.equal(new Set(s.actions.map(a=>a.id)).size,84);
+  const n = brand==='mimipharm' ? 88 : 84;
+  assert.equal(new Set(s.actions.map(a=>a.id)).size,n);
+  assert.equal(s.actions.filter(a=>a.kind==='owner-comment').length, brand==='mimipharm' ? 4 : 0);
   assert.equal(s.actions.filter(a=>a.kind==='mutual-like').length,12);
   assert.equal(s.actions.filter(a=>a.kind==='story').length,4);
   assert.equal(s.actions.filter(a=>a.actor==="lovellliiil").length,20);
@@ -13,7 +15,7 @@ for(const brand of ['aroundpharm','mimipharm']) {
   assert.equal(s.actions.filter(a=>a.kind==='comment').length,12);
   assert.throws(()=>verify(s));
   for(const a of s.actions) { if(a.status!=='skipped') a.status='done';a.evidence='테스트용 근거, 실기 증빙 아님'; if(a.kind==='post') s.posts[a.target]=`https://www.instagram.com/p/test_${a.target}/`; }
-  assert.match(verify(s),/84/);
+  assert.match(verify(s),new RegExp(String(n)));
   // 스토리 막힘과 게시물당 댓글 1건만 남기는 것은 정상 종료 상태다.
   const real=structuredClone(s);
   for(const a of real.actions) if(a.kind==='story') a.status='blocked';
@@ -31,9 +33,12 @@ for(const brand of ['aroundpharm','mimipharm']) {
     x=>x.actions[1]={...x.actions[0]},
     x=>x.actions[0].actor='wrong',
     x=>x.posts={},
+    x=>{const o=x.actions.find(a=>a.kind==='owner-comment'); if(o) o.status='blocked'; else x.posts={};},
   ]) {
     const copy=structuredClone(s);alter(copy);assert.throws(()=>verify(copy));
   }
 }
+// 게시자 댓글 칸이 없던 옛 미미팜 기록은 84건으로 통과한다.
+{const old=plan('mimipharm',{ownerComment:false}); delete old.ownerComment; for(const a of old.actions){ if(a.status!=='skipped') a.status='done'; a.evidence='테스트'; if(a.kind==='post') old.posts[a.target]=`https://www.instagram.com/p/old_${a.target}/`;} assert.match(verify(old),/84/);}
 assert.throws(()=>plan('both'));
 console.log('두 브랜드 정상 기록 및 누락·중복·막힘·잘못된 계정·URL 검사 통과');

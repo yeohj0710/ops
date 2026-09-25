@@ -3,7 +3,8 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {plan} from './plan.mjs';
 export function verify(state) {
-  const expected = plan(state.brand);
+  // 게시자 댓글 칸이 없던 옛 기록(260925 전)은 그대로 통과시킨다.
+  const expected = plan(state.brand, {ownerComment: state.ownerComment === true});
   const total = expected.actions.length;
   if (!Array.isArray(state.actions) || state.actions.length !== total) throw Error(`행동은 ${total}건이어야 합니다.`);
   const seen = new Set();

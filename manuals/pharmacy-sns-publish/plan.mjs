@@ -1,13 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-export function plan(brand) {
+// 게시자 댓글: 게시한 계정이 자기 게시물에 매장 안내 댓글을 달고 고정한다(260925 사용자 지시). 원문이 있는 브랜드만.
+export const OWNER_COMMENT_BRANDS = ['mimipharm'];
+export function plan(brand, opts = {}) {
   if (!['aroundpharm', 'mimipharm'].includes(brand)) throw Error('브랜드는 aroundpharm 또는 mimipharm이어야 합니다.');
   const owners = ['official', 'jp', 'cn', 'global'].map(s => `${brand}_${s}`);
+  const ownerComment = opts.ownerComment ?? OWNER_COMMENT_BRANDS.includes(brand);
   const actions = [];
   const add = (kind, actor, target) => actions.push({id:`${kind}:${actor}:${target}`,kind,actor,target,status:'pending',evidence:''});
   for (const owner of owners) {
-    add('post',owner,owner); add('story',owner,owner);
+    add('post',owner,owner); if (ownerComment) add('owner-comment',owner,owner); add('story',owner,owner);
     add('self-like',owner,owner);
     for (const actor of owners) if (actor !== owner) add('mutual-like',actor,owner);
     for (const actor of ['kmin.kyeong','yakdae.saram']) for (const kind of ['like','save','repost','comment']) add(kind,actor,owner);
@@ -18,7 +21,7 @@ export function plan(brand) {
     add('share-out','lovellliiil',owner);
   }
   for (const a of actions) if (a.actor === 'kmin.kyeong' && a.kind === 'repost') { a.status='skipped'; a.evidence='2026-09-15 사용자 확인: kmin.kyeong 리포스트·재공유 기능 없음. 수행 대상 제외.'; }
-  return {brand,posts:{},actions};
+  return {brand,ownerComment,posts:{},actions};
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const [, ,brand,destination] = process.argv;
