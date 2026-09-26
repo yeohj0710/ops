@@ -1,0 +1,10 @@
+{
+  "observed_at": null,
+  "verified_for_request_id": null,
+  "source_url": "https://higgsfield.ai/ko/pricing",
+  "source_surface": "계정 메뉴 > 크레딧 충전 > 크레딧 충전 탭",
+  "tax_included": false,
+  "packs": [],
+  "fx": null,
+  "note": "현재 계정의 실제 패키지 수량과 할인 적용 USD 가격을 입력한다. 예: id, credits, usd. 저장된 과거 단가만으로 제출하지 않는다."
+}

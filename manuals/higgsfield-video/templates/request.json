@@ -1,0 +1,25 @@
+{
+  "request_id": "REPLACE_WITH_CURRENT_REQUEST_ID",
+  "title": "영상 제작",
+  "settings": {
+    "brand": "어라운드팜",
+    "model": "CURRENT_MODEL_ID",
+    "duration_seconds": 5,
+    "ratio": "9:16",
+    "resolution": "1080p",
+    "count": 1,
+    "audio": false,
+    "prompt_enhancement": false,
+    "multi_shot": false
+  },
+  "balance_credits": null,
+  "cost_basis_pack_id": null,
+  "stages": [
+    {"name":"로컬 전처리","count":1,"max_attempts":1,"credits_min":0,"credits_max":0,"quote_kind":"local","source":"로컬 파일 점검·형식 정리"},
+    {"name":"영상 생성","count":1,"max_attempts":1,"credits_min":null,"credits_max":null,"quote_kind":"reference","observed_at":null,"source":"현재 모델의 제출 전 견적으로 교체"}
+  ],
+  "excluded_stages": ["AI 시작 이미지 생성", "업스케일", "음성 생성", "자동 재시도"],
+  "references": [],
+  "approved_credits": 0,
+  "generation_allowed": false
+}
