@@ -1,0 +1,20 @@
+{
+  "title": "이번 영상 제목",
+  "purpose": "place_promo | product | brand_service | explainer | event | narrative",
+  "subject": "요청 대상. 특정 브랜드로 자동 채우지 않는다.",
+  "audience": "이 영상을 볼 사람",
+  "message": "이번 대상만의 한 줄 이야기",
+  "authenticity": "real | fictional | stylized",
+  "delivery": {"duration_seconds":null,"ratio":null,"resolution":null,"music":false,"sfx":false,"voice":false},
+  "visual_bible": "시간대·빛·색·질감·공간·인물의 공통 유지 기준",
+  "references": [],
+  "shots": [
+    {"id":"S01","start":0,"end":null,"location_id":"L01","reason":"이 컷의 역할","reference_ids":[],"subject":"보여 줄 대상","action":"핵심 동작 하나","camera":"높이·거리·방향·속도·시작과 끝 또는 고정 이유","preserve":["반드시 유지할 특징"],"video_prompt":"이번 컷의 최종 문장","sound":"효과음의 원인·시점·거리 또는 없음"}
+  ],
+  "requests": [
+    {"id":"V01","kind":"video","shot_ids":["S01"],"reference_ids":[],"count":1,"generated_seconds":null,"mode":"single_shot","model":"현재 모델 ID","limits":{"verified":false,"source":null,"checked_at":null,"min_seconds":null,"max_seconds":null,"max_references":null,"multi_shot":false},"credits_per_request":null}
+  ],
+  "audio_plan": "모델 동시 생성 또는 별도 음향·편집. 여러 클립이면 음악 연속성 계획을 적는다.",
+  "generation_allowed": false,
+  "max_credits": 0
+}

@@ -29,8 +29,8 @@ def inspect(source, width, height):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source")
-    parser.add_argument("--width", type=int, default=1080)
-    parser.add_argument("--height", type=int, default=1920)
+    parser.add_argument("--width", type=int, required=True)
+    parser.add_argument("--height", type=int, required=True)
     parser.add_argument("--out", help="새 점검 JSON 경로. 원본이나 기존 파일을 덮어쓰지 않는다.")
     args = parser.parse_args()
     if args.width <= 0 or args.height <= 0:
