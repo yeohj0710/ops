@@ -1,0 +1,48 @@
+{
+  "female-bright": {
+    "label": "밝은 여성 · 기본",
+    "engine": "qwen_custom",
+    "speaker": "Sohee",
+    "language": "Korean",
+    "instruction": "Speak in natural standard Korean with a bright, friendly female voice. Use conversational intonation at a normal pace, as if talking to a friend.",
+    "seed": 2026,
+    "review": "preferred",
+    "note": "사용자가 기존 13초 샘플을 가장 낫다고 선택했습니다. 새 대사의 품질까지 보장하지는 않습니다."
+  },
+  "female-calm": {
+    "label": "차분한 여성 · 비교용",
+    "engine": "qwen_custom",
+    "speaker": "Sohee",
+    "language": "Korean",
+    "instruction": "Speak in natural standard Korean with a warm, calm female voice. Use relaxed conversational intonation at a normal pace, as if talking to a friend. Keep articulation clear, without whispering or stretching syllables.",
+    "seed": 2026,
+    "review": "candidate",
+    "note": "기본 여성 화자의 말투 변형입니다. 다른 사람의 목소리는 아닙니다. 사용자 청취 전입니다."
+  },
+  "female-lively": {
+    "label": "경쾌한 여성 · 비교용",
+    "engine": "qwen_custom",
+    "speaker": "Sohee",
+    "language": "Korean",
+    "instruction": "Speak in natural standard Korean with a bright, lively female voice. Use lightly playful conversational intonation at a normal pace, as if sharing an interesting story with a friend. Keep the delivery relaxed, without exaggerated acting or a singsong rhythm.",
+    "seed": 2026,
+    "review": "candidate",
+    "note": "기본 여성 화자의 말투 변형입니다. 사용자 청취 전입니다."
+  },
+  "male-warm": {
+    "label": "따뜻한 남성 · 시험용",
+    "engine": "qwen_custom",
+    "speaker": "Ryan",
+    "language": "Korean",
+    "instruction": "Speak in natural standard Korean with a warm male voice. Use clear articulation and relaxed conversational intonation at a normal pace. Avoid exaggerated acting.",
+    "seed": 2026,
+    "review": "candidate",
+    "note": "영어 기반 화자를 한국어로 사용합니다. 한국어 발음과 자연스러움은 검증하지 않았습니다. 짧은 샘플부터 확인하세요."
+  },
+  "original-clean": {
+    "label": "원래 목소리 · 음량 정리",
+    "engine": "cleanup",
+    "review": "technical",
+    "note": "말투와 속도를 유지합니다. 음량만 정리하며 성별 변경이나 잡음 분리를 하지 않습니다."
+  }
+}
