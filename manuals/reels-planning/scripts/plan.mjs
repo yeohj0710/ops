@@ -97,7 +97,7 @@ export function lintPlan(plan, packet, config, ledger={items:{}}) {
 }
 
 // Notion 문서 구문이 원문 문자열을 명령이나 블록으로 해석하지 않도록 이스케이프한다.
-export const escapeMd=s=>String(s??'').replace(/[\\*~`$\[\]<>{}|^]/g,'\\$&').replace(/\r?\n/g,'<br>');
+export const escapeMd=s=>String(s??'').replace(/[\\_*~`$\[\]<>{}|^]/g,'\\$&').replace(/\r?\n/g,'<br>');
 export function renderPlan(plan,packet) {
   const p=[],line=(label,value)=>p.push(`${label}: ${escapeMd(value)}`);
   line('기획안 식별자',`reels-planning:${packet.identity}`); line('대본 해시',planHash(plan));

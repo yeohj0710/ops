@@ -70,7 +70,13 @@ export function checkDedupe(envelope,requests) {
 }
 // Notion은 빈 줄을 제거한다. 글자·순서·문장부호는 그대로 비교한다.
 export function normalizeBody(s) {
-  return String(s).replace(/\r\n/g,'\n').replace(/<table\b[^>]*>([\s\S]*?)<\/table>/g,(_,inner)=>{
+  // Notion 내부 링크는 저장 시 페이지 멘션이 된다. 확인된 URL 패턴의 페이지 ID만 정규화한다.
+  // 외부 링크의 표시 문구, 대사, 표 셀과 목적지가 바뀌면 계속 불일치로 처리한다.
+  return String(s).replace(/\r\n/g,'\n').replace(/\\_/g,'_')
+    .replace(/\[[^\]\n]*\]\(https:\/\/app\.notion\.com\/p\/([a-f0-9]{32})(?:\?[^)\s]*)?\)/g,'NOTION_PAGE:$1')
+    .replace(/<mention-page\s+url="https:\/\/app\.notion\.com\/p\/([a-f0-9]{32})(?:\?[^"\s]*)?"\s*\/>/g,'NOTION_PAGE:$1')
+    .replace(/https:\/\/app\.notion\.com\/p\/([a-f0-9]{32})(?:\?[^\s<>"\)]*)?(?=$|[\s<>"\)])/g,'NOTION_PAGE:$1')
+    .replace(/<table\b[^>]*>([\s\S]*?)<\/table>/g,(_,inner)=>{
     // fetch는 표를 여러 줄로 직렬화하고 colgroup 폭을 넣는다. 셀 순서와 내용은 보존한다.
     const rows=[...inner.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/g)].map(r=>[...r[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/g)].map(c=>c[1].trim().replace(/<br\s*\/>/g,'<br>')));
     return `TABLE:${JSON.stringify(rows)}`;

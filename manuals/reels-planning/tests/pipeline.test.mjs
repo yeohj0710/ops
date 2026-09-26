@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { example } from '../scripts/schema.mjs';
 import { read, hash, fileHash, json, STATUS, save, secureFile, parseCsv } from '../scripts/io.mjs';
 import { loadConfig, prepare, validateExternal } from '../scripts/data.mjs';
-import { planHash, lintPlan, renderPlan } from '../scripts/plan.mjs';
+import { planHash, lintPlan, renderPlan, escapeMd } from '../scripts/plan.mjs';
 import { notionRequests, checkDedupe, verifyReceipt, FETCH, QUERY, normalizeBody } from '../scripts/notion.mjs';
 import { execute, checkRun } from '../scripts/pipeline.mjs';
 
@@ -142,6 +142,17 @@ test('receipt reads raw enhanced-Markdown fetch including parent-data-source and
   const page=JSON.parse(env.response.content[0].text);
   env.response.content[0].text=JSON.stringify({url:page.url,text:`Here is fetch\n<page url="${page.url}">\n<ancestor-path><parent-data-source url="collection://${e.config.notion.dataSourceId}"/></ancestor-path>\n<properties>\n${JSON.stringify(page.properties)}\n</properties>\n<content>\n${page.content}\n</content>\n</page>`});
   assert.equal(verifyReceipt(env,r,e.config).identity,r.identity);
+});
+test('Notion page links and auto mentions preserve page identity while detecting different destinations',()=>{
+  const id='12345678123456781234567812345678';
+  const url=`https://app.notion.com/p/${id}`;
+  assert.equal(normalizeBody(`[기준 기획안](${url}?pvs=204)`),normalizeBody(`<mention-page url="${url}"/>`));
+  assert.equal(normalizeBody(`기존 문서 ${url} 참조`),normalizeBody(`기존 문서 [${url}](${url}) 참조`));
+  assert.notEqual(normalizeBody(`<mention-page url="${url}"/>`),normalizeBody(`<mention-page url="${url.replace(/8$/,'9')}"/>`));
+  assert.notEqual(normalizeBody('[앞 내용](https://example.org/a)'),normalizeBody('[뒤 내용](https://example.org/a)'));
+  assert.equal(escapeMd('1. ___ 2. ___'),'1. \\_\\_\\_ 2. \\_\\_\\_');
+  assert.equal(normalizeBody(escapeMd('1. ___ 2. ___')),normalizeBody('1. ___ 2. ___'));
+  assert.notEqual(normalizeBody(escapeMd('1. ___ 2. ___')),normalizeBody('1. *** 2. ***'));
 });
 test('Notion table serialization normalizes only layout, and retains every cell and its order',()=>{
   const e=example(),r=notionRequests(e.plan,e.packet,e.config,renderPlan(e.plan,e.packet));
