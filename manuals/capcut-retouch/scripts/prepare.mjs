@@ -6,6 +6,11 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 if(!process.argv[2] || !path.isAbsolute(process.argv[2])) throw Error('절대경로 입력 폴더가 필요합니다.');
 const root=await fs.realpath(process.argv[2]);
+// In-place replacement intentionally changes source hashes. Never back it up as a fresh original.
+try {
+ const replacement=JSON.parse(await fs.readFile(path.join(root,'etc/capcut-replacement/state.json'),'utf8'));
+ if(replacement.items?.length)throw Error('보정본 교체 기록이 있습니다. background.mjs의 check로 현재 파일·백업을 대조하고 교체한 파일을 재보정에서 제외하세요. 기존 교체 폴더 전체를 prepare로 다시 실행하지 않습니다.');
+} catch(e) {if(e.code!=='ENOENT')throw e;}
 const work=path.join(root,'etc/capcut-retouch');
 await fs.mkdir(work,{recursive:true});
 const hash=async p=>{const h=createHash('sha256');for await(const b of createReadStream(p))h.update(b);return h.digest('hex');};
