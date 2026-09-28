@@ -33,6 +33,9 @@ export const CHANNELS = {
 // 남겨 두며, 현재 시딩 갱신에서는 확인하지 않아도 된다. 기존 실행의 메타 형식도 유지한다.
 export const OPTIONAL_CHANNELS = {
   instagramJapan: "wellnessbox_jp_official",
+  instagramDomestic: "wellnessbox_official",
+  gmailDomesticMe: "wellnessbox.me@gmail.com",
+  gmailDomesticOfficial: "wellnessbox.official@gmail.com",
   gmail: "wellnessbox.global@gmail.com",
 };
 
@@ -214,6 +217,7 @@ for (const name of [
   "progress-rank.mjs", "build-status-audit.mjs", "validate-write-plan.mjs", "backup-sheet.mjs",
   "sheet-diff.mjs", "build-notion-direct-sync-plan.mjs", "audit-notion-direct-sync.mjs",
   "audit-legacy-tabs.mjs",
+  "reconcile-domestic-sources.mjs",
 ]) {
   execFileSync(process.execPath, [path.join(HERE, "scripts", name), "--self-test"], { stdio: "inherit" });
 }
@@ -292,6 +296,18 @@ const statusAuditApplied = Array.isArray(result.statusAuditApplied) ? result.sta
 if (mode === "갱신") {
   const beforeMeta = read("unread-before-meta.json");
   const afterMeta = read("unread-after-meta.json");
+  if (beforeMeta.instagramDomestic || result.domesticSourcesChecked) {
+    for (const meta of [beforeMeta, afterMeta]) {
+      for (const channel of ['instagramDomestic','gmailDomesticMe','gmailDomesticOfficial']) {
+        assert.ok(meta[channel], `국내 대조 채널 기록이 없다: ${channel}`);
+      }
+    }
+    const reconciliation = read('source-reconciliation.json');
+    assert.equal(reconciliation.ok, true, '국내 폼·이메일·원장·배정 대조가 끝나지 않았다');
+    for (const field of ['missingAccounts','missingAssignments','lostExistingAccounts','unverifiedMailAccounts']) {
+      assert.deepEqual(reconciliation[field], [], `국내 대조 누락: ${field}`);
+    }
+  }
   const problems = [
     ...accountProblems(beforeMeta, "읽을 때"),
     ...accountProblems(afterMeta, "되돌릴 때"),
