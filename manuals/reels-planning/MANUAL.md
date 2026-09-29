@@ -28,7 +28,7 @@
 | 4. 기준 만들기 | 노션 업로드 완료 기획안을 `data/uploaded-plans.json`으로 뽑고 `node scripts/build-baseline.mjs` | 무료 |
 | 5. 적합도 채점 | `node scripts/score-fit.mjs` 가 예상 비용만 찍는다. 사람이 `JEV_FIT=1`을 켜야 돈다 | 유료, 편당 약 0.1원 |
 | 6. 화면 굽기와 올리기 | `node scripts/build-fit.mjs`, `npm run deploy` | 무료 |
-| 7. 재구성 초안 | `node scripts/recompose.mjs --pairs 3` 또는 `--content <숏코드> --format <숏코드>` | 무료 |
+| 7. 재구성 초안 | `node scripts/recompose.mjs --pairs 2 --single 1 --account 제씨` 또는 `--content <숏코드> --format <숏코드>`. 뽑는 즉시 찜(`data/ai-plans.json`)하고, 기본 문턱이 모자라면 30만 6개월, 10만 6개월로 넓힌다 | 무료 |
 
 1~3과 6은 작업 스케줄러 `JevLabReelsWeekly`(일요일 03:00)가 `scripts/refresh.mjs`로 매주 돈다. 5는 `JEV_FIT`이 켜져 있을 때만 같이 돈다. **에이전트가 JEV_FIT이나 JEV_REELS를 스스로 켜지 않는다.** 켜기 전에 3단계 뒤 `score-fit.mjs`가 찍은 예상 비용을 사용자에게 숫자로 말한다.
 
