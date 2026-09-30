@@ -20,6 +20,8 @@
 //   --handle   팔로워 상품에 넣을 인스타 아이디. @ 나 프로필 주소를 붙여도 아이디만 남긴다. --service 를 같이 준다
 //   --qty      한 번에 주문할 수량. 기본 100. 상품 최소 수량 밑으로는 못 넣는다
 //   --runs     총 주문 횟수. 기본 100. 35-65 처럼 범위를 주면 묶음을 만들 때 그 안에서 무작위로 하나 고른다
+//   --around   총량을 이 수 근처에서 무작위로 고른다. --runs 대신 쓴다. 0.75~1.35배를 --qty 로 나눈 범위가 --runs 가 된다.
+//              인플루언서 시딩 영상처럼 "중앙값만큼" 넣을 때 쓴다. 예: --around 6205 → 100회 × 47~84번
 //   --every    간격. 5m, 300s, 1h, 숫자만 쓰면 분. 기본 5m. 60초 밑으로는 못 내린다
 //   --service  상품 번호. 기본 813 ([동영상] 한국인 조회수, 1,000회에 100원)
 //   --dup-poll, --dup-retry, --dup-max   같은 대상 앞 주문이 안 끝나 거절될 때 상태를 보는 간격, 다시 넣는 간격,
@@ -374,7 +376,17 @@ function readPlanArgs(existing = null) {
   }
   const qty = Number(flag("qty", existing?.qty ?? 100));
   // --runs 35-65 처럼 범위를 주면 묶음을 만들 때 그 안에서 한 번 무작위로 고른다. 매번 같은 총량이 들어가면 티가 난다 (260930)
-  const runsRaw = String(flag("runs", existing?.runs ?? 100));
+  // --around N 은 총량 N 의 0.75~1.35배를 --runs 범위로 바꾼다. 인플루언서 중앙값 주문이 매번 딱 중앙값이면 티가 난다 (260930)
+  const aroundRaw = flag("around");
+  if (aroundRaw !== null && flag("runs") !== null) fail("--around 와 --runs 는 같이 못 쓴다. 하나만 준다");
+  if (aroundRaw !== null && !(Number(aroundRaw) > 0)) fail("--around 는 양수다. 예: --around 6205");
+  const runsRaw = aroundRaw !== null
+    ? (() => {
+        const lo = Math.max(1, Math.round((Number(aroundRaw) * 0.75) / qty));
+        const hi = Math.max(lo, Math.round((Number(aroundRaw) * 1.35) / qty));
+        return `${lo}-${hi}`;
+      })()
+    : String(flag("runs", existing?.runs ?? 100));
   const runsRange = runsRaw.match(/^(\d+)-(\d+)$/);
   if (runsRange && Number(runsRange[1]) > Number(runsRange[2])) fail("--runs 범위는 작은 수-큰 수 꼴이다. 예: --runs 35-65");
   const runs = runsRange
