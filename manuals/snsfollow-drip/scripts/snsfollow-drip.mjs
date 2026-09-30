@@ -24,7 +24,7 @@
 //   --service  상품 번호를 직접 고른다. --region 보다 앞선다. 고를 수 있는 것은 products
 //   --handle   인스타 아이디. @ 나 프로필 주소를 붙여도 아이디만 남긴다
 //   --qty      한 번에 넣을 인원. 안 주면 상품 최소 수량을 10 단위로 올린 값 (한국 10명, 해외 100명)
-//   --runs     총 횟수. 기본 10
+//   --runs     총 횟수. 기본 10. 3-5 처럼 범위를 주면 그 안에서 무작위로 하나 고른다
 //   --every    간격. 30m, 1h, 숫자만 쓰면 분. 기본 30m
 //   --jitter   간격 흔들기 비율. 0.1 이면 ±10%
 //   --force    같은 아이디로 도는 묶음이 있어도 하나 더 건다. 새 지시는 언제나 추가다
@@ -355,7 +355,14 @@ async function readOrderArgs() {
   const product = await getProduct(serviceId);
   const qtyRaw = flag("qty");
   const qty = qtyRaw === null ? Math.max(10, Math.ceil(product.min / 10) * 10) : Number(qtyRaw);
-  const runs = Number(flag("runs", 10));
+  // --runs 3-5 처럼 범위를 주면 그 안에서 한 번 무작위로 고른다. 매주 같은 인원이 들어가면 티가 난다 (260930)
+  const runsRaw = String(flag("runs", 10));
+  const runsRange = runsRaw.match(/^(\d+)-(\d+)$/);
+  if (runsRange && Number(runsRange[1]) > Number(runsRange[2])) fail("--runs 범위는 작은 수-큰 수 꼴이다. 예: --runs 3-5");
+  const runs = runsRange
+    ? Number(runsRange[1]) + Math.floor(Math.random() * (Number(runsRange[2]) - Number(runsRange[1]) + 1))
+    : Number(runsRaw);
+  if (runsRange) console.log(`횟수   ${runsRaw.replace("-", "~")}번 중 무작위로 ${runs}번`);
   const every = flag("every", "30m");
   const jitter = flag("jitter");
   if (!Number.isInteger(qty) || qty <= 0) fail("--qty 는 양의 정수다. 예: --qty 10");

@@ -19,7 +19,7 @@
 //   --link     주문할 게시물 주소. 릴스면 https://www.instagram.com/reel/<코드>/ 꼴
 //   --handle   팔로워 상품에 넣을 인스타 아이디. @ 나 프로필 주소를 붙여도 아이디만 남긴다. --service 를 같이 준다
 //   --qty      한 번에 주문할 수량. 기본 100. 상품 최소 수량 밑으로는 못 넣는다
-//   --runs     총 주문 횟수. 기본 100
+//   --runs     총 주문 횟수. 기본 100. 35-65 처럼 범위를 주면 묶음을 만들 때 그 안에서 무작위로 하나 고른다
 //   --every    간격. 5m, 300s, 1h, 숫자만 쓰면 분. 기본 5m. 60초 밑으로는 못 내린다
 //   --service  상품 번호. 기본 813 ([동영상] 한국인 조회수, 1,000회에 100원)
 //   --dup-poll, --dup-retry, --dup-max   같은 대상 앞 주문이 안 끝나 거절될 때 상태를 보는 간격, 다시 넣는 간격,
@@ -373,7 +373,13 @@ function readPlanArgs(existing = null) {
     if (flag("service") === null) fail("--handle 을 쓸 때는 --service 로 팔로워 상품 번호를 같이 준다. 보통은 snsfollow-drip.mjs 로 부른다 (한국 1279, 해외 354)");
   }
   const qty = Number(flag("qty", existing?.qty ?? 100));
-  const runs = Number(flag("runs", existing?.runs ?? 100));
+  // --runs 35-65 처럼 범위를 주면 묶음을 만들 때 그 안에서 한 번 무작위로 고른다. 매번 같은 총량이 들어가면 티가 난다 (260930)
+  const runsRaw = String(flag("runs", existing?.runs ?? 100));
+  const runsRange = runsRaw.match(/^(\d+)-(\d+)$/);
+  if (runsRange && Number(runsRange[1]) > Number(runsRange[2])) fail("--runs 범위는 작은 수-큰 수 꼴이다. 예: --runs 35-65");
+  const runs = runsRange
+    ? Number(runsRange[1]) + Math.floor(Math.random() * (Number(runsRange[2]) - Number(runsRange[1]) + 1))
+    : Number(runsRaw);
   const everySec = existing?.everySec ?? parseEvery(flag("every", "5m"));
   const service = Number(flag("service", existing?.service ?? DEFAULT_SERVICE));
   const jitter = Number(flag("jitter", existing?.jitter ?? 0));
@@ -385,7 +391,7 @@ function readPlanArgs(existing = null) {
   if (!Number.isFinite(everySec) || everySec < MIN_EVERY_SEC)
     fail(`--every 는 ${MIN_EVERY_SEC}초 이상이어야 한다. 예: --every 5m (5m, 300s, 1h, 숫자만 쓰면 분)`);
   if (!Number.isFinite(jitter) || jitter < 0 || jitter > 0.5) fail("--jitter 는 0 에서 0.5 사이다. 예: --jitter 0.1");
-  return { link, qty, runs, everySec, service, jitter };
+  return { link, qty, runs, everySec, service, jitter, ...(runsRange ? { runsRange: runsRaw } : {}) };
 }
 
 // 상품과 주문 대상이 맞는지 본다. 팔로워 상품에 게시물 주소를 넣거나, 조회수 상품에 아이디를 넣으면 돈만 나간다
@@ -444,7 +450,7 @@ function planLines(a, p) {
   return [
     `대상   ${a.kind === "follower" ? `인스타 아이디 ${a.link} (https://www.instagram.com/${a.link}/)` : a.link}`,
     `상품   ${p.svc.id} ${p.svc.name} (${price}, 최소 ${num(p.svc.min)}${u})`,
-    `주문   ${num(a.qty)}${u} × ${num(a.runs)}번 = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
+    `주문   ${num(a.qty)}${u} × ${num(a.runs)}번${a.runsRange ? ` (${a.runsRange.replace("-", "~")}번 중 무작위)` : ""} = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
       (a.jitter ? ` (±${Math.round(a.jitter * 100)}% 흔들림)` : ""),
     `비용   회당 ${won(p.unitCost)}, 총 ${won(p.total)}. 잔액 ${won(p.bal.balance)} → ${won(p.bal.balance - p.total)}` +
       (p.committed ? ` (돌고 있는 다른 묶음이 앞으로 ${won(p.committed)} 더 쓴다)` : ""),
