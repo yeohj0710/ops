@@ -18,7 +18,8 @@
 // 설정 파일 칸
 //   account         감시할 인스타 계정
 //   checkTimes      확인 시각 ("HH:MM" 목록). 바꿨으면 install 을 다시 친다
-//   order           릴스 하나에 넣는 주문. qty, runs, every 를 snsview-drip.mjs start 에 그대로 넘긴다
+//   order           릴스 하나에 넣는 주문. qty, runs, every, jitter 를 snsview-drip.mjs start 에 그대로 넘긴다.
+//                   runs 를 "70-130" 처럼 범위로 주면 묶음마다 그 안에서 무작위로 고른다. 매번 같은 총량이면 티가 난다 (260930)
 //   dailyMax        하루에 새로 시작하는 묶음 수 한도
 //   maxAgeHours     올라온 지 이보다 오래된 릴스는 주문하지 않고 알림만 띄운다
 //   failAlertAfter  확인이 이 횟수만큼 연달아 실패하면 알림을 띄운다. 그 뒤로는 하루에 한 번
@@ -116,7 +117,9 @@ function loadConfig() {
   if (!Array.isArray(c.checkTimes) || !c.checkTimes.length || !c.checkTimes.every((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t)))
     bad.push("checkTimes (HH:MM 목록)");
   const o = c.order || {};
-  if (!Number.isInteger(o.qty) || o.qty <= 0 || !Number.isInteger(o.runs) || o.runs <= 0 || !o.every) bad.push("order.qty, order.runs, order.every");
+  const runsOk = (Number.isInteger(o.runs) && o.runs > 0) || (/^(\d+)-(\d+)$/.test(o.runs || "") && Number(o.runs.split("-")[0]) > 0 && Number(o.runs.split("-")[0]) <= Number(o.runs.split("-")[1]));
+  if (!Number.isInteger(o.qty) || o.qty <= 0 || !runsOk || !o.every) bad.push("order.qty, order.runs (정수 또는 \"70-130\"), order.every");
+  if (o.jitter !== undefined && !(Number(o.jitter) >= 0 && Number(o.jitter) <= 0.5)) bad.push("order.jitter (0~0.5)");
   if (!Number.isInteger(c.dailyMax) || c.dailyMax < 1) bad.push("dailyMax");
   if (!(Number(c.maxAgeHours) > 0)) bad.push("maxAgeHours");
   if (!Number.isInteger(c.failAlertAfter) || c.failAlertAfter < 1) bad.push("failAlertAfter");
@@ -289,10 +292,16 @@ function driveReport(lines) {
   }
 }
 
+// runs 가 범위면 "70~130번 중 무작위", 정수면 "100번"
+function runsText(o) {
+  return typeof o.runs === "string" ? `${o.runs.replace("-", "~")}번 중 무작위` : `${num(o.runs)}번`;
+}
+
 // ── 주문 ────────────────────────────────────────────────────────────────────────
 // 주문은 이 스크립트가 직접 넣지 않는다. 잔액 확인, 겹침 방지, 배경 루프, 되살리기 예약을 전부 가진 start 에 넘긴다
 function startDrip(c, link) {
   const args = [DRIP, "start", "--link", link, "--qty", String(c.order.qty), "--runs", String(c.order.runs), "--every", String(c.order.every), "--root", OPS];
+  if (c.order.jitter) args.push("--jitter", String(c.order.jitter));
   const r = spawnSync(process.execPath, args, { encoding: "utf8", windowsHide: true, timeout: 150000, env: { ...process.env, OPS_ROOT: OPS } });
   const out = [r.stdout, r.stderr].filter(Boolean).join("\n").trim() || String(r.error?.message || "");
   return {
@@ -419,7 +428,7 @@ async function tickOnce(c, sp, say) {
       continue;
     }
 
-    say(`새 릴스 ${t.code} (${hm(t.up)} 업로드, ${ago(t.up)} 전). 조회수 ${num(c.order.qty)}회씩 ${num(c.order.runs)}번 주문을 시작한다`);
+    say(`새 릴스 ${t.code} (${hm(t.up)} 업로드, ${ago(t.up)} 전). 조회수 ${num(c.order.qty)}회씩 ${runsText(c.order)} 주문을 시작한다`);
     const s = startDrip(c, link);
     for (const l of s.out.split("\n")) if (l.trim()) say("  " + l.trim());
     if (s.status === 0 && s.batch) {
@@ -429,7 +438,7 @@ async function tickOnce(c, sp, say) {
       r.orderedAt = stamp();
       notify(
         `${c.account} 새 릴스 조회수 주문 시작`,
-        `${hm(t.up).slice(11)} 에 올라온 릴스에 ${num(c.order.qty)}회씩 ${num(c.order.runs)}번 넣습니다. ` +
+        `${hm(t.up).slice(11)} 에 올라온 릴스에 ${num(c.order.qty)}회씩 ${(s.out.match(/× ([\d,]+)번/) || [])[1] ? (s.out.match(/× ([\d,]+)번/))[1] + "번" : runsText(c.order)} 넣습니다. ` +
           (s.orderId ? `첫 주문번호 ${s.orderId}` : "첫 주문은 아직 확인 못 했습니다") +
           `. ${link}`,
         say
@@ -617,7 +626,7 @@ function cmdStatus() {
   const st = readJson(path.join(dir, "state.json"));
   console.log(`감시 계정   ${c.account}`);
   console.log(`확인 시각   ${c.checkTimes.join(" ")} (하루 ${c.checkTimes.length}번)`);
-  console.log(`릴스 하나   ${num(c.order.qty)}회 × ${num(c.order.runs)}번, ${c.order.every} 간격. 하루 최대 ${c.dailyMax}묶음, 올라온 지 ${c.maxAgeHours}시간 넘으면 안 넣음`);
+  console.log(`릴스 하나   ${num(c.order.qty)}회 × ${runsText(c.order)}, ${c.order.every} 간격${c.order.jitter ? ` ±${Math.round(c.order.jitter * 100)}%` : ""}. 하루 최대 ${c.dailyMax}묶음, 올라온 지 ${c.maxAgeHours}시간 넘으면 안 넣음`);
   const q = schtasks(["/Query", "/TN", taskName(), "/FO", "CSV", "/V"]);
   if (!q.ok) console.log(`예약        ${taskName()} 안 걸려 있다. install 로 건다`);
   else {
