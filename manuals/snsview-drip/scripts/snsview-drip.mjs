@@ -26,6 +26,9 @@
 //   --service  상품 번호. 기본 813 ([동영상] 한국인 조회수, 1,000회에 100원)
 //   --dup-poll, --dup-retry, --dup-max   같은 대상 앞 주문이 안 끝나 거절될 때 상태를 보는 간격, 다시 넣는 간격,
 //              기다리는 한도. 기본 15s, 60s, 90m. 팔로워는 앞 주문이 오래 걸려서 snsfollow-drip.mjs 가 길게 준다
+//   --spread   편마다 성적이 다르게 보이게 고른 횟수에 배율을 한 번 더 곱한다. 대부분은 0.4~1.3배(저조 30%, 보통 55%),
+//              가끔 1.6~2.8배(12%), 드물게 4~8배 잭팟(3%). 평균은 1.2배쯤이다. 배율이 1을 넘으면 간격을 √배율로 나눠
+//              많이 들어가는 편이 너무 오래 끌지 않게 한다. 뽑은 단계와 배율은 plan 출력과 state.json 의 spread 에 남는다
 //   --jitter   간격 흔들기 비율. 0.1 이면 간격의 ±10% 안에서 매번 조금씩 다르게. 기본 0
 //   --allow-short  잔액이 총액보다 적어도 시작한다. 잔액이 떨어지면 거기서 멈춰 기다린다
 //   --foreground   start 에서 배경으로 띄우지 않고 이 창에서 돈다
@@ -389,10 +392,19 @@ function readPlanArgs(existing = null) {
     : String(flag("runs", existing?.runs ?? 100));
   const runsRange = runsRaw.match(/^(\d+)-(\d+)$/);
   if (runsRange && Number(runsRange[1]) > Number(runsRange[2])) fail("--runs 범위는 작은 수-큰 수 꼴이다. 예: --runs 35-65");
-  const runs = runsRange
+  let runs = runsRange
     ? Number(runsRange[1]) + Math.floor(Math.random() * (Number(runsRange[2]) - Number(runsRange[1]) + 1))
     : Number(runsRaw);
-  const everySec = existing?.everySec ?? parseEvery(flag("every", "5m"));
+  let everySec = existing?.everySec ?? parseEvery(flag("every", "5m"));
+  // --spread: 범위 안 고른 뽑기만으로는 편마다 비슷한 숫자로 몰린다. 실제 계정처럼 저조한 편, 잘 된 편, 가끔 잭팟이 섞이게 한다 (261001)
+  let spread = null;
+  if (has("spread") && !existing) {
+    spread = drawSpread();
+    const base = runs;
+    runs = Math.max(1, Math.round(base * spread.mult));
+    if (spread.mult > 1) everySec = Math.max(MIN_EVERY_SEC, Math.round(everySec / Math.sqrt(spread.mult)));
+    spread = { ...spread, baseRuns: base };
+  }
   const service = Number(flag("service", existing?.service ?? DEFAULT_SERVICE));
   const jitter = Number(flag("jitter", existing?.jitter ?? 0));
 
@@ -403,7 +415,21 @@ function readPlanArgs(existing = null) {
   if (!Number.isFinite(everySec) || everySec < MIN_EVERY_SEC)
     fail(`--every 는 ${MIN_EVERY_SEC}초 이상이어야 한다. 예: --every 5m (5m, 300s, 1h, 숫자만 쓰면 분)`);
   if (!Number.isFinite(jitter) || jitter < 0 || jitter > 0.5) fail("--jitter 는 0 에서 0.5 사이다. 예: --jitter 0.1");
-  return { link, qty, runs, everySec, service, jitter, ...(runsRange ? { runsRange: runsRaw } : {}) };
+  return { link, qty, runs, everySec, service, jitter, ...(runsRange ? { runsRange: runsRaw } : {}), ...(spread ? { spread } : {}) };
+}
+
+// 편마다 성적 단계를 뽑는다. 단계 비율과 배율 폭은 매뉴얼 "조회수 주문 등급표" 와 같다
+const SPREAD_TIERS = [
+  { name: "저조", p: 0.3, lo: 0.4, hi: 0.8 },
+  { name: "보통", p: 0.55, lo: 0.8, hi: 1.3 },
+  { name: "잘 됨", p: 0.12, lo: 1.6, hi: 2.8 },
+  { name: "잭팟", p: 0.03, lo: 4, hi: 8 },
+];
+function drawSpread() {
+  let r = Math.random();
+  const t = SPREAD_TIERS.find((x) => (r -= x.p) < 0) || SPREAD_TIERS[1];
+  const mult = Math.round((t.lo + Math.random() * (t.hi - t.lo)) * 100) / 100;
+  return { tier: t.name, mult };
 }
 
 // 상품과 주문 대상이 맞는지 본다. 팔로워 상품에 게시물 주소를 넣거나, 조회수 상품에 아이디를 넣으면 돈만 나간다
@@ -462,7 +488,7 @@ function planLines(a, p) {
   return [
     `대상   ${a.kind === "follower" ? `인스타 아이디 ${a.link} (https://www.instagram.com/${a.link}/)` : a.link}`,
     `상품   ${p.svc.id} ${p.svc.name} (${price}, 최소 ${num(p.svc.min)}${u})`,
-    `주문   ${num(a.qty)}${u} × ${num(a.runs)}번${a.runsRange ? ` (${a.runsRange.replace("-", "~")}번 중 무작위)` : ""} = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
+    `주문   ${num(a.qty)}${u} × ${num(a.runs)}번${a.runsRange ? ` (${a.runsRange.replace("-", "~")}번 중 무작위${a.spread ? `로 ${a.spread.baseRuns}번, ${a.spread.tier} ${a.spread.mult}배` : ""})` : a.spread ? ` (${a.spread.baseRuns}번에 ${a.spread.tier} ${a.spread.mult}배)` : ""} = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
       (a.jitter ? ` (±${Math.round(a.jitter * 100)}% 흔들림)` : ""),
     `비용   회당 ${won(p.unitCost)}, 총 ${won(p.total)}. 잔액 ${won(p.bal.balance)} → ${won(p.bal.balance - p.total)}` +
       (p.committed ? ` (돌고 있는 다른 묶음이 앞으로 ${won(p.committed)} 더 쓴다)` : ""),
