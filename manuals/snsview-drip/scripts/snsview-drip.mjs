@@ -26,9 +26,12 @@
 //   --service  상품 번호. 기본 813 ([동영상] 한국인 조회수, 1,000회에 100원)
 //   --dup-poll, --dup-retry, --dup-max   같은 대상 앞 주문이 안 끝나 거절될 때 상태를 보는 간격, 다시 넣는 간격,
 //              기다리는 한도. 기본 15s, 60s, 90m. 팔로워는 앞 주문이 오래 걸려서 snsfollow-drip.mjs 가 길게 준다
-//   --spread   편마다 성적이 다르게 보이게 고른 횟수에 배율을 한 번 더 곱한다. 대부분은 0.4~1.3배(저조 30%, 보통 55%),
-//              가끔 1.6~2.8배(12%), 드물게 4~8배 잭팟(3%). 평균은 1.2배쯤이다. 배율이 1을 넘으면 간격을 √배율로 나눠
-//              많이 들어가는 편이 너무 오래 끌지 않게 한다. 뽑은 단계와 배율은 plan 출력과 state.json 의 spread 에 남는다
+//   --spread   편마다 성적이 다르게 보이게 고른 횟수에 배율을 한 번 더 곱한다. 대부분은 0.5~1.3배(저조 30%, 보통 55%),
+//              가끔 1.4~2배(잘 됨 12%), 드물게 2.2~3배(조금 터짐 3%). 평균은 1.05배쯤이다. 배율이 1을 넘으면 간격을
+//              √배율로 나눠 많이 들어가는 편이 너무 오래 끌지 않게 한다. 뽑은 단계와 배율은 plan 출력과 state.json 의 spread 에 남는다
+//   --spread-key <이름>  같은 영상의 언어판끼리 성적을 맞춘다. 릴스 게시 폴더의 <날짜 제목> 을 준다. 이 이름으로 처음 부를 때
+//              단계, 배율, 범위 안 위치를 뽑아 work/snsview-drip/spread-keys.json 에 적고, 같은 이름으로 다시 부르면
+//              그 값을 계정마다 조금씩(위치 ±0.15, 배율 ±10%)만 흔들어 쓴다. KR 이 터지면 JP, CN, GLOBAL, 틱톡도 같이 잘 된다
 //   --jitter   간격 흔들기 비율. 0.1 이면 간격의 ±10% 안에서 매번 조금씩 다르게. 기본 0
 //   --allow-short  잔액이 총액보다 적어도 시작한다. 잔액이 떨어지면 거기서 멈춰 기다린다
 //   --foreground   start 에서 배경으로 띄우지 않고 이 창에서 돈다
@@ -392,14 +395,21 @@ function readPlanArgs(existing = null) {
     : String(flag("runs", existing?.runs ?? 100));
   const runsRange = runsRaw.match(/^(\d+)-(\d+)$/);
   if (runsRange && Number(runsRange[1]) > Number(runsRange[2])) fail("--runs 범위는 작은 수-큰 수 꼴이다. 예: --runs 35-65");
+  // 같은 영상의 언어판은 범위 안 위치(pos)와 성적 배율을 같이 쓴다 (261001 사용자 지시)
+  const spreadKey = has("spread") && !existing ? flag("spread-key") : null;
+  if (spreadKey !== null && !String(spreadKey).trim()) fail("--spread-key 에는 게시 폴더의 <날짜 제목> 을 준다");
+  const shared = spreadKey ? sharedSpread(String(spreadKey).trim(), cmd === "plan") : null;
+  const pos = shared ? clamp01(shared.pos + (Math.random() * 2 - 1) * 0.15) : Math.random();
   let runs = runsRange
-    ? Number(runsRange[1]) + Math.floor(Math.random() * (Number(runsRange[2]) - Number(runsRange[1]) + 1))
+    ? Number(runsRange[1]) + Math.min(Number(runsRange[2]) - Number(runsRange[1]), Math.floor(pos * (Number(runsRange[2]) - Number(runsRange[1]) + 1)))
     : Number(runsRaw);
   let everySec = existing?.everySec ?? parseEvery(flag("every", "5m"));
-  // --spread: 범위 안 고른 뽑기만으로는 편마다 비슷한 숫자로 몰린다. 실제 계정처럼 저조한 편, 잘 된 편, 가끔 잭팟이 섞이게 한다 (261001)
+  // --spread: 범위 안 고른 뽑기만으로는 편마다 비슷한 숫자로 몰린다. 실제 계정처럼 저조한 편, 잘 된 편, 가끔 조금 터진 편이 섞이게 한다 (261001)
   let spread = null;
   if (has("spread") && !existing) {
-    spread = drawSpread();
+    spread = shared
+      ? { tier: shared.tier, mult: Math.round(shared.mult * (1 + (Math.random() * 2 - 1) * 0.1) * 100) / 100, key: shared.key }
+      : drawSpread();
     const base = runs;
     runs = Math.max(1, Math.round(base * spread.mult));
     if (spread.mult > 1) everySec = Math.max(MIN_EVERY_SEC, Math.round(everySec / Math.sqrt(spread.mult)));
@@ -419,12 +429,26 @@ function readPlanArgs(existing = null) {
 }
 
 // 편마다 성적 단계를 뽑는다. 단계 비율과 배율 폭은 매뉴얼 "조회수 주문 등급표" 와 같다
+// 막 올린 계정이 갑자기 몇만씩 터지면 오히려 티가 나서 위쪽은 3배에서 막는다 (261001 사용자 지시)
 const SPREAD_TIERS = [
-  { name: "저조", p: 0.3, lo: 0.4, hi: 0.8 },
+  { name: "저조", p: 0.3, lo: 0.5, hi: 0.8 },
   { name: "보통", p: 0.55, lo: 0.8, hi: 1.3 },
-  { name: "잘 됨", p: 0.12, lo: 1.6, hi: 2.8 },
-  { name: "잭팟", p: 0.03, lo: 4, hi: 8 },
+  { name: "잘 됨", p: 0.12, lo: 1.4, hi: 2 },
+  { name: "조금 터짐", p: 0.03, lo: 2.2, hi: 3 },
 ];
+const clamp01 = (x) => Math.min(0.999, Math.max(0, x));
+const SPREAD_KEYS = path.join(WORK, "spread-keys.json");
+// 같은 이름이면 처음 뽑은 값을 돌려준다. plan 만 할 때는 파일에 안 적어서 미리 보기가 실제 뽑기를 정해 버리지 않게 한다
+function sharedSpread(key, dry) {
+  const all = readJson(SPREAD_KEYS, {}) || {};
+  if (all[key]) return { key, ...all[key] };
+  const v = { ...drawSpread(), pos: Math.random(), createdAt: stamp() };
+  if (!dry) {
+    fs.mkdirSync(WORK, { recursive: true });
+    writeJson(SPREAD_KEYS, { ...all, [key]: v });
+  }
+  return { key, ...v };
+}
 function drawSpread() {
   let r = Math.random();
   const t = SPREAD_TIERS.find((x) => (r -= x.p) < 0) || SPREAD_TIERS[1];
@@ -488,7 +512,7 @@ function planLines(a, p) {
   return [
     `대상   ${a.kind === "follower" ? `인스타 아이디 ${a.link} (https://www.instagram.com/${a.link}/)` : a.link}`,
     `상품   ${p.svc.id} ${p.svc.name} (${price}, 최소 ${num(p.svc.min)}${u})`,
-    `주문   ${num(a.qty)}${u} × ${num(a.runs)}번${a.runsRange ? ` (${a.runsRange.replace("-", "~")}번 중 무작위${a.spread ? `로 ${a.spread.baseRuns}번, ${a.spread.tier} ${a.spread.mult}배` : ""})` : a.spread ? ` (${a.spread.baseRuns}번에 ${a.spread.tier} ${a.spread.mult}배)` : ""} = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
+    `주문   ${num(a.qty)}${u} × ${num(a.runs)}번${a.runsRange ? ` (${a.runsRange.replace("-", "~")}번 중 무작위${a.spread ? `로 ${a.spread.baseRuns}번, ${a.spread.tier} ${a.spread.mult}배${a.spread.key ? `, 같은 영상 "${a.spread.key}"` : ""}` : ""})` : a.spread ? ` (${a.spread.baseRuns}번에 ${a.spread.tier} ${a.spread.mult}배)` : ""} = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
       (a.jitter ? ` (±${Math.round(a.jitter * 100)}% 흔들림)` : ""),
     `비용   회당 ${won(p.unitCost)}, 총 ${won(p.total)}. 잔액 ${won(p.bal.balance)} → ${won(p.bal.balance - p.total)}` +
       (p.committed ? ` (돌고 있는 다른 묶음이 앞으로 ${won(p.committed)} 더 쓴다)` : ""),
