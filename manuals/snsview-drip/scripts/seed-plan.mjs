@@ -1,0 +1,135 @@
+#!/usr/bin/env node
+// 인플루언서 시딩 영상 한 편에 넣을 조회수, 좋아요 주문을 새 기준(261001)으로 뽑는다. 기본은 계획만 적고 돈은 안 쓴다.
+//
+//   node seed-plan.mjs --link <주소> --median <평소 조회수 중앙값> --views <지금 조회수>
+//                      --like-rate <평소 좋아요율, 0.012 꼴> --likes <지금 좋아요>     계획만
+//   ... --go                                                                          snsview-drip.mjs start 로 실제 주문
+//
+// 왜 바꿨나 (261001). 260929~30 에 "채널 중앙값 × 2 + 1" 목표와 "지금 조회수 위에 중앙값만큼 더" 를 같이 써서
+// 작은 계정 게시물이 평소의 6~13배까지 갔다(m_beauty_review, misadongdong, enna.diary, ginalintw).
+// 좋아요는 모든 계정에 같은 비율(인스타 1.5%, 틱톡 3%)을 같은 크기로 같은 간격에 넣어 일정하게 보였다.
+//
+// 새 기준
+//   조회수: 최종 조회수 = 평소 중앙값 × 배율. 배율은 저조 0.7~0.95(30%), 보통 0.95~1.3(52%), 잘 됨 1.3~1.7(14%), 조금 터짐 1.7~2.2(4%).
+//           주문량 = 최종 조회수 − 지금 조회수. 이미 넘었거나 최소 100회가 안 되면 안 넣는다. 2.2배 위로는 절대 안 간다
+//   좋아요: 최종 좋아요 = 최종 조회수 × 그 계정 평소 좋아요율 × 0.75~1.25. 주문량 = 최종 좋아요 − 지금 좋아요.
+//           좋아요를 숨긴 게시물(--likes-hidden)과 최소 수량이 안 되는 몫은 안 넣는다
+//   크기와 간격: 주문마다 수량 ±40~50%, 간격 ±40%. 전체 기간도 편마다 다르게(인스타 8~20시간, 틱톡 12~36시간)
+//
+// 옵션
+//   --median N        그 채널 평소 조회수 중앙값 (대상, 고정 게시물 뺀 최근 12개. 틱톡은 최근 15개)
+//   --views N         지금 조회수. 다른 쪽이 넣고 있는 주문이 있으면 그 남은 몫도 더해서 준다
+//   --like-rate R     그 계정 최근 게시물의 (좋아요 ÷ 조회수) 중앙값. 0.012 처럼 소수로
+//   --likes N         지금 좋아요
+//   --likes-hidden    좋아요 수를 숨긴 게시물. 좋아요 주문을 안 넣는다
+//   --no-likes        좋아요는 넣지 않는다
+//   --no-views        조회수는 넣지 않는다 (이미 조회수 묶음이 도는 게시물에 좋아요만 맞출 때. --views 에 그 묶음이 끝난 뒤 조회수를 준다)
+//   --go              계획대로 실제 주문을 건다 (snsview-drip.mjs start --force)
+
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DRIP = path.join(HERE, "snsview-drip.mjs");
+const argv = process.argv.slice(2);
+const has = (k) => argv.includes(`--${k}`);
+const flag = (k, d = null) => {
+  const i = argv.indexOf(`--${k}`);
+  return i > -1 && argv[i + 1] !== undefined && !argv[i + 1].startsWith("--") ? argv[i + 1] : d;
+};
+const fail = (m) => {
+  console.error(m);
+  process.exit(2);
+};
+const num = (n) => Math.round(n).toLocaleString("ko-KR");
+const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
+
+const link = flag("link");
+if (!link) fail("--link 에 게시물 주소를 준다");
+const tiktok = /tiktok\.com/.test(link);
+if (!tiktok && !/instagram\.com/.test(link)) fail("인스타 릴스나 틱톡 영상 주소만 받는다. 샤오홍슈, 스레드, 페이스북은 상품이 없다");
+const median = Number(flag("median"));
+const views = Number(flag("views"));
+if (!(median > 0)) fail("--median 에 평소 조회수 중앙값을 준다");
+if (!(views >= 0)) fail("--views 에 지금 조회수를 준다");
+const noLikes = has("no-likes") || has("likes-hidden");
+const likeRate = Number(flag("like-rate"));
+const likes = Number(flag("likes", 0));
+if (!noLikes && !(likeRate > 0 && likeRate < 1)) fail("--like-rate 에 그 계정 평소 좋아요율을 0.012 꼴로 준다. 숨긴 게시물이면 --likes-hidden");
+
+// 상품: 인스타 조회수 813(100회 ₩10), 인스타 좋아요 258(외국인, 10개 ₩15), 틱톡 조회수 321(100회 ₩50), 틱톡 좋아요 322(50개 ₩150)
+const SVC = tiktok
+  ? { view: { id: 321, min: 100, max: 1000, won: 0.5 }, like: { id: 322, min: 50, max: 160, won: 3 } }
+  : { view: { id: 813, min: 100, max: 5000, won: 0.1 }, like: { id: 258, min: 10, max: 300, won: 1.5 } };
+
+const TIERS = [
+  { name: "저조", p: 0.3, lo: 0.7, hi: 0.95 },
+  { name: "보통", p: 0.52, lo: 0.95, hi: 1.3 },
+  { name: "잘 됨", p: 0.14, lo: 1.3, hi: 1.7 },
+  { name: "조금 터짐", p: 0.04, lo: 1.7, hi: 2.2 },
+];
+let r = Math.random();
+const tier = TIERS.find((t) => (r -= t.p) < 0) || TIERS[1];
+const mult = Math.round(rnd(tier.lo, tier.hi) * 100) / 100;
+const finalViews = Math.round(median * mult);
+const spanSec = Math.round((tiktok ? rnd(12, 36) : rnd(8, 20)) * 3600);
+
+// 총량 total 을 주문 여러 번으로 나눈다. 수량 흔들기의 평균값으로 횟수를 잡아 총량이 위로 쏠리지 않게 한다
+function split(total, svc, runsLo, runsHi, vary) {
+  const wantRuns = Math.round(rnd(runsLo, runsHi));
+  let qty = Math.max(svc.min, Math.round(total / wantRuns / 10) * 10 || svc.min);
+  qty = Math.min(qty, svc.max);
+  const lo = Math.max(svc.min, Math.round(qty * (1 - vary)));
+  const hi = Math.min(svc.max, Math.round(qty * (1 + vary)));
+  const avg = (lo + hi) / 2;
+  const runs = Math.max(1, Math.round(total / avg));
+  return { qty, runs, vary, avg, every: Math.max(300, Math.round(spanSec / Math.max(1, runs - 1 || 1))) };
+}
+
+const out = [];
+const orders = [];
+const viewTotal = finalViews - views;
+out.push(`대상     ${link}`);
+out.push(`조회수   평소 중앙값 ${num(median)} × ${mult} (${tier.name}) = 최종 ${num(finalViews)}, 지금 ${num(views)}`);
+if (has("no-views")) {
+  out.push("         조회수는 넣지 않는다 (--no-views). 좋아요는 지금 조회수 기준");
+} else if (viewTotal < SVC.view.min) {
+  out.push(`         이미 평소 수준이거나 모자란 몫이 ${num(Math.max(0, viewTotal))}회라 조회수는 안 넣는다`);
+} else {
+  const v = split(viewTotal, SVC.view, 8, 40, 0.4);
+  orders.push({ kind: "조회수", svc: SVC.view, ...v, total: viewTotal });
+}
+const endViews = has("no-views") ? views : Math.max(views, finalViews);
+if (has("likes-hidden")) out.push("좋아요   숨긴 게시물이라 안 넣는다");
+else if (has("no-likes")) out.push("좋아요   넣지 않는다 (--no-likes)");
+else {
+  const lm = Math.round(rnd(0.75, 1.25) * 100) / 100;
+  const target = Math.round(endViews * likeRate * lm);
+  const likeTotal = target - likes;
+  out.push(`좋아요   최종 ${num(endViews)} × 평소 ${(likeRate * 100).toFixed(2)}% × ${lm} = ${num(target)}, 지금 ${num(likes)}`);
+  if (likeTotal < SVC.like.min) out.push(`         모자란 몫 ${num(Math.max(0, likeTotal))}개가 최소 ${SVC.like.min}개 밑이라 안 넣는다`);
+  else orders.push({ kind: "좋아요", svc: SVC.like, ...split(likeTotal, SVC.like, 3, 12, 0.5), total: likeTotal });
+}
+let sum = 0;
+for (const o of orders) {
+  const cost = o.avg * o.runs * o.svc.won;
+  sum += cost;
+  out.push(
+    `주문     ${o.kind} ${o.svc.id}: ${num(o.qty)}개 안팎(±${o.vary * 100}%) × ${o.runs}번 = 약 ${num(o.avg * o.runs)}, ` +
+      `${Math.round(o.every / 60)}분 간격 ±40%, 약 ₩${num(cost)} (건당 최대 ₩${num(Math.min(o.svc.max, Math.round(o.qty * (1 + o.vary))) * o.svc.won)})`,
+  );
+}
+if (!orders.length) out.push("주문     없음");
+else out.push(`합계     약 ₩${num(sum)}, 기간 ${Math.round(spanSec / 3600)}시간 안팎`);
+console.log(out.join("\n"));
+
+if (has("go") && orders.length) {
+  for (const o of orders) {
+    const args = [DRIP, "start", "--force", "--link", link, "--service", String(o.svc.id), "--qty", String(o.qty), "--qty-vary", String(o.vary),
+      "--runs", String(o.runs), "--every", `${o.every}s`, "--jitter", "0.4"];
+    const res = spawnSync(process.execPath, args, { encoding: "utf8" });
+    const lines = (res.stdout + res.stderr).trim().split("\n");
+    console.log(`\n[${o.kind}] ` + lines.filter((l) => /^묶음 |첫 주문|걸렸다|모자란다/.test(l)).join("\n"));
+  }
+}

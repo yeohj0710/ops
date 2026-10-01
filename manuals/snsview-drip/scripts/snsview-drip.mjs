@@ -33,6 +33,7 @@
 //              단계, 배율, 범위 안 위치를 뽑아 work/snsview-drip/spread-keys.json 에 적고, 같은 이름으로 다시 부르면
 //              그 값을 계정마다 조금씩(위치 ±0.15, 배율 ±10%)만 흔들어 쓴다. KR 이 터지면 JP, CN, GLOBAL, 틱톡도 같이 잘 된다
 //   --jitter   간격 흔들기 비율. 0.1 이면 간격의 ±10% 안에서 매번 조금씩 다르게. 기본 0
+//   --qty-vary 수량 흔들기 비율. 0.4 면 주문마다 --qty 의 ±40% 안에서 새로 뽑는다(상품 최소, 최대 안). 총량은 평균값이 된다
 //   --allow-short  잔액이 총액보다 적어도 시작한다. 잔액이 떨어지면 거기서 멈춰 기다린다
 //   --foreground   start 에서 배경으로 띄우지 않고 이 창에서 돈다
 //   --root <경로>  ops 저장소 위치. 예약 작업과 시험용. 안 주면 이 스크립트 위치에서 찾는다
@@ -417,6 +418,8 @@ function readPlanArgs(existing = null) {
   }
   const service = Number(flag("service", existing?.service ?? DEFAULT_SERVICE));
   const jitter = Number(flag("jitter", existing?.jitter ?? 0));
+  // --qty-vary 0.4 면 주문마다 수량을 --qty 의 ±40% 안에서 새로 뽑는다. 같은 크기가 같은 간격으로 쌓이면 티가 난다 (261001 사용자 지시)
+  const qtyVary = Number(flag("qty-vary", existing?.qtyVary ?? 0));
 
   if (!link || !(/^https?:\/\/\S+$/.test(link) || isHandle(link)))
     fail("--link 에 게시물 주소를 넣는다. 예: --link https://www.instagram.com/reel/XXXX/ (팔로워는 --handle <아이디>)");
@@ -425,7 +428,8 @@ function readPlanArgs(existing = null) {
   if (!Number.isFinite(everySec) || everySec < MIN_EVERY_SEC)
     fail(`--every 는 ${MIN_EVERY_SEC}초 이상이어야 한다. 예: --every 5m (5m, 300s, 1h, 숫자만 쓰면 분)`);
   if (!Number.isFinite(jitter) || jitter < 0 || jitter > 0.5) fail("--jitter 는 0 에서 0.5 사이다. 예: --jitter 0.1");
-  return { link, qty, runs, everySec, service, jitter, ...(runsRange ? { runsRange: runsRaw } : {}), ...(spread ? { spread } : {}) };
+  if (!Number.isFinite(qtyVary) || qtyVary < 0 || qtyVary > 0.7) fail("--qty-vary 는 0 에서 0.7 사이다. 예: --qty-vary 0.4");
+  return { link, qty, runs, everySec, service, jitter, ...(qtyVary ? { qtyVary } : {}), ...(runsRange ? { runsRange: runsRaw } : {}), ...(spread ? { spread } : {}) };
 }
 
 // 편마다 성적 단계를 뽑는다. 단계 비율과 배율 폭은 매뉴얼 "조회수 주문 등급표" 와 같다
@@ -492,10 +496,21 @@ function readDupArgs() {
   return out;
 }
 
+// 이번 회차 수량. qtyVary 가 없으면 늘 qty 다. 있으면 상품 최소, 최대 안에서 흔든다
+function drawQty(s) {
+  if (!s.qtyVary) return s.qty;
+  const lo = Math.max(s.qtyMin ?? 1, Math.round(s.qty * (1 - s.qtyVary)));
+  const hi = Math.min(s.qtyMax ?? Infinity, Math.round(s.qty * (1 + s.qtyVary)));
+  return Math.max(lo, Math.min(hi, lo + Math.floor(Math.random() * (hi - lo + 1))));
+}
+// 들어간 총량. 주문마다 수량이 다를 수 있어 주문 기록의 qty 를 더한다
+const deliveredQty = (s) => s.orders.reduce((a, o) => a + (o.qty ?? s.qty), 0);
+
 async function makePlan(a) {
   const [svc, bal] = await Promise.all([getService(a.service), getBalance()]);
   fitTarget(a, svc);
   const u = a.unit;
+  if (a.qtyVary && Math.round(a.qty * (1 - a.qtyVary)) < svc.min) a.qtyLowClamped = true;
   if (a.qty < svc.min) fail(`상품 ${svc.id} 는 한 번에 최소 ${num(svc.min)}${u}부터 넣는다. --qty ${a.qty} 로는 못 넣는다`);
   if (a.qty > svc.max) fail(`상품 ${svc.id} 는 한 번에 최대 ${num(svc.max)}${u}까지 넣는다. --qty ${a.qty} 는 너무 크다`);
   const unitCost = (a.qty * svc.rate) / 1000;
@@ -513,7 +528,8 @@ function planLines(a, p) {
     `대상   ${a.kind === "follower" ? `인스타 아이디 ${a.link} (https://www.instagram.com/${a.link}/)` : a.link}`,
     `상품   ${p.svc.id} ${p.svc.name} (${price}, 최소 ${num(p.svc.min)}${u})`,
     `주문   ${num(a.qty)}${u} × ${num(a.runs)}번${a.runsRange ? ` (${a.runsRange.replace("-", "~")}번 중 무작위${a.spread ? `로 ${a.spread.baseRuns}번, ${a.spread.tier} ${a.spread.mult}배${a.spread.key ? `, 같은 영상 "${a.spread.key}"` : ""}` : ""})` : a.spread ? ` (${a.spread.baseRuns}번에 ${a.spread.tier} ${a.spread.mult}배)` : ""} = 총 ${num(a.qty * a.runs)}${u}, ${fmtDur(a.everySec)} 간격` +
-      (a.jitter ? ` (±${Math.round(a.jitter * 100)}% 흔들림)` : ""),
+      (a.jitter ? ` (±${Math.round(a.jitter * 100)}% 흔들림)` : "") +
+      (a.qtyVary ? `. 수량은 주문마다 ±${Math.round(a.qtyVary * 100)}%${a.qtyLowClamped ? ` (아래는 최소 ${num(p.svc.min)}${u}에서 막힘)` : ""}, 총량은 평균값` : ""),
     `비용   회당 ${won(p.unitCost)}, 총 ${won(p.total)}. 잔액 ${won(p.bal.balance)} → ${won(p.bal.balance - p.total)}` +
       (p.committed ? ` (돌고 있는 다른 묶음이 앞으로 ${won(p.committed)} 더 쓴다)` : ""),
     `시간   첫 주문은 바로, 마지막 주문은 ${fmtDur(p.duration)} 뒤 (${stamp(end)} 무렵)`,
@@ -747,6 +763,8 @@ async function cmdStart() {
     rate: p.svc.rate,
     unitCost: p.unitCost,
     total: p.total,
+    qtyMin: p.svc.min,
+    qtyMax: p.svc.max,
     balanceAtStart: p.bal.balance,
     createdAt: stamp(),
     startedAt: null,
@@ -780,7 +798,7 @@ async function cmdStart() {
     const s = readJson(statePath(id));
     if (s?.orders?.length) {
       const o = s.orders[0];
-      console.log(`첫 주문 들어감: 주문번호 ${o.orderId}, ${num(s.qty)}${unitOf(s)}, ${won(s.unitCost)}`);
+      console.log(`첫 주문 들어감: 주문번호 ${o.orderId}, ${num(o.qty ?? s.qty)}${unitOf(s)}, ${won(o.charge ?? s.unitCost)}`);
       return;
     }
     if (s?.paused || s?.errors?.length) {
@@ -861,7 +879,7 @@ async function runLoop(id) {
       s.pid = null;
       saveState(s);
       const spent = s.orders.reduce((a, o) => a + (o.charge ?? s.unitCost), 0);
-      log(id, `묶음 완료. ${s.orders.length}번, 총 ${num(s.orders.length * s.qty)}${unitOf(s)}, ${won(spent)}. 마지막 주문번호 ${s.orders.at(-1)?.orderId}`);
+      log(id, `묶음 완료. ${s.orders.length}번, 총 ${num(deliveredQty(s))}${unitOf(s)}, ${won(spent)}. 마지막 주문번호 ${s.orders.at(-1)?.orderId}`);
       return;
     }
 
@@ -923,14 +941,16 @@ async function runLoop(id) {
     // 주문
     const scheduledAt = next;
     try {
-      const orderId = await addOrder(s.service, s.link, s.qty, id);
+      const q = drawQty(s);
+      const charge = s.qtyVary ? (q * s.rate) / 1000 : s.unitCost;
+      const orderId = await addOrder(s.service, s.link, q, id);
       consecutiveErrors = 0;
       dupStreak = 0;
       s = loadState(id);
-      s.orders.push({ n, orderId, at: stamp(), balanceBefore: bal.balance, charge: s.unitCost });
+      s.orders.push({ n, orderId, at: stamp(), balanceBefore: bal.balance, charge, ...(s.qtyVary ? { qty: q } : {}) });
       s.lastOrderAt = stamp();
       saveState(s);
-      log(id, `${n}/${s.runs} 주문번호 ${orderId}, ${num(s.qty)}${unitOf(s)}, ${won(s.unitCost)}, 잔액 ${won(bal.balance)} → ${won(bal.balance - s.unitCost)}`);
+      log(id, `${n}/${s.runs} 주문번호 ${orderId}, ${num(q)}${unitOf(s)}, ${won(charge)}, 잔액 ${won(bal.balance)} → ${won(bal.balance - charge)}`);
     } catch (e) {
       if (isDuplicate(e.message)) {
         // 앞 주문이 끝나는 대로 들어가게 짧게 다시 넣는다. API 는 살아 있다는 뜻이니 오류 연속 횟수는 0 으로 돌린다.
@@ -1013,7 +1033,7 @@ async function cmdStatus() {
   console.log(`묶음   ${s.id}`);
   console.log(`대상   ${s.kind === "follower" ? `인스타 아이디 ${s.link}` : s.link}`);
   console.log(`설정   ${num(s.qty)}${u} × ${num(s.runs)}번, ${fmtDur(s.everySec)} 간격, 상품 ${s.service} ${s.serviceName}`);
-  console.log(`진행   ${s.orders.length}/${s.runs} 주문, ${num(s.orders.length * s.qty)}${u}, ${won(spent)} 씀`);
+  console.log(`진행   ${s.orders.length}/${s.runs} 주문, ${num(deliveredQty(s))}${u}, ${won(spent)} 씀`);
   console.log(
     `상태   ` +
       (s.done
