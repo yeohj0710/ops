@@ -213,6 +213,9 @@ SNS서포터 주문내역에 같은 링크로 횟수만큼 주문이 찍혀 있�
    **옛 기준을 버린 이유(261001).** 260929~30 에 `boost.mjs` 의 "채널 중앙값 × 2 + 1" 목표와 이 절의 "`--around <중앙값>` 을 지금 조회수 위에 더" 가 겹쳐,
    작은 계정 게시물이 평소의 6~13배까지 갔다(m_beauty_review 인스타 7.8배, 틱톡 12.7배, misadongdong 10배, enna.diary 8.5배, ginalintw 5.9배).
    좋아요는 모든 계정에 같은 비율을 같은 크기로 넣어 일정해 보였고, togimochi(평소 0.5%)에 3%, 숨긴 게시물에 좋아요를 넣기도 했다. 사용자가 "너무 이상하다" 고 했다.
+   - **평소 중앙값이 큰 계정은 `--max-won 3000` 을 붙인다(261002 사용자 지시 "단가 너무 많이 들어가는 건 고민").** 중앙값 8~11만인 role_p1, mutegrayish_ 를 그대로 채우면 한 편에 ₩5,000~10,000 이다.
+     상한을 넘으면 상한 × 0.8~1.1 에서 무작위로 잘라 최종을 평소의 0.75~0.85배(저조 단계 안)로 낮춘다. 편마다 잘리는 금액이 달라 같은 크기로 보이지 않는다.
+   - **올린 지 몇 시간 안 된 게시물은 넣지 않는다.** 261002 cminiiy 는 올린 지 3시간에 152회, 평소 10.8만이었다. 지금 조회수 기준으로 넣으면 자연 유입 위에 10만을 얹어 2배를 넘긴다. 하루 지나 다시 잰다.
 7. 한 건 ₩500 이하 규칙은 그대로다. `plan` 의 회당 금액으로 본다.
 8. 보고는 `G:\내 드라이브\에이전트\보고\<yymmdd>-조회수분할.md` 에 링크, 중앙값, 뽑힌 총량, 묶음 id 를 한 줄씩 적는다.
 
@@ -346,6 +349,11 @@ node "<OPS>/manuals/snsview-drip/scripts/reel-watch.mjs" remove       # 끈다. 
 - **같은 링크에 겹쳐 건 묶음의 첫 주문이 `link_duplicate` 로 거절되면 `start` 가 실패(종료 코드 4)로 냈다.** 루프는 앞 주문이 끝나길 기다렸다 제대로 넣는데, reel-watch 는 종료 코드 4 를 "첫 회차에서 멈춤" 알림으로 띄운다 → 거절 사유가 `link_duplicate` 뿐이면 기다린다는 줄을 찍고 0 으로 끝낸다 (260917)
 - **`--handle` 은 팔로워 전용이다.** 아이디를 주고 `--service` 를 빼면 조회수 상품 813 이 아이디로 나가서 거절한다. 조회수 상품에 아이디가 오거나 팔로워 상품에 게시물 주소가 와도 주문 전에 거절한다. 팔로워는 `snsfollow-drip.mjs` 로 넣는다
 - **스크립트를 고치면 가짜 API 로 먼저 돌려 본다 (260915).** 임시 폴더를 `--root` 로 주고 그 안 `work/snsview-drip/<시험id>/state.json` 에 `apiUrl` 을 `http://127.0.0.1:<포트>/api/v2` 로, `everySec` 를 몇 초로 적는다. 환경변수 `SNSSUPPORTER_API_URL` 도 같은 가짜 주소로 주고 `run <시험id> --root <임시 폴더>` 로 앞에서 돌린다. `run` 은 예약 작업을 안 건드린다. 가짜 API 는 `action=add` 에 정해 둔 순서대로 `{"order": ...}` 와 `{"error": "neworder.error.link_duplicate"}` 를 돌려주면 된다. `start` 까지 시험하려면 `SNSVIEW_DRIP_NO_GUARD=1` 을 같이 줘서 시험 폴더용 되살리기 예약이 작업 스케줄러에 안 걸리게 한다 (260917)
+
+- **인스타 `/api/v1/media/<id>/info/` 를 수십 건 한꺼번에(Promise.all) 부르면 그 세션이 로그인 화면으로 넘어간다 (261002 실측).** 쿠키는 그대로인데 같은 요청이 `accounts/login/?next=` 로 떨어졌다. 한 건씩 1초 안팎 띄워 부르고, 이미 넘어갔으면 이렇게 간다 → 조회수는 `reels-scan.mjs` 타일 숫자(만 단위 반올림이라 중앙값엔 충분), 좋아요는 인스타 탭에서 `fetch('/reel/<코드>/embed/captioned/', { credentials: 'omit' })` 의 `edge_liked_by":{"count":N` 로 읽는다. embed 좋아요는 늦게 갱신되는 게시물이 있어서(tael_beauty 대상 17 대 API 200) 계정 좋아요율을 내는 데만 쓴다. `/api/v1/feed/user/`, `/api/v1/clips/user/`, `web_profile_info` 는 그날 전부 HTML 이나 429 였다
+- **배경 탭에서는 인스타 릴스 탭과 틱톡 프로필이 그려지지 않는다.** 타일 0개, 틱톡은 `Please wait...` 다 → 인스타는 `reels-scan.mjs`, 틱톡은 창을 띄운 Playwright(`channel: "chrome"`, 기본 크로미움은 이 PC 에 없어서 실행 실패)로 `item_list` 응답을 모은다. 261002 에 tael_beauty 4개, bboombbooms2 19개가 잡혔다
+- **틱톡 영상 번호는 주문내역 검색에 안 걸린다.** 안정화 판정은 `/orders/pending`, `/orders/inprogress`, `/orders/processing` 세 탭을 통째로 읽어 그 영상 번호가 없는지, `/orders/completed` 최근 페이지에 3시간 안의 주문이 없는지로 본다. 카드는 `.order-list-card-wrap .card` 안에 `.order-status-badge`, `.order-card-date`, `.order-card-link`, `.order-card-service` 다
+- **익스텐션 JS 출력에 주문내역 원문이나 `?search=` 가 섞이면 `[BLOCKED: Cookie/query string data]` 로 통째로 가린다.** 링크에서 게시물 코드만 뽑아 돌려준다
 
 ## 사람에게 물어야 하는 지점
 

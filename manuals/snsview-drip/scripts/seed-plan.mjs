@@ -24,6 +24,8 @@
 //   --likes-hidden    좋아요 수를 숨긴 게시물. 좋아요 주문을 안 넣는다
 //   --no-likes        좋아요는 넣지 않는다
 //   --no-views        조회수는 넣지 않는다 (이미 조회수 묶음이 도는 게시물에 좋아요만 맞출 때. --views 에 그 묶음이 끝난 뒤 조회수를 준다)
+//   --max-won N       조회수 주문 비용 상한(원). 넘으면 N × 0.8~1.1 안에서 무작위로 잘라 최종 조회수를 낮춘다(261002).
+//                     평소 중앙값이 큰 계정(10만 안팎)은 그대로 채우면 한 편에 ₩5,000~10,000 이 들어서 넣었다
 //   --go              계획대로 실제 주문을 건다 (snsview-drip.mjs start --force)
 
 import path from "node:path";
@@ -69,10 +71,18 @@ const TIERS = [
   { name: "잘 됨", p: 0.14, lo: 1.3, hi: 1.7 },
   { name: "조금 터짐", p: 0.04, lo: 1.7, hi: 2.2 },
 ];
+const maxWon = Number(flag("max-won", 0));
 let r = Math.random();
 const tier = TIERS.find((t) => (r -= t.p) < 0) || TIERS[1];
 const mult = Math.round(rnd(tier.lo, tier.hi) * 100) / 100;
-const finalViews = Math.round(median * mult);
+let finalViews = Math.round(median * mult);
+let capNote = "";
+if (maxWon > 0 && (finalViews - views) * SVC.view.won > maxWon) {
+  const capWon = Math.round(maxWon * rnd(0.8, 1.1));
+  const capped = views + Math.round(capWon / SVC.view.won);
+  capNote = `         비용 상한 ₩${num(capWon)} 으로 잘라 최종 ${num(capped)} (평소의 ${(capped / median).toFixed(2)}배)`;
+  finalViews = capped;
+}
 const spanSec = Math.round((tiktok ? rnd(12, 36) : rnd(8, 20)) * 3600);
 
 // 총량 total 을 주문 여러 번으로 나눈다. 수량 흔들기의 평균값으로 횟수를 잡아 총량이 위로 쏠리지 않게 한다
@@ -91,7 +101,8 @@ const out = [];
 const orders = [];
 const viewTotal = finalViews - views;
 out.push(`대상     ${link}`);
-out.push(`조회수   평소 중앙값 ${num(median)} × ${mult} (${tier.name}) = 최종 ${num(finalViews)}, 지금 ${num(views)}`);
+out.push(`조회수   평소 중앙값 ${num(median)} × ${mult} (${tier.name}) = 최종 ${num(capNote ? Math.round(median * mult) : finalViews)}, 지금 ${num(views)}`);
+if (capNote) out.push(capNote);
 if (has("no-views")) {
   out.push("         조회수는 넣지 않는다 (--no-views). 좋아요는 지금 조회수 기준");
 } else if (viewTotal < SVC.view.min) {
