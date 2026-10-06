@@ -26,6 +26,8 @@
 //   --service  상품 번호. 기본 813 ([동영상] 한국인 조회수, 1,000회에 100원)
 //   --dup-poll, --dup-retry, --dup-max   같은 대상 앞 주문이 안 끝나 거절될 때 상태를 보는 간격, 다시 넣는 간격,
 //              기다리는 한도. 기본 15s, 60s, 90m. 팔로워는 앞 주문이 오래 걸려서 snsfollow-drip.mjs 가 길게 준다
+//   --dup-swap 거절이 이만큼 이어지면 같은 게시물의 다른 표기(www, 끝 슬래시 유무)로 바꿔 넣는다. 기본 20m, 0 이면 안 바꾼다.
+//              인스타 게시물 주소에만 쓴다. 바꾼 표기는 state.json 의 orderLink 와 linkSwaps 에 남는다
 //   --spread   편마다 성적이 다르게 보이게 고른 횟수에 배율을 한 번 더 곱한다. 대부분은 0.5~1.3배(저조 30%, 보통 55%),
 //              가끔 1.4~2배(잘 됨 12%), 드물게 2.2~3배(조금 터짐 3%). 평균은 1.05배쯤이다. 배율이 1을 넘으면 간격을
 //              √배율로 나눠 많이 들어가는 편이 너무 오래 끌지 않게 한다. 뽑은 단계와 배율은 plan 출력과 state.json 의 spread 에 남는다
@@ -483,10 +485,22 @@ function committedSpend() {
   return pendingBatches().reduce((sum, b) => sum + Math.max(0, b.runs - b.orders.length) * (b.unitCost || 0), 0);
 }
 
-// 같은 대상 앞 주문이 안 끝나 거절될 때의 대기 설정. 준 것만 묶음 상태에 적는다. 안 주면 루프 기본값(15초, 60초, 90분)
+// 같은 게시물을 다른 글자로 적은 주소들. 판매자의 중복 검사가 글자 그대로 비교라서, 표기를 바꾸면
+// 판매자 쪽에서 안 시작하고 걸려 있는 앞 주문을 비켜 다음 회차가 들어간다 (260927, 261006 실측).
+// 첫 칸은 지금 주소다. 인스타 게시물 주소가 아니면(아이디, 틱톡) 바꿀 표기가 없어 하나만 돌려준다
+function linkVariants(link) {
+  if (isHandle(link)) return [link];
+  const m = String(link).match(/^https?:\/\/(?:www\.)?instagram\.com\/(reels?|p|tv)\/([A-Za-z0-9_-]+)\/?(?:[?#].*)?$/i);
+  if (!m) return [link];
+  const base = `instagram.com/${m[1]}/${m[2]}`;
+  const all = [`https://www.${base}/`, `https://${base}/`, `https://www.${base}`, `https://${base}`];
+  return [link, ...all.filter((v) => v !== link)];
+}
+
+// 같은 대상 앞 주문이 안 끝나 거절될 때의 대기 설정. 준 것만 묶음 상태에 적는다. 안 주면 루프 기본값(15초, 60초, 90분, 표기 바꾸기 20분)
 function readDupArgs() {
   const out = {};
-  for (const [name, key] of [["dup-poll", "dupPollSec"], ["dup-retry", "dupRetrySec"], ["dup-max", "dupMaxSec"]]) {
+  for (const [name, key] of [["dup-poll", "dupPollSec"], ["dup-retry", "dupRetrySec"], ["dup-max", "dupMaxSec"], ["dup-swap", "dupSwapSec"]]) {
     const v = flag(name);
     if (v === null) continue;
     const sec = parseEvery(v);
@@ -843,9 +857,13 @@ async function runLoop(id) {
   const dupPollSec = Math.min(s.dupPollSec ?? 15, dupRetrySec);
   // 팔로워 주문은 한 건이 몇 시간씩 걸려서 묶음마다 한도를 따로 둔다 (snsfollow-drip, 260917)
   const DUP_MAX_SEC = s.dupMaxSec ?? 90 * 60;
+  // 앞 주문이 판매자 쪽에서 안 시작하면 몇 시간씩 선다(260927 16시간, 261006 1시간 45분). 정상 주문은 5분 안팎에 끝나니
+  // 거절이 이만큼 이어지면 같은 게시물의 다른 표기로 바꿔 넣는다. 90분 한도 안에서 표기 넷을 차례로 쓴다. 0 이면 안 바꾼다
+  const DUP_SWAP_SEC = s.dupSwapSec ?? 20 * 60;
   const isDuplicate = (msg) => /link_duplicate/.test(msg || "");
   let dupStreak = 0;
   let dupSince = 0;
+  let swapBase = 0;
   // 이어 받을 때 곧바로 넣지 않는다. 직전 주문에서 간격만큼, 직전 실패에서 간격만큼 지난 뒤가 다음 회차다.
   // 실패 직후 프로세스가 다시 뜨면 직전 주문만 봐서는 곧바로 재시도해 `link_duplicate` 가 반복된다 (260905 실측)
   // 직전 실패가 link_duplicate 면 그 실패에서는 dupRetrySec 만 기다린다
@@ -943,7 +961,8 @@ async function runLoop(id) {
     try {
       const q = drawQty(s);
       const charge = s.qtyVary ? (q * s.rate) / 1000 : s.unitCost;
-      const orderId = await addOrder(s.service, s.link, q, id);
+      // orderLink 는 걸린 주문을 비키려고 바꾼 표기다. link 는 묶음 겹침 검사와 기록용으로 처음 주소 그대로 둔다
+      const orderId = await addOrder(s.service, s.orderLink || s.link, q, id);
       consecutiveErrors = 0;
       dupStreak = 0;
       s = loadState(id);
@@ -957,7 +976,7 @@ async function runLoop(id) {
         // 오류 목록에는 연속의 첫 번째만 적고 나머지는 lastDupAt, dupCount 로 남긴다. 1분마다 쌓으면 수백 건으로 불어난다
         dupStreak++;
         consecutiveErrors = 0;
-        if (dupStreak === 1) dupSince = Date.now();
+        if (dupStreak === 1) dupSince = swapBase = Date.now();
         s = loadState(id);
         if (dupStreak === 1) s.errors.push({ at: stamp(), n, msg: e.message });
         s.lastDupAt = stamp();
@@ -973,6 +992,20 @@ async function runLoop(id) {
           log(id, "같은 링크의 앞 주문이 너무 오래 안 끝나 멈춘다. 사이트 주문내역을 보고 resume 으로 이어 간다");
           process.exitCode = 4;
           return;
+        }
+        if (DUP_SWAP_SEC > 0 && Date.now() - swapBase >= DUP_SWAP_SEC * 1000) {
+          const cur = s.orderLink || s.link;
+          const vars = linkVariants(s.link);
+          const nextLink = vars[(Math.max(0, vars.indexOf(cur)) + 1) % vars.length];
+          if (nextLink !== cur) {
+            swapBase = Date.now();
+            s.orderLink = nextLink;
+            (s.linkSwaps ||= []).push({ at: stamp(), n, from: cur, to: nextLink, stuckOrder: s.orders.at(-1)?.orderId || null });
+            saveState(s);
+            log(id, `${n}/${s.runs} 앞 주문 #${s.orders.at(-1)?.orderId ?? "?"} 이 ${fmtDur(Math.round((Date.now() - dupSince) / 1000))}째 안 끝나 같은 게시물의 다른 표기로 넣는다: ${nextLink}`);
+            next = Date.now();
+            continue;
+          }
         }
         // 1분을 그냥 기다리지 않고 앞 주문 상태를 짧게 본다. 끝났으면 곧바로 다시 넣는다 (260917, 거절 뒤 평균 5분이 더 붙었다).
         // 상태 조회는 돈이 안 나간다. 조회가 실패하거나 dupRetrySec 가 지나면 예전처럼 그냥 다시 넣는다
@@ -1032,6 +1065,7 @@ async function cmdStatus() {
   const u = unitOf(s);
   console.log(`묶음   ${s.id}`);
   console.log(`대상   ${s.kind === "follower" ? `인스타 아이디 ${s.link}` : s.link}`);
+  if (s.orderLink && s.orderLink !== s.link) console.log(`표기   ${s.orderLink} 로 넣는 중 (앞 주문이 걸려 ${s.linkSwaps?.length || 1}번 바꿈)`);
   console.log(`설정   ${num(s.qty)}${u} × ${num(s.runs)}번, ${fmtDur(s.everySec)} 간격, 상품 ${s.service} ${s.serviceName}`);
   console.log(`진행   ${s.orders.length}/${s.runs} 주문, ${num(deliveredQty(s))}${u}, ${won(spent)} 씀`);
   console.log(
