@@ -18,7 +18,8 @@
 //           3) 비용 상한으로 잘린 최종이 0.85~1.15 에 떨어지면 0.7~0.85 로 낮추고, 그것도 지금보다 낮으면 안 넣는다
 //   좋아요: 최종 좋아요 = 최종 조회수 × 그 계정 평소 좋아요율 × 0.75~1.25. 주문량 = 최종 좋아요 − 지금 좋아요.
 //           좋아요를 숨긴 게시물(--likes-hidden)과 최소 수량이 안 되는 몫은 안 넣는다
-//   크기와 간격: 주문마다 수량 ±40~50%, 간격 ±40%. 전체 기간도 편마다 다르게(인스타 8~20시간, 틱톡 12~36시간)
+//   크기와 간격: 상품 최소 단위로만 넣는다(조회수 100회, 인스타 좋아요 10개, 틱톡 좋아요 50개). 간격 ±50%.
+//           전체 기간은 편마다 36~60시간에서 뽑는다(261007 사용자 지시 "최소 주문 단위로 넓게 텀을 둬서". 옛 기준은 수량 ±40%, 8~20시간)
 //
 // 옵션
 //   --median N        그 채널 평소 조회수 중앙값 (대상, 고정 게시물 뺀 최근 12개. 틱톡은 최근 15개)
@@ -106,18 +107,14 @@ if (maxWon > 0 && (finalViews - views) * SVC.view.won > maxWon) {
 }
 const ratioNow = views / median;
 const nearSkip = finalViews - views < SVC.view.min && ratioNow > NEAR_LO && ratioNow < NEAR_HI;
-const spanSec = Math.round((tiktok ? rnd(12, 36) : rnd(8, 20)) * 3600);
+const spanSec = Math.round(rnd(36, 60) * 3600);
 
 // 총량 total 을 주문 여러 번으로 나눈다. 수량 흔들기의 평균값으로 횟수를 잡아 총량이 위로 쏠리지 않게 한다
-function split(total, svc, runsLo, runsHi, vary) {
-  const wantRuns = Math.round(rnd(runsLo, runsHi));
-  let qty = Math.max(svc.min, Math.round(total / wantRuns / 10) * 10 || svc.min);
-  qty = Math.min(qty, svc.max);
-  const lo = Math.max(svc.min, Math.round(qty * (1 - vary)));
-  const hi = Math.min(svc.max, Math.round(qty * (1 + vary)));
-  const avg = (lo + hi) / 2;
-  const runs = Math.max(1, Math.round(total / avg));
-  return { qty, runs, vary, avg, every: Math.max(300, Math.round(spanSec / Math.max(1, runs - 1 || 1))) };
+// 최소 단위로만 넣는다(261007). 횟수 = 총량 ÷ 최소 수량, 간격 = 전체 기간 ÷ 횟수
+function split(total, svc) {
+  const qty = svc.min;
+  const runs = Math.max(1, Math.round(total / qty));
+  return { qty, runs, vary: 0, avg: qty, every: Math.max(300, Math.round(spanSec / Math.max(1, runs - 1 || 1))) };
 }
 
 const out = [];
@@ -133,7 +130,7 @@ if (has("no-views")) {
 } else if (viewTotal < SVC.view.min) {
   out.push(`         이미 평소 수준이거나 모자란 몫이 ${num(Math.max(0, viewTotal))}회라 조회수는 안 넣는다`);
 } else {
-  const v = split(viewTotal, SVC.view, 8, 40, 0.4);
+  const v = split(viewTotal, SVC.view);
   orders.push({ kind: "조회수", svc: SVC.view, ...v, total: viewTotal });
 }
 const endViews = has("no-views") ? views : Math.max(views, finalViews);
@@ -145,15 +142,15 @@ else {
   const likeTotal = target - likes;
   out.push(`좋아요   최종 ${num(endViews)} × 평소 ${(likeRate * 100).toFixed(2)}% × ${lm} = ${num(target)}, 지금 ${num(likes)}`);
   if (likeTotal < SVC.like.min) out.push(`         모자란 몫 ${num(Math.max(0, likeTotal))}개가 최소 ${SVC.like.min}개 밑이라 안 넣는다`);
-  else orders.push({ kind: "좋아요", svc: SVC.like, ...split(likeTotal, SVC.like, 3, 12, 0.5), total: likeTotal });
+  else orders.push({ kind: "좋아요", svc: SVC.like, ...split(likeTotal, SVC.like), total: likeTotal });
 }
 let sum = 0;
 for (const o of orders) {
   const cost = o.avg * o.runs * o.svc.won;
   sum += cost;
   out.push(
-    `주문     ${o.kind} ${o.svc.id}: ${num(o.qty)}개 안팎(±${o.vary * 100}%) × ${o.runs}번 = 약 ${num(o.avg * o.runs)}, ` +
-      `${Math.round(o.every / 60)}분 간격 ±40%, 약 ₩${num(cost)} (건당 최대 ₩${num(Math.min(o.svc.max, Math.round(o.qty * (1 + o.vary))) * o.svc.won)})`,
+    `주문     ${o.kind} ${o.svc.id}: ${num(o.qty)}개 × ${o.runs}번 = ${num(o.avg * o.runs)}, ` +
+      `${Math.round(o.every / 60)}분 간격 ±50%, 약 ₩${num(cost)} (건당 ₩${num(o.qty * o.svc.won)})`,
   );
 }
 if (!orders.length) out.push("주문     없음");
@@ -163,7 +160,7 @@ console.log(out.join("\n"));
 if (has("go") && orders.length) {
   for (const o of orders) {
     const args = [DRIP, "start", "--force", "--link", link, "--service", String(o.svc.id), "--qty", String(o.qty), "--qty-vary", String(o.vary),
-      "--runs", String(o.runs), "--every", `${o.every}s`, "--jitter", "0.4"];
+      "--runs", String(o.runs), "--every", `${o.every}s`, "--jitter", "0.5"];
     const res = spawnSync(process.execPath, args, { encoding: "utf8" });
     const lines = (res.stdout + res.stderr).trim().split("\n");
     console.log(`\n[${o.kind}] ` + lines.filter((l) => /^묶음 |첫 주문|걸렸다|모자란다/.test(l)).join("\n"));
