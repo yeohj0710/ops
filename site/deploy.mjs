@@ -5,6 +5,9 @@
 // 별칭을 매번 다시 거는 이유: vercel 이 배포마다 새 주소를 준다.
 // 프로젝트 SSO 보호는 꺼 뒀다(vercel project protection disable wnbx --sso).
 // 안 끄면 손수 붙인 별칭이 로그인 화면으로 튄다.
+// "배포 주소를 못 찾았다" 가 뜨면 site/dist/.vercel 이 wnbx 가 아닌 프로젝트에 묶인 것이다.
+// 261014~261102 동안 "dist" 프로젝트로 올라가 wnbx 가 안 바뀌었다.
+// 고치는 법: site/dist/.vercel 을 치우고 `npx vercel link --yes --project wnbx --cwd site/dist`.
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
